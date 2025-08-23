@@ -1,18 +1,15 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import Home from "./Pages/Home";
-import About from "./Pages/About";
+
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./Pages/Login";
+import Signup from "./Pages/Signup";
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="p-4 bg-gray-100 flex gap-4">
-        <Link className="text-blue-700 font-bold" to="/">Home</Link>
-        <Link className="text-green-700 font-bold" to="/about">About</Link>
-      </div>
-
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
       </Routes>
     </BrowserRouter>
   );
