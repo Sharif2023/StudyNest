@@ -1,8 +1,3 @@
-// LandingPage.jsx
-// A Tailwind-based recreation of the Sparrow "Default" home layout (structure & behavior only).
-// Uses placeholder copy and royalty-free placeholder images.
-// Drop this file into your React + Vite + Tailwind project and import it into your router/App.
-
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ------------------------------
@@ -52,12 +47,30 @@ function useCountUp({ target = 2000000, duration = 1800, startWhenInView = true 
 // ------------------------------
 // UI: Icons (inline SVG, no extra deps)
 // ------------------------------
-const PlayIcon = (props) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-    <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" />
-    <path d="M10 8l6 4-6 4z" fill="currentColor" />
+const PlayIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 100 100"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Circle outline */}
+    <circle
+      cx="50"
+      cy="50"
+      r="45"
+      stroke="white"
+      strokeWidth="6"
+      opacity="0.9"
+    />
+    {/* Play triangle */}
+    <polygon
+      points="40,30 70,50 40,70"
+      fill="white"
+    />
   </svg>
 );
+
 
 const CheckIcon = (props) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
@@ -128,7 +141,7 @@ function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <a href="#home" className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold">Sp</span>
-            <span className="font-semibold tracking-tight">Sparrow</span>
+            <span className="font-semibold tracking-tight">StudyNest</span>
           </a>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-700">
@@ -140,8 +153,8 @@ function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <a href="#pricing" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Pricing</a>
-            <a href="#contact" className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Get Started</a>
+            <a href="/signup" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Signup</a>
+            <a href="/login" className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Login</a>
           </div>
 
           <button onClick={() => setOpen((s) => !s)} className="md:hidden inline-flex items-center justify-center rounded-xl p-2 text-zinc-700 hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400" aria-label="Toggle menu">
@@ -173,57 +186,92 @@ function Navbar() {
 }
 
 function Hero() {
+  const images = [
+    "https://www.uiu.ac.bd/wp-content/uploads/2023/12/IMG_1752-Edited.jpg",
+    "https://ciac.uiu.ac.bd/wp-content/uploads/2022/01/canteen.jpg",
+    "https://westcoastuniversity.edu/wp-content/uploads/2023/03/WCU-Blog_StudyBuddy-VirtualStudyGroup.jpg",
+    "https://i.pinimg.com/1200x/95/42/dc/9542dcfeeb674eb281caf1bf1977677b.jpg",
+    "https://i.pinimg.com/1200x/44/8e/b3/448eb3654f309cde7392d18ec811f95b.jpg",
+    "https://i.pinimg.com/1200x/73/fb/bd/73fbbd7f9b4d0faf3248be25aeb74ed8.jpg",
+  ];
+
+  const [current, setCurrent] = useState(0);
+
+  // Auto-swipe every 4s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  const prevSlide = () => {
+    setCurrent((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const nextSlide = () => {
+    setCurrent((prev) => (prev + 1) % images.length);
+  };
+
   return (
     <section id="home" className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-zinc-50 via-white to-white" />
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pt-24">
         <div className="grid items-center gap-8 lg:grid-cols-2">
+          {/* LEFT TEXT */}
           <div>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold text-white">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-white" /> renovating together
-            </p>
-            <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
-              <span className="block">Sparrow</span>
-              <span className="block">creative</span>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-l bg-zinc-900 px-3 py-1 text-2xl font-semibold text-white">STUDY TOGETHER</p>
+            <h1 className="text-4xl tracking-tight text-zinc-900 sm:text-5xl">
+              <span className="block text-7xl tracking-widest font-extrabold font-sans underline">Study</span>
+              <span className="block text-7xl font-light tracking-wide">Nest</span>
             </h1>
-            <p className="mt-4 max-w-xl text-lg leading-8 text-zinc-600">
-              Craft delightful product experiences for your brand, seamlessly.
+            <p className="mt-9 max-w-xl text-base leading-8 text-zinc-600 font-serif">
+              Connect, collaborate, and learn together with peers at United
+              International University. Build knowledge, share resources, and
+              grow as a community.
             </p>
 
             <div className="mt-6 flex items-center gap-4">
-              <a href="#contact" className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">
-                Start a project <ArrowRight className="h-4 w-4" />
+              <a
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Join a Group <ArrowRight className="h-4 w-4" />
               </a>
-              <a href="#reel" className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50">
-                Watch the reel
+              <a
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50"
+              >
+                Learn More
               </a>
-            </div>
-
-            <div className="mt-8">
-              <p className="text-sm font-semibold text-zinc-700">Follow us</p>
-              <div className="mt-3 flex items-center gap-3 text-zinc-600">
-                {socials.map((s) => (
-                  <a key={s.name} href={s.href} aria-label={s.name} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 hover:bg-zinc-50">
-                    {s.svg}
-                  </a>
-                ))}
-              </div>
             </div>
           </div>
 
-          <div className="relative">
+          {/* RIGHT SLIDER */}
+          <div className="relative w-full">
             <img
-              src="https://images.unsplash.com/photo-1529336953121-ad5a0d43d0d2?q=80&w=1600&auto=format&fit=crop"
-              alt="Hero artwork"
-              className="aspect-[4/3] w-full rounded-2xl object-cover shadow-xl"
+              src={images[current]}
+              alt="UIU Student Activities"
+              className="aspect-[4/3] w-full rounded-2xl object-cover shadow-xl transition-all duration-700"
             />
-            <a
-              href="#reel"
-              className="absolute inset-0 m-auto grid h-16 w-16 place-items-center rounded-full bg-white/90 text-zinc-900 shadow-lg ring-1 ring-zinc-200 hover:bg-white"
-              aria-label="Play reel"
+
+            {/* LEFT ARROW */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 shadow hover:bg-white"
+              aria-label="Previous"
             >
-              <PlayIcon className="h-7 w-7" />
-            </a>
+              ‹
+            </button>
+
+            {/* RIGHT ARROW */}
+            <button
+              onClick={nextSlide}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 p-2 shadow hover:bg-white"
+              aria-label="Next"
+            >
+              ›
+            </button>
           </div>
         </div>
       </div>
@@ -234,23 +282,48 @@ function Hero() {
 function Why() {
   return (
     <section id="why" className="py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-start gap-12 lg:grid-cols-2">
-          <div>
-            <p className="text-sm font-semibold text-zinc-700">why sparrow?</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">A rock-solid starting point</h2>
-            <p className="mt-4 text-zinc-600">
-              A flexible set of layouts, thoughtful elements, and utility classes — rigorously tested and optimized — gives you the perfect foundation for landing pages and stylish business sites.
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Title */}
+        <h2 className="text-center text-4xl sm:text-5xl font-extrabold tracking-tight underline underline-offset-8 decoration-black lowercase">
+          why studynest?
+        </h2>
+
+        {/* 3-column layout with vertical centering */}
+        <div className="mt-10 grid gap-10 md:grid-cols-3 items-center">
+          {/* Left: italic paragraph */}
+          <div className="text-center md:text-right">
+            <p className="mx-auto max-w-md text-xl leading-8 italic text-zinc-600">
+              Studying alone can feel overwhelming. 
+              With StudyNest you can connect with 
+              peers, share resources, and learn 
+              collaboratively — turning challenges 
+              into opportunities for growth.
             </p>
-            <div className="mt-6 flex gap-3">
-              <a href="#inside" className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Explore features</a>
-              <a href="#pricing" className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50">See pricing</a>
-            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200&auto=format&fit=crop" alt="Workspace" className="h-56 w-full rounded-2xl object-cover shadow-md" />
-            <img src="https://images.unsplash.com/photo-1556767576-cfba9fdac0f3?q=80&w=1200&auto=format&fit=crop" alt="Laptop" className="h-56 w-full rounded-2xl object-cover shadow-md" />
-            <img src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=1200&auto=format&fit=crop" alt="Code" className="h-56 w-full rounded-2xl object-cover shadow-md lg:col-span-2" />
+
+          {/* Middle: tall image */}
+          <div className="flex justify-center">
+            <img
+              src="https://images.stockcake.com/public/8/2/8/828a6567-801e-4b49-bb13-28ab39e847cb_large/group-study-session-stockcake.jpg"
+              alt="Students collaborating at UIU"
+              className="h-[520px] w-full max-w-sm rounded-2xl object-cover shadow-md"
+            />
+          </div>
+
+          {/* Right: title + paragraph */}
+          <div className="text-center md:text-left">
+            <div>
+              <h3 className="text-2xl font-extrabold text-zinc-900">
+                built for uiu students
+              </h3>
+              <p className="mt-3 max-w-md text-zinc-600 leading-7">
+                StudyNest makes it easy to find study groups, 
+                collaborate on projects, and exchange ideas 
+                within United International University. 
+                Build friendships while excelling 
+                academically — all in one platform.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -258,23 +331,98 @@ function Why() {
   );
 }
 
+// Watch reel
+function getYouTubeId(url) {
+  const m =
+    url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function VideoSection({ youtubeUrl }) {
+  const id = useMemo(() => getYouTubeId(youtubeUrl), [youtubeUrl]);
+  const bg = id
+    ? `https://png.pngtree.com/thumb_back/fh260/background/20240914/pngtree-diverse-group-of-students-studying-in-a-library-with-open-books-image_16203293.jpg`
+    : "https://img.youtube.com/vi/${id}/maxresdefault.jpg"; // fallback
+
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section id="reel" className="relative">
+      {/* Parallax background */}
+      <div
+        className="relative bg-fixed bg-center bg-cover"
+        style={{ backgroundImage: `url(${bg})` }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/50" />
+
+        {/* Centered play button + label */}
+        <div className="relative min-h-[65vh] sm:min-h-[75vh] grid place-items-center">
+          <button
+            onClick={() => setOpen(true)}
+            className="group inline-flex flex-col items-center"
+            aria-label="Play promo video"
+          >
+            <span className="grid place-items-center w-24 h-24 rounded-full bg-white/15 ring-1 ring-white/50 backdrop-blur transition-transform group-hover:scale-105">
+              <PlayIcon className="h-10 w-10 text-white" />
+            </span>
+            <span className="mt-3 text-white font-semibold tracking-wide">
+              watch the reel
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Modal player */}
+      {open && id && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 p-4 sm:p-8"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="mx-auto max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              className="w-full h-full"
+              src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`}
+              title="StudyNest Promo"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={() => setOpen(false)}
+            className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-zinc-900 hover:bg-white"
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+
 function Inside() {
   const features = [
     {
-      title: "Bootstrap DNA, Tailwind speed",
-      body: "All the essentials you expect — translated into fast, utility-first ergonomics.",
+      title: "Find Your Group Easily",
+      body: "Search and join study groups by subject, semester, or interest to connect with the right peers.",
     },
     {
-      title: "Responsive helpers",
-      body: "Toggle styles across breakpoints with simple, expressive classes.",
+      title: "Collaboration Made Simple",
+      body: "Share notes, resources, and assignments with your group in a structured and easy way.",
     },
     {
-      title: "32+ elements",
-      body: "From sliders to video backgrounds and typed text — use only what you need.",
+      title: "Stay Organized",
+      body: "Track group schedules, upcoming study sessions, and deadlines all in one place.",
     },
     {
-      title: "Smooth animations",
-      body: "Butter-smooth motion powered by modern, GPU-accelerated techniques.",
+      title: "Build Community",
+      body: "Engage in discussions, motivate each other, and grow together at United International University.",
     },
   ];
 
@@ -283,24 +431,39 @@ function Inside() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 flex items-end justify-between gap-6">
           <div>
-            <p className="text-sm font-semibold text-zinc-700">bootstrap 5 + much more</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">Powerful inside</h2>
-            <p className="mt-3 max-w-2xl text-zinc-600">Mix and match building blocks to ship beautiful experiences faster.</p>
+            <p className="text-sm font-semibold text-zinc-700">studynest features</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+              Powerful for Students
+            </h2>
+            <p className="mt-3 max-w-2xl text-zinc-600">
+              StudyNest helps UIU students collaborate smarter, stay motivated, and achieve academic success together.
+            </p>
           </div>
-          <a href="#reel" className="hidden shrink-0 md:inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-zinc-50">
+          <a
+            href="#reel"
+            className="hidden shrink-0 md:inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-zinc-50"
+          >
             <PlayIcon className="h-4 w-4" /> Watch the reel
           </a>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
-            <div key={f.title} className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 transition hover:shadow-md">
+            <div
+              key={f.title}
+              className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 transition hover:shadow-md"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white">
                 <StarIcon className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-zinc-900">{f.title}</h3>
+              <h3 className="mt-4 text-lg font-semibold text-zinc-900">
+                {f.title}
+              </h3>
               <p className="mt-2 text-sm text-zinc-600">{f.body}</p>
-              <a href="#" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 hover:underline">
+              <a
+                href="/login"
+                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 hover:underline"
+              >
                 Learn more <ArrowRight className="h-4 w-4" />
               </a>
             </div>
@@ -315,27 +478,31 @@ function Process() {
   const steps = [
     {
       n: "01",
-      title: "Plan",
-      body: "We discover goals, map the journey, and produce a clear blueprint for the project.",
-      img: "https://images.unsplash.com/photo-1552581234-26160f608093?q=80&w=1200&auto=format&fit=crop",
+      title: "Create or Join Groups",
+      body:
+        "Find the right peers by course, semester, or interest. Create open or private groups and start collaborating instantly.",
+      img: "https://www.uiu.ac.bd/wp-content/uploads/2023/12/IMG_1752-Edited.jpg",
     },
     {
       n: "02",
-      title: "Design",
-      body: "From wireframes to polished comps, we iterate quickly with you and your team.",
-      img: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1200&auto=format&fit=crop",
+      title: "Smart Scheduling",
+      body:
+        "Plan study sessions with built‑in calendar, availability polls, and reminders so everyone stays on track.",
+      img: "https://byu-pathway.brightspotcdn.com/dims4/default/1a670e9/2147483647/strip/true/crop/1266x662+0+0/resize/600x314!/quality/90/?url=http%3A%2F%2Fbyu-pathway-brightspot.s3.amazonaws.com%2Fba%2F31%2F008d47e240489ef92100d2f52503%2Fdiseno-sin-titulo-14.png",
     },
     {
       n: "03",
-      title: "Develop",
-      body: "We build with modern tooling, accessibility, and performance top of mind.",
-      img: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1200&auto=format&fit=crop",
+      title: "Share Notes & Resources",
+      body:
+        "Upload lecture notes, past questions, links, and files. Organize everything by course topics for quick access.",
+      img: "https://i.ytimg.com/vi/xVXGTvoLndw/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBkdO5k77WuIIbXf_rSvC3NSolgvQ",
     },
     {
       n: "04",
-      title: "Deploy",
-      body: "After QA and review, we launch, monitor, and keep improving.",
-      img: "https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?q=80&w=1200&auto=format&fit=crop",
+      title: "Track Progress & Motivate",
+      body:
+        "Set goals, checklist tasks, and celebrate wins together. Stay accountable and improve every week.",
+      img: "https://www.deprocrastination.co/assets/illustrations/uncertain_feedback.png",
     },
   ];
 
@@ -343,19 +510,32 @@ function Process() {
     <section id="process" className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10">
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">Our process</h2>
-          <p className="mt-3 max-w-2xl text-zinc-600">A flexible framework that adapts to your needs — refined by years of shipping websites and campaigns.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+            StudyNest features
+          </h2>
+          <p className="mt-3 max-w-2xl text-zinc-600">
+            Everything UIU students need to learn together — from forming groups
+            to sharing resources and staying organized.
+          </p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-2">
           {steps.map((s) => (
-            <article key={s.n} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
+            <article
+              key={s.n}
+              className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200"
+            >
               <img src={s.img} alt="" className="aspect-[16/9] w-full object-cover" />
               <div className="p-6">
                 <div className="text-sm font-semibold text-zinc-500">{s.n}</div>
                 <h3 className="mt-1 text-xl font-semibold text-zinc-900">{s.title}</h3>
                 <p className="mt-2 text-zinc-600">{s.body}</p>
-                <a href="#portfolio" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 hover:underline">View methods <ArrowRight className="h-4 w-4" /></a>
+                <a
+                  href="/login"
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-zinc-900 hover:underline"
+                >
+                  Learn more <ArrowRight className="h-4 w-4" />
+                </a>
               </div>
             </article>
           ))}
@@ -363,12 +543,24 @@ function Process() {
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-zinc-900 to-zinc-800 px-6 py-6 text-white">
           <div>
-            <h3 className="text-xl font-semibold">Have a website to build?</h3>
-            <p className="mt-1 text-sm text-white/80">We can help you ship faster with confidence.</p>
+            <h3 className="text-xl font-semibold">Ready to study together?</h3>
+            <p className="mt-1 text-sm text-white/80">
+              Create a StudyNest group or browse active groups at UIU.
+            </p>
           </div>
           <div className="flex gap-3">
-            <a href="#pricing" className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100">Purchase</a>
-            <a href="#contact" className="rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10">Talk to us</a>
+            <a
+              href="/login"
+              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
+            >
+              Create a group
+            </a>
+            <a
+              href="/login"
+              className="rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+            >
+              Browse groups
+            </a>
           </div>
         </div>
       </div>
@@ -377,17 +569,19 @@ function Process() {
 }
 
 function Performance() {
-  const { ref, value } = useCountUp({ target: 2000000 });
+  const { ref, value } = useCountUp({ target: 15000, duration: 2000 });
   const testimonials = [
     {
-      quote: "Sparrow helps me sleep like a baby — everything just works.",
-      author: "Mane Dumas",
-      role: "Web Designer",
+      quote:
+        "StudyNest made it easy to find a CSE220 group before midterms. We shared notes, set goals, and my grade went up.",
+      author: "Rafi Ahmed",
+      role: "CSE, UIU",
     },
     {
-      quote: "With almost no custom CSS, I can still customize nearly everything.",
-      author: "Jane Dumas",
-      role: "Developer",
+      quote:
+        "Scheduling sessions and keeping resources in one place removed so much stress. Our team finally stayed consistent.",
+      author: "Nusrat Jahan",
+      role: "EEE, UIU",
     },
   ];
 
@@ -396,23 +590,45 @@ function Performance() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
-            <p className="text-sm font-semibold text-zinc-700">performance?</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">Fast by default</h2>
-            <p className="mt-3 text-zinc-600">Be surprised by the outcome: modern bundling, smart loading, and minimal runtime overhead.</p>
-            <div ref={ref} className="mt-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-              <div className="text-4xl font-extrabold tracking-tight text-zinc-900">{value.toLocaleString()}</div>
-              <p className="mt-1 text-sm text-zinc-600">happy customers & counting</p>
-              <a href="#stories" className="mt-4 inline-block text-sm font-semibold text-zinc-900 hover:underline">Read user stories</a>
+            <p className="text-sm font-semibold text-zinc-700">impact @ uiu</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+              Learn better, together
+            </h2>
+            <p className="mt-3 text-zinc-600">
+              StudyNest helps UIU students connect, plan focused sessions, and
+              track progress—so learning feels organized and achievable.
+            </p>
+
+            <div
+              ref={ref}
+              className="mt-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200"
+            >
+              <div className="text-4xl font-extrabold tracking-tight text-zinc-900">
+                {value.toLocaleString()}
+              </div>
+              <p className="mt-1 text-sm text-zinc-600">
+                study sessions scheduled
+              </p>
+              <a
+                href="/login"
+                className="mt-4 inline-block text-sm font-semibold text-zinc-900 hover:underline"
+              >
+                Join a group
+              </a>
             </div>
           </div>
 
           <div className="grid gap-6">
             {testimonials.map((t, idx) => (
-              <figure key={idx} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+              <figure
+                key={idx}
+                className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200"
+              >
                 <QuoteIcon className="h-6 w-6 text-zinc-400" />
                 <blockquote className="mt-3 text-zinc-800">“{t.quote}”</blockquote>
                 <figcaption className="mt-3 text-sm text-zinc-600">
-                  <span className="font-semibold text-zinc-900">{t.author}</span> — {t.role}
+                  <span className="font-semibold text-zinc-900">{t.author}</span>{" "}
+                  — {t.role}
                 </figcaption>
               </figure>
             ))}
@@ -434,7 +650,7 @@ function Pricing() {
         "No design skills needed",
         "Start sending today",
       ],
-      cta: { label: "Join now", href: "#" },
+      cta: { label: "Join now", href: "/login" },
     },
     {
       name: "Business",
@@ -447,7 +663,7 @@ function Pricing() {
         "More tools to refine",
       ],
       highlighted: true,
-      cta: { label: "Learn more", href: "#" },
+      cta: { label: "Learn more", href: "/login" },
     },
     {
       name: "Enterprise",
@@ -458,7 +674,7 @@ function Pricing() {
         "Multivariate testing",
         "Premium support",
       ],
-      cta: { label: "Contact sales", href: "#contact" },
+      cta: { label: "Contact sales", href: "/login" },
     },
   ];
 
@@ -516,31 +732,58 @@ function Pricing() {
 
 function Team() {
   const people = [
-    { name: "Elizabeth Swan", role: "The Lady", img: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Jack Sparrow", role: "The Man", img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Hector Barbossa", role: "The Beta", img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Tia Dalma", role: "The Gama", img: "https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Angelica Syrena", role: "The Ohm", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Joshame Gibbs", role: "The Pi", img: "https://images.unsplash.com/photo-1546525848-3ce03ca516f6?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Carina Smyth", role: "The Delta", img: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Black Beard", role: "The Fi", img: "https://images.unsplash.com/photo-1542382257-80dedb725088?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Davy Jones", role: "The Zita", img: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=1200&auto=format&fit=crop" },
-    { name: "Pintel & Ragetti", role: "Entertainers", img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop" },
+    {
+      name: "Shariful Islam",
+      role: "Team Lead & Full Stack Developer",
+      img: "https://i.pinimg.com/1200x/b9/35/23/b93523661e3d3caccf3e9a82e562ee84.jpg",
+    },
+    {
+      name: "Mahmudul Hasan",
+      role: "Full Stack Developer",
+      img: "https://i.pinimg.com/1200x/82/6f/d5/826fd55fd0a04225cc625368d7e8476c.jpg",
+    },
+    {
+      name: "Farhan Fuad",
+      role: "Frontend Developer",
+      img: "https://i.pinimg.com/1200x/85/da/b8/85dab8c053c1cfe642b93ecb20864014.jpg",
+    },
+    {
+      name: "ABMS Sami",
+      role: "Backend Developer",
+      img: "https://i.pinimg.com/1200x/d8/d6/9a/d8d69afcea40eccb2a5e389d985d41b4.jpg",
+    },
   ];
 
   return (
     <section id="team" className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">Meet the crews</h2>
-          <p className="mt-3 text-zinc-600">A passionate group of designers, developers, and engineers.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+            Meet the team
+          </h2>
+          <p className="mt-3 text-zinc-600">
+            A passionate group of students and builders behind StudyNest.
+          </p>
         </div>
 
-        <ul className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        {/* Exactly 4 cards */}
+        <ul className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
           {people.map((p) => (
-            <li key={p.name} className="rounded-2xl bg-white p-4 text-center shadow-sm ring-1 ring-zinc-200">
-              <img src={p.img} alt={p.name} className="mx-auto aspect-square w-full rounded-2xl object-cover" />
-              <a href="#" className="mt-4 block text-sm font-semibold text-zinc-900 hover:underline">{p.name}</a>
+            <li
+              key={p.name}
+              className="rounded-2xl bg-white p-4 text-center shadow-sm ring-1 ring-zinc-200"
+            >
+              <img
+                src={p.img}
+                alt={p.name}
+                className="mx-auto aspect-square w-full rounded-2xl object-cover"
+              />
+              <a
+                href="/login"
+                className="mt-4 block text-sm font-semibold text-zinc-900 hover:underline"
+              >
+                {p.name}
+              </a>
               <p className="text-xs text-zinc-600">{p.role}</p>
             </li>
           ))}
@@ -552,23 +795,31 @@ function Team() {
 
 function Gallery() {
   const imgs = [
-    "https://images.unsplash.com/photo-1557093790-6e6a6a6a6a6a?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1520975922313-24f955ab3ef2?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1516251193007-45ef944ab0c6?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1503602642458-232111445657?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1556761175-b413da4baf72?q=85&w=3840&auto=format&fit=crop",
+    "https://images.pexels.com/photos/15244082/pexels-photo-15244082/free-photo-of-hands-of-a-group-of-students-studying-together-around-a-table.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=85&w=3840&auto=format&fit=crop",
+    "https://images.stockcake.com/public/b/2/3/b23d669d-d751-45e7-af44-94cc97af960c_large/students-studying-together-stockcake.jpg",
+    "https://webusupload.apowersoft.info/gitmind/wp-content/uploads/2019/10/study-tool.jpg",
+    "https://static.vecteezy.com/system/resources/thumbnails/026/309/247/small/robot-chat-or-chat-bot-logo-modern-conversation-automatic-technology-logo-design-template-vector.jpg",
+    "https://internetmarketingteam.com/wp-content/uploads/2020/06/Depositphotos_5633878_l-2015-e1591268647775.jpg",
+    "https://assets3.cbsnewsstatic.com/hub/i/r/2023/11/28/8c7104bf-6624-47fd-b053-c25beb077f2c/thumbnail/1200x630/89d189dbac8a95620748324c8552c60f/cbsn-fusion-study-finds-zoom-fatigue-may-affect-brain-and-heart-thumbnail-2484223-640x360.jpg",
   ];
 
   return (
     <section className="bg-zinc-50 py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">life@sparrow</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+          life@studynest
+        </h2>
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {imgs.map((src, i) => (
-            <img key={i} src={src} alt="Life at work" className="aspect-square w-full rounded-2xl object-cover" />
+            <img
+              key={i}
+              src={src}
+              alt="StudyNest student life and study groups"
+              loading="lazy"
+              className="aspect-square w-full rounded-2xl object-cover"
+            />
           ))}
         </div>
       </div>
@@ -582,12 +833,28 @@ function CareersCTA() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-8 rounded-3xl bg-gradient-to-r from-zinc-900 to-zinc-800 p-10 text-white md:grid-cols-2">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Start your career with us</h2>
-            <p className="mt-3 text-white/80">Join a talented group of artists, engineers, and imagineers.</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Study together at UIU
+            </h2>
+            <p className="mt-3 text-white/80">
+              Create or join study groups, plan sessions, and share resources — all in one place.
+            </p>
+            <p className="mt-2 text-xs text-white/60">
+              Use your UIU email to get started.
+            </p>
           </div>
-          <div className="md:text-right">
-            <a href="#" className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-100">
-              See openings <ArrowRight className="h-4 w-4" />
+          <div className="md:text-right flex flex-wrap gap-3 md:justify-end">
+            <a
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
+            >
+              Create a group <ArrowRight className="h-4 w-4" />
+            </a>
+            <a
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              Browse groups
             </a>
           </div>
         </div>
@@ -598,21 +865,85 @@ function CareersCTA() {
 
 function Footer() {
   return (
-    <footer className="border-t border-zinc-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold">Sp</span>
-            <span className="text-sm text-zinc-600">© {new Date().getFullYear()} Sparrow™ Inc.</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <a href="#" className="hover:underline">English</a>
-            <span className="text-zinc-300">/</span>
-            <a href="#" className="hover:underline">Français</a>
-            <span className="text-zinc-300">/</span>
-            <a href="#" className="hover:underline">عربى</a>
-            <span className="text-zinc-300">/</span>
-            <a href="#" className="hover:underline">Deutsche</a>
+    <footer className="bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="rounded-2xl bg-white p-4 sm:p-6 ring-1 ring-zinc-200">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-zinc-500">
+              © {new Date().getFullYear()} StudyNest, UIU. All rights reserved.
+            </p>
+
+            <div className="flex items-center gap-5 text-zinc-400">
+              {/* Facebook */}
+              <a
+                href="#"
+                aria-label="Facebook"
+                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M22 12A10 10 0 1 0 10.5 21.9v-7.1H8v-3h2.5V9.6a3.6 3.6 0 0 1 3.9-3.9c.8 0 1.6.1 1.6.1v2.2h-.9c-.9 0-1.2.54-1.2 1.1V11H18l-.5 3h-2.6v7A10 10 0 0 0 22 12z"
+                  />
+                </svg>
+              </a>
+
+              {/* Instagram */}
+              <a
+                href="#"
+                aria-label="Instagram"
+                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zm0 2a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM18 6.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"
+                  />
+                </svg>
+              </a>
+
+              {/* X / Twitter */}
+              <a
+                href="#"
+                aria-label="X"
+                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M3 2h3.4l6 7.6L18.5 2H22l-7.6 9 7.9 11H18l-6-8-6.2 8H2l8.4-10.5L3 2z"
+                  />
+                </svg>
+              </a>
+
+              {/* GitHub */}
+              <a
+                href="#"
+                aria-label="GitHub"
+                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.11.79-.25.79-.56v-2c-3.23.7-3.91-1.4-3.91-1.4-.53-1.35-1.3-1.71-1.3-1.71-1.07-.74.09-.73.09-.73 1.18.08 1.8 1.21 1.8 1.21 1.05 1.8 2.76 1.28 3.43.98.11-.77.41-1.28.75-1.57-2.58-.29-5.3-1.29-5.3-5.74 0-1.27.46-2.31 1.2-3.13-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.19a10.9 10.9 0 0 1 5.8 0c2.2-1.5 3.17-1.19 3.17-1.19.63 1.59.23 2.77.11 3.06.75.82 1.2 1.86 1.2 3.13 0 4.46-2.72 5.44-5.31 5.73.42.36.8 1.06.8 2.14v3.17c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z"
+                  />
+                </svg>
+              </a>
+
+              {/* YouTube */}
+              <a
+                href="#"
+                aria-label="YouTube"
+                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M23.5 7.5s-.23-1.64-.93-2.36c-.89-.93-1.88-.93-2.34-.99C16.92 3.8 12 3.8 12 3.8S7.08 3.8 3.77 4.15c-.46.06-1.45.06-2.34.99C.73 5.86.5 7.5.5 7.5S0 9.6 0 11.7v.58c0 2.1.5 4.2.5 4.2s.23 1.64.93 2.36c.89.93 2.06.9 2.58 1 1.87.18 7.99.23 8 .23 0 0 4.92-.01 8.24-.36.46-.06 1.45-.06 2.34-.99.7-.72.93-2.36.93-2.36S24 14.38 24 12.28v-.58c0-2.1-.5-4.2-.5-4.2zM9.75 14.81V8.88l6.23 2.97-6.23 2.96z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -626,6 +957,7 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <Why />
+      <VideoSection youtubeUrl="https://youtu.be/c_i8x8M0Gzg" />
       <Inside />
       <Process />
       <Performance />
