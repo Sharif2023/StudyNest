@@ -1,73 +1,223 @@
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-const Signup = () => {
+export default function Signup() {
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  function onChange(e) {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      // TODO: replace with your API call
+      await new Promise((r) => setTimeout(r, 900));
+      alert(`Signed up as ${form.username} 🎉`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div
-      className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
-      style={{
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=1470&q=80')",
-      }}
-    >
-      <div className="max-w-md w-full bg-white/10 backdrop-blur-lg rounded-xl shadow-xl p-8 border border-white/20">
-        <h2 className="text-3xl font-extrabold text-white mb-6 text-center tracking-wide">
-          Create Your Account
-        </h2>
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
+      {/* Top bar / brand */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+        <Link to="/" className="inline-flex items-center gap-2">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold">
+            Sn
+          </span>
+          <span className="text-zinc-900 font-semibold tracking-tight">
+            StudyNest
+          </span>
+        </Link>
+      </div>
 
-        <form className="space-y-5">
-          <div>
-            <input
-              type="text"
-              className="w-full px-4 py-3 bg-white/20 text-white border border-white/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-white/70"
-              placeholder="Full Name"
-              required
-            />
+      {/* Content */}
+      <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          {/* Left: visual panel */}
+          <div className="relative order-2 lg:order-1">
+            <div className="overflow-hidden rounded-3xl ring-1 ring-zinc-200 shadow-sm">
+              <img
+                src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=85&w=3840&auto=format&fit=crop"
+                alt="Study group collaborating at UIU"
+                className="h-[520px] w-full object-cover"
+              />
+            </div>
+
+            {/* Accent badge */}
+            <div className="mt-6 flex items-center gap-3">
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                Built for UIU students
+              </span>
+              <span className="text-sm text-zinc-500">
+                Join groups • Share notes • Plan sessions
+              </span>
+            </div>
           </div>
 
-          <div>
-            <input
-              type="email"
-              className="w-full px-4 py-3 bg-white/20 text-white border border-white/30 rounded-lg focus:ring-2 focus-blue-500 focus:outline-none placeholder-white/70"
-              placeholder="Email"
-              required
-            />
+          {/* Right: form card */}
+          <div className="order-1 lg:order-2">
+            <div className="relative">
+              {/* Decorative dots */}
+              <Dots className="absolute -left-8 -top-8 text-emerald-200" />
+              <Dots className="absolute -right-8 -bottom-8 text-emerald-100" />
+
+              <div className="relative rounded-3xl bg-white p-8 shadow-xl ring-1 ring-zinc-200">
+                <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+                  Create your StudyNest account
+                </h1>
+                <p className="mt-2 text-sm text-zinc-600">
+                  Use your <span className="font-medium">UIU email</span> to
+                  get started.
+                </p>
+
+                <form onSubmit={onSubmit} className="mt-8 space-y-6">
+                  {/* Username */}
+                  <div className="relative">
+                    <label
+                      htmlFor="username"
+                      className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
+                    >
+                      Username
+                    </label>
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      placeholder="e.g., rafiuu"
+                      value={form.username}
+                      onChange={onChange}
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="relative">
+                    <label
+                      htmlFor="email"
+                      className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="yourid@uiu.ac.bd"
+                      value={form.email}
+                      onChange={onChange}
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {/* Password */}
+                  <div className="relative">
+                    <label
+                      htmlFor="password"
+                      className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPw ? "text" : "password"}
+                      required
+                      minLength={6}
+                      placeholder="Minimum 6 characters"
+                      value={form.password}
+                      onChange={onChange}
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 pr-12 text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw((s) => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-zinc-500 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      aria-label={showPw ? "Hide password" : "Show password"}
+                    >
+                      {showPw ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                  >
+                    {loading ? "Creating account…" : "Sign up"}
+                  </button>
+
+                  {/* Alt action */}
+                  <div className="text-center text-sm text-zinc-600">
+                    Already have an account?{" "}
+                    <Link
+                      to="/login"
+                      className="font-semibold text-emerald-700 hover:underline"
+                    >
+                      Log in
+                    </Link>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
-
-          <div>
-            <input
-              type="password"
-              className="w-full px-4 py-3 bg-white/20 text-white border border-white/30 rounded-lg focus:ring-2 focus-blue-500 focus:outline-none placeholder-white/70"
-              placeholder="Password"
-              required
-            />
-          </div>
-
-          <div>
-            <input
-              type="password"
-              className="w-full px-4 py-3 bg-white/20 text-white border border-white/30 rounded-lg focus:ring-2 focus-blue-500 focus:outline-none placeholder-white/70"
-              placeholder="Confirm Password"
-              required
-            />
-          </div>
-
-          <button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all"
-            type="submit"
-          >
-            Sign Up
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-white">
-          Already have an account?{" "}
-          <Link to="/login" className="text-blue-400 hover:underline font-medium">
-            Login
-          </Link>
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default Signup;
+/* ---------- Inline SVG helpers ---------- */
+function Dots({ className = "" }) {
+  return (
+    <svg
+      viewBox="0 0 91 91"
+      className={`h-24 w-24 ${className}`}
+      aria-hidden="true"
+    >
+      <g fill="currentColor">
+        {Array.from({ length: 8 }).map((_, r) =>
+          Array.from({ length: 8 }).map((__, c) => (
+            <circle
+              key={`${r}-${c}`}
+              cx={3.26 + 12.03 * c}
+              cy={3.45 + 12.08 * r}
+              r="2.72"
+            />
+          ))
+        )}
+      </g>
+    </svg>
+  );
+}
+
+function EyeIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
+      <path
+        fill="currentColor"
+        d="M12 5c-5.5 0-9.5 4.5-10 6 .5 1.5 4.5 6 10 6s9.5-4.5 10-6c-.5-1.5-4.5-6-10-6zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"
+      />
+    </svg>
+  );
+}
+
+function EyeOffIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
+      <path
+        fill="currentColor"
+        d="M3 4.3 4.3 3 21 19.7 19.7 21l-2.6-2.6A11.9 11.9 0 0 1 12 19c-5.5 0-9.5-4.5-10-6 .3-.9 2.3-3.4 5.5-4.9L3 4.3zm7 3.4 6.3 6.3a4 4 0 0 0-6.3-6.3zM12 5c5.5 0 9.5 4.5 10 6-.2.5-1 1.7-2.4 3L18.2 12c.1-.3.1-.6.1-.9A6.3 6.3 0 0 0 12 5z"
+      />
+    </svg>
+  );
+}
