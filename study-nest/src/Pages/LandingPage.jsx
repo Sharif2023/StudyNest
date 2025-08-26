@@ -953,7 +953,7 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <main className="bg-white text-zinc-900">
+    <main className="bg-[#f5f5dd] text-zinc-900">
       <Navbar />
       <Hero />
       <Why />
