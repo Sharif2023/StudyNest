@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", remember: true });
+  const navigate = useNavigate();
 
   function onChange(e) {
     const { name, value, type, checked } = e.target;
@@ -12,16 +13,17 @@ export default function Login() {
   }
 
   async function onSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // TODO: replace with your real auth call
-      await new Promise((r) => setTimeout(r, 900));
-      alert("Logged in ✅");
-    } finally {
-      setLoading(false);
-    }
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // TODO: replace with your real auth call
+    await new Promise((r) => setTimeout(r, 900));
+    // redirect instead of alert
+    navigate("/dashboard");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
