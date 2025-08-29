@@ -98,26 +98,32 @@ const ArrowRight = (props) => (
 
 const QuoteIcon = (props) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-    <path d="M9 5H5a2 2 0 0 0-2 2v4a4 4 0 0 0 4 4h2V9H7V7h2V5zm12 0h-4a2 2 0 0 0-2 2v4a4 4 0 0 0 4 4h2V9h-2V7h2V5z" fill="currentColor"/>
+    <path d="M9 5H5a2 2 0 0 0-2 2v4a4 4 0 0 0 4 4h2V9H7V7h2V5zm12 0h-4a2 2 0 0 0-2 2v4a4 4 0 0 0 4 4h2V9h-2V7h2V5z" fill="currentColor" />
   </svg>
 );
 
 const socials = [
-  { name: "Twitter", href: "#", svg: (
+  {
+    name: "Twitter", href: "#", svg: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        <path fill="currentColor" d="M22.162 5.656c-.77.342-1.6.572-2.472.676a4.32 4.32 0 0 0 1.894-2.38 8.63 8.63 0 0 1-2.733 1.044 4.307 4.307 0 0 0-7.447 3.93A12.225 12.225 0 0 1 3.15 4.9a4.304 4.304 0 0 0 1.333 5.747 4.27 4.27 0 0 1-1.951-.54v.055a4.308 4.308 0 0 0 3.455 4.22 4.3 4.3 0 0 1-1.944.074 4.312 4.312 0 0 0 4.022 2.992A8.636 8.636 0 0 1 2 19.485a12.187 12.187 0 0 0 6.596 1.936c7.913 0 12.24-6.557 12.24-12.24 0-.187-.005-.374-.014-.56a8.74 8.74 0 0 0 2.14-2.23z"/>
+        <path fill="currentColor" d="M22.162 5.656c-.77.342-1.6.572-2.472.676a4.32 4.32 0 0 0 1.894-2.38 8.63 8.63 0 0 1-2.733 1.044 4.307 4.307 0 0 0-7.447 3.93A12.225 12.225 0 0 1 3.15 4.9a4.304 4.304 0 0 0 1.333 5.747 4.27 4.27 0 0 1-1.951-.54v.055a4.308 4.308 0 0 0 3.455 4.22 4.3 4.3 0 0 1-1.944.074 4.312 4.312 0 0 0 4.022 2.992A8.636 8.636 0 0 1 2 19.485a12.187 12.187 0 0 0 6.596 1.936c7.913 0 12.24-6.557 12.24-12.24 0-.187-.005-.374-.014-.56a8.74 8.74 0 0 0 2.14-2.23z" />
       </svg>
-    ) },
-  { name: "Dribbble", href: "#", svg: (
+    )
+  },
+  {
+    name: "Dribbble", href: "#", svg: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zm6.59 5.17a7.95 7.95 0 0 1 1.7 4.93 19.8 19.8 0 0 0-6.25-.182 29.5 29.5 0 0 0-1.12-2.5 19.5 19.5 0 0 0 5.67-2.248zM12 4.05c1.9 0 3.65.66 5.02 1.76a17.5 17.5 0 0 1-5.2 2.06A27 27 0 0 0 9.5 5.16 7.93 7.93 0 0 1 12 4.05zM7.23 5.86a25.9 25.9 0 0 1 2.61 2.57 17.2 17.2 0 0 1-6.04 1.14A7.97 7.97 0 0 1 7.23 5.86zM4.06 12c0-.2.01-.39.03-.58 2.8-.05 5.33-.53 7.47-1.35.27.51.52 1.05.76 1.6-.23.06-.47.12-.71.18-2.32.58-4.93 1.24-7.1 3.17A7.92 7.92 0 0 1 4.06 12zm2.29 4.92c1.86-1.66 4.16-2.23 6.34-2.77.3-.07.6-.15.91-.22.53 1.48.97 3.04 1.31 4.64A7.95 7.95 0 0 1 12 19.95c-2.1 0-4.03-.82-5.44-2.15zM16 18.82c-.32-1.7-.76-3.31-1.3-4.76a18 18 0 0 1 4.66.16 7.95 7.95 0 0 1-3.36 4.6z"/>
+        <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20zm6.59 5.17a7.95 7.95 0 0 1 1.7 4.93 19.8 19.8 0 0 0-6.25-.182 29.5 29.5 0 0 0-1.12-2.5 19.5 19.5 0 0 0 5.67-2.248zM12 4.05c1.9 0 3.65.66 5.02 1.76a17.5 17.5 0 0 1-5.2 2.06A27 27 0 0 0 9.5 5.16 7.93 7.93 0 0 1 12 4.05zM7.23 5.86a25.9 25.9 0 0 1 2.61 2.57 17.2 17.2 0 0 1-6.04 1.14A7.97 7.97 0 0 1 7.23 5.86zM4.06 12c0-.2.01-.39.03-.58 2.8-.05 5.33-.53 7.47-1.35.27.51.52 1.05.76 1.6-.23.06-.47.12-.71.18-2.32.58-4.93 1.24-7.1 3.17A7.92 7.92 0 0 1 4.06 12zm2.29 4.92c1.86-1.66 4.16-2.23 6.34-2.77.3-.07.6-.15.91-.22.53 1.48.97 3.04 1.31 4.64A7.95 7.95 0 0 1 12 19.95c-2.1 0-4.03-.82-5.44-2.15zM16 18.82c-.32-1.7-.76-3.31-1.3-4.76a18 18 0 0 1 4.66.16 7.95 7.95 0 0 1-3.36 4.6z" />
       </svg>
-    ) },
-  { name: "YouTube", href: "#", svg: (
+    )
+  },
+  {
+    name: "YouTube", href: "#", svg: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        <path fill="currentColor" d="M23.5 7.5s-.23-1.64-.93-2.36c-.89-.93-1.88-.93-2.34-.99C16.92 3.8 12 3.8 12 3.8h-.01S7.08 3.8 3.77 4.15c-.46.06-1.45.06-2.34.99C.73 5.86.5 7.5.5 7.5S0 9.6 0 11.7v.58c0 2.1.5 4.2.5 4.2s.23 1.64.93 2.36c.89.93 2.06.9 2.58 1 1.87.18 7.99.23 8 .23 0 0 4.92-.01 8.24-.36.46-.06 1.45-.06 2.34-.99.7-.72.93-2.36.93-2.36S24 14.38 24 12.28v-.58c0-2.1-.5-4.2-.5-4.2zM9.75 14.81V8.88l6.23 2.97-6.23 2.96z"/>
+        <path fill="currentColor" d="M23.5 7.5s-.23-1.64-.93-2.36c-.89-.93-1.88-.93-2.34-.99C16.92 3.8 12 3.8 12 3.8h-.01S7.08 3.8 3.77 4.15c-.46.06-1.45.06-2.34.99C.73 5.86.5 7.5.5 7.5S0 9.6 0 11.7v.58c0 2.1.5 4.2.5 4.2s.23 1.64.93 2.36c.89.93 2.06.9 2.58 1 1.87.18 7.99.23 8 .23 0 0 4.92-.01 8.24-.36.46-.06 1.45-.06 2.34-.99.7-.72.93-2.36.93-2.36S24 14.38 24 12.28v-.58c0-2.1-.5-4.2-.5-4.2zM9.75 14.81V8.88l6.23 2.97-6.23 2.96z" />
       </svg>
-    ) },
+    )
+  },
 ];
 
 // ------------------------------
@@ -293,10 +299,10 @@ function Why() {
           {/* Left: italic paragraph */}
           <div className="text-center md:text-right">
             <p className="mx-auto max-w-md text-xl leading-8 italic text-zinc-600">
-              Studying alone can feel overwhelming. 
-              With StudyNest you can connect with 
-              peers, share resources, and learn 
-              collaboratively — turning challenges 
+              Studying alone can feel overwhelming.
+              With StudyNest you can connect with
+              peers, share resources, and learn
+              collaboratively — turning challenges
               into opportunities for growth.
             </p>
           </div>
@@ -317,10 +323,10 @@ function Why() {
                 built for uiu students
               </h3>
               <p className="mt-3 max-w-md text-zinc-600 leading-7">
-                StudyNest makes it easy to find study groups, 
-                collaborate on projects, and exchange ideas 
-                within United International University. 
-                Build friendships while excelling 
+                StudyNest makes it easy to find study groups,
+                collaborate on projects, and exchange ideas
+                within United International University.
+                Build friendships while excelling
                 academically — all in one platform.
               </p>
             </div>

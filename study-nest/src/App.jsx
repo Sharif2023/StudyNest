@@ -3,13 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./Pages/LandingPage";
 import Login from "./Pages/Login";
 import Signup from "./Pages/Signup";
-import Profile from "./Pages/Profile";
-import Dashboard from "./Pages/Dashboard";
-import NotesRepository from "./Pages/NotesRepository";
-import QnAForum from "./Pages/QnAForum";
-import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
-import TagSearch from "./Pages/TagSearch";
-import ResourceLibrary from "./Pages/ResourceLibrary";
 
 function App() {
   return (
@@ -18,15 +11,6 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/notes" element={<NotesRepository />} />
-        <Route path="/forum" element={<QnAForum />} />
-        <Route path="/rooms" element={<RoomsLobby />} />
-        <Route path="/rooms/new" element={<NewRoomRedirect />} />
-        <Route path="/rooms/:roomId" element={<StudyRoom />} />
-        <Route path="/search" element={<TagSearch />} />
-        <Route path="/resources" element={<ResourceLibrary />} />
       </Routes>
     </BrowserRouter>
   );
