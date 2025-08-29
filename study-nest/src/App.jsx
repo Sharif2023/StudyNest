@@ -11,6 +11,9 @@ import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
 import TagSearch from "./Pages/TagSearch";
 import ResourceLibrary from "./Pages/ResourceLibrary";
 import Home from "./Pages/Home";
+import AIFileCheck from "./Pages/AIFileCheck";
+import AIUsageChecker from "./Pages/AIUsageChecker";
+import HumanizeWriting from "./Pages/HumanizeWriting";
 
 function App() {
   return (
@@ -29,6 +32,9 @@ function App() {
         <Route path="/search" element={<TagSearch />} />
         <Route path="/resources" element={<ResourceLibrary />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/ai-check" element={<AIFileCheck />} />
+        <Route path="/ai-usage" element={<AIUsageChecker />} />
+        <Route path="/humanize" element={<HumanizeWriting />} />
       </Routes>
     </BrowserRouter>
   );

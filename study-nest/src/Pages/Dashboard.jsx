@@ -49,6 +49,8 @@ export default function Dashboard() {
             <a href="/rooms" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Study Rooms</a>
             <Link to="/resources"className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Shared Resources</Link>
             <a href="/notes" className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Upload Notes</a>
+            <Link to="/ai-check"className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">AI File Check</Link>
+            <Link to="/ai-usage" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">AI Usage Checker</Link>
             <Link to="/search" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Search</Link>
             <Link to="/profile" className="rounded-full bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-700">My Profile</Link>
           </div>
@@ -171,6 +173,9 @@ export default function Dashboard() {
               <a href="/resources" className="rounded-xl border border-zinc-300 px-3 py-2 font-semibold hover:bg-zinc-50">Resources</a>
               <a href="/calendar" className="rounded-xl border border-zinc-300 px-3 py-2 font-semibold hover:bg-zinc-50">Calendar</a>
               <a href="/profile" className="rounded-xl border border-zinc-300 px-3 py-2 font-semibold hover:bg-zinc-50">Profile</a>
+              <Link to="/ai-check"className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">AI File Check</Link>
+              <Link to="/ai-usage" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">AI Usage Checker</Link>
+              <Link to="/humanize" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Humanize Writing</Link>
               <Link to="/search" className="rounded-xl border border-zinc-300 px-3 py-2 font-semibold hover:bg-zinc-50">Search</Link>
 
             </div>
