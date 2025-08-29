@@ -297,20 +297,124 @@ function StudyRoom({ anonymous }) {
   );
 }
 
+// New: Sidebar item component for icon + label
+const NavItem = ({ to, icon, label, expanded }) => (
+  <Link
+    to={to}
+    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900 group"
+  >
+    <span className="text-xl opacity-60 group-hover:opacity-90 transition">{icon}</span>
+    {expanded && <span className="text-sm">{label}</span>}
+  </Link>
+);
+
+// global, lightweight, transparent scrollbar styles for the sidebar
+const ScrollStyles = () => (
+  <style>{`
+    .custom-scroll { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.25) transparent; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+  `}</style>
+);
+
 const Home = () => {
   const [anonymous, setAnonymous] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // collapsed by default (icons only)
   const live = mockCourses.filter((c) => c.status === "live");
   const upcoming = mockCourses.filter((c) => c.status === "upcoming");
 
+  // widths for collapsed vs expanded
+  const SIDEBAR_W = navOpen ? 240 : 72; // px
+
   return (
     <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(56,189,248,0.15),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.15),transparent)]">
-      {/* Top Nav */}
-      <div className="sticky top-0 z-40 backdrop-blur bg-slate-950/50 border-b border-slate-800">
+      {/* Fixed Left Sidebar */}
+      <ScrollStyles />
+      <aside
+        className={`fixed top-0 left-0 h-screen border-r border-slate-800 bg-slate-950/60 backdrop-blur z-50 transition-[width] duration-300 flex flex-col`}
+        style={{ width: SIDEBAR_W }}
+      >
+        {/* Brand + Toggle */}
+        <div className="flex items-center gap-2 px-3 py-3 border-b border-slate-800/60">
+          <Link to="/" className="h-8 w-8 rounded-xl bg-sky-600 grid place-content-center font-bold">
+            SG
+          </Link>
+          {navOpen && <span className="font-semibold hidden xl:block">Study Group</span>}
+          <button
+            onClick={() => setNavOpen((v) => !v)}
+            className="ml-auto h-8 w-8 grid place-content-center rounded-lg bg-slate-900/70 border border-slate-800 hover:bg-slate-900"
+            title={navOpen ? "Collapse" : "Expand"}
+          >
+            <span className="opacity-60">{navOpen ? "◀" : "▶"}</span>
+          </button>
+        </div>
+
+        {/* Profile / points (only in expanded) */}
+        {navOpen && (
+          <div className="px-3 py-2 border-b border-slate-800/60">
+            <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="h-9 w-9 rounded-xl bg-slate-800 grid place-content-center">😊</div>
+              <div className="text-sm">
+                <div className="font-medium leading-tight">University Hub</div>
+                <div className="text-xs opacity-60">Study Network</div>
+              </div>
+            </div>
+            <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm">
+              Points <span className="font-semibold">1,245</span>
+            </div>
+          </div>
+        )}
+
+        {/* Scrollable nav area so items never overlap footer */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 pb-20 custom-scroll">
+          <nav className="space-y-1">
+            <NavItem to="/" icon="🏠" label="Dashboard" expanded={navOpen} />
+            <NavItem to="/rooms" icon="🎥" label="Study Rooms" expanded={navOpen} />
+            <NavItem to="/courses" icon="📚" label="Courses" expanded={navOpen} />
+            <NavItem to="/qa" icon="💬" label="Q&A Forum" expanded={navOpen} />
+            <NavItem to="/notes" icon="🗂️" label="Notes Repo" expanded={navOpen} />
+            <NavItem to="/library" icon="📎" label="Shared Library" expanded={navOpen} />
+            <NavItem to="/calendar" icon="📅" label="Calendar" expanded={navOpen} />
+            <NavItem to="/leaderboard" icon="🏆" label="Leaderboard" expanded={navOpen} />
+            <NavItem to="/challenges" icon="⚔️" label="Challenges" expanded={navOpen} />
+          </nav>
+        </div>
+
+        {/* Pinned footer (never overlaps) */}
+        <div className="px-3 py-3 border-t border-slate-800/60 space-y-2">
+          {navOpen && (
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{anonymous ? "🫥" : "🙂"}</span>
+                <div className="text-sm leading-tight">
+                  <div className="font-medium">Anonymous mode</div>
+                  <div className="text-xs opacity-70">Hide your name in rooms & Q&A.</div>
+                </div>
+                <button
+                  onClick={() => setAnonymous((a) => !a)}
+                  className={`ml-auto h-6 w-11 rounded-full relative transition ${anonymous ? "bg-emerald-600" : "bg-slate-700"}`}
+                  aria-label="Toggle anonymous mode"
+                >
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${anonymous ? "right-0.5" : "left-0.5"}`} />
+                </button>
+              </div>
+            </div>
+          )}
+          <button className={`w-full flex items-center ${navOpen ? "gap-2 px-3 justify-start" : "justify-center"} py-2 rounded-xl bg-slate-900 hover:bg-slate-800`}>
+            <span className="text-xl opacity-60">⤴</span>
+            {navOpen && <span>Sign out</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Top Nav (shifted to account for fixed sidebar) */}
+      <div
+        className="sticky top-0 z-40 backdrop-blur bg-slate-950/50 border-b border-slate-800"
+        style={{ paddingLeft: SIDEBAR_W }}
+      >
         <div className="flex items-center justify-between px-4 py-3 gap-3">
           <div className="flex items-center gap-2">
-            <Link to="/" className="h-8 w-8 rounded-xl bg-sky-600 grid place-content-center font-bold">
-              SG
-            </Link>
             <span className="font-semibold hidden sm:block">Study Group</span>
           </div>
           <div className="relative max-w-xl w-full">
@@ -328,76 +432,14 @@ const Home = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm">
-              Points <span className="font-semibold">1,245</span>
-            </div>
             <div className="h-9 w-9 rounded-xl bg-slate-800 grid place-content-center">😊</div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1600px] grid grid-cols-1 lg:grid-cols-[240px_1fr]">
-        {/* Left Nav */}
-        <aside className="hidden lg:flex lg:flex-col w-60 shrink-0 gap-2 p-3 border-r border-slate-800 bg-slate-950/50">
-          <div className="flex items-center justify-between px-2 py-1">
-            <div>
-              <div className="font-semibold leading-tight">University Hub</div>
-              <div className="text-xs opacity-60">Study Network</div>
-            </div>
-            <button
-              onClick={() => setAnonymous((a) => !a)}
-              className={`h-6 w-11 rounded-full relative transition ${anonymous ? "bg-emerald-600" : "bg-slate-700"}`}
-              title="Anonymous mode"
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${anonymous ? "right-0.5" : "left-0.5"}`}
-              />
-            </button>
-          </div>
-
-          <nav className="mt-2 space-y-1">
-            <Link to="/" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              🏠 <span className="text-sm">Dashboard</span>
-            </Link>
-            <Link to="/rooms" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              🎥 <span className="text-sm">Study Rooms</span>
-            </Link>
-            <Link to="/courses" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              📚 <span className="text-sm">Courses</span>
-            </Link>
-            <Link to="/qa" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              💬 <span className="text-sm">Q&A Forum</span>
-            </Link>
-            <Link to="/notes" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              🗂️ <span className="text-sm">Notes Repo</span>
-            </Link>
-            <Link to="/library" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              📎 <span className="text-sm">Shared Library</span>
-            </Link>
-            <Link to="/calendar" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              📅 <span className="text-sm">Calendar</span>
-            </Link>
-            <Link to="/leaderboard" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              🏆 <span className="text-sm">Leaderboard</span>
-            </Link>
-            <Link to="/challenges" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-900">
-              ⚔️ <span className="text-sm">Challenges</span>
-            </Link>
-          </nav>
-
-          <div className="mt-auto space-y-2">
-            <Card className="p-3">
-              <div className="text-sm">Anonymous mode</div>
-              <p className="mt-1 text-xs opacity-70">Hide your name in rooms & Q&A.</p>
-            </Card>
-            <button className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800">
-              ⤴ Sign out
-            </button>
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main className="p-4 lg:p-6">
+      {/* Main content shifted right to respect fixed sidebar */}
+      <main style={{ paddingLeft: SIDEBAR_W }} className="transition-[padding] duration-300">
+        <div className="mx-auto max-w-[1600px] p-4 lg:p-6">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             {/* Left column (cards) */}
             <div className="order-2 xl:order-1 xl:col-span-5 space-y-6">
@@ -597,8 +639,8 @@ const Home = () => {
               </div>
             </div>
           </footer>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
