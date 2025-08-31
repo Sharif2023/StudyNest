@@ -327,6 +327,12 @@ const Home = () => {
   // widths for collapsed vs expanded
   const SIDEBAR_W = navOpen ? 240 : 72; // px
 
+  const [moreVisible, setMoreVisible] = useState(false); // to toggle the visibility
+
+  const toggleMoreVisibility = () => {
+    setMoreVisible((prev) => !prev);
+  };
+
   return (
     <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(56,189,248,0.15),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.15),transparent)]">
       {/* Fixed Left Sidebar */}
@@ -346,7 +352,31 @@ const Home = () => {
             className="ml-auto h-8 w-8 grid place-content-center rounded-lg bg-slate-900/70 border border-slate-800 hover:bg-slate-900"
             title={navOpen ? "Collapse" : "Expand"}
           >
-            <span className="opacity-60">{navOpen ? "◀" : "▶"}</span>
+            <span className="opacity-60">
+              {navOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
+                  <path d="M15 19l-7-7 7-7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
+                  <path d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </span>
           </button>
         </div>
 
@@ -366,18 +396,151 @@ const Home = () => {
           </div>
         )}
 
-        {/* Scrollable nav area so items never overlap footer */}
+        {/* Left Navbar */}
         <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 pb-20 custom-scroll">
           <nav className="space-y-1">
-            <NavItem to="/" icon="🏠" label="Dashboard" expanded={navOpen} />
-            <NavItem to="/rooms" icon="🎥" label="Study Rooms" expanded={navOpen} />
-            <NavItem to="/courses" icon="📚" label="Courses" expanded={navOpen} />
-            <NavItem to="/qa" icon="💬" label="Q&A Forum" expanded={navOpen} />
-            <NavItem to="/notes" icon="🗂️" label="Notes Repo" expanded={navOpen} />
-            <NavItem to="/library" icon="📎" label="Shared Library" expanded={navOpen} />
-            <NavItem to="/calendar" icon="📅" label="Calendar" expanded={navOpen} />
-            <NavItem to="/leaderboard" icon="🏆" label="Leaderboard" expanded={navOpen} />
-            <NavItem to="/challenges" icon="⚔️" label="Challenges" expanded={navOpen} />
+            <NavItem
+              to="/"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+              }
+              label="Dashboard"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/rooms"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+              }
+              label="Study Rooms"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/resources"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6h4m6 6V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h8" />
+                </svg>
+              }
+              label="Resources"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/forum"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6"
+                  viewBox="0 0 64 64"
+                  fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  {/* Left bubble with question mark */}
+                  <rect x="2" y="8" width="34" height="28" rx="4" ry="4" />
+                  <path d="M19 18a5 5 0 015-5 5 5 0 015 5c0 3-2 4-3 5s-1 2-1 3" />
+                  <circle cx="24" cy="30" r="1.5" />
+
+                  {/* Right bubble with info */}
+                  <rect x="28" y="28" width="34" height="28" rx="4" ry="4" />
+                  <line x1="45" y1="32" x2="45" y2="32" />
+                  <line x1="45" y1="38" x2="45" y2="48" />
+                </svg>
+              }
+              label="Q&A Forum"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/notes"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+                </svg>
+              }
+              label="Notes Repo"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/library"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-12v8m-16-8v8" />
+                </svg>
+              }
+              label="Shared Library"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/to-do-list"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
+                  {/* Box for the list */}
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+
+                  {/* Task 1 */}
+                  <line x1="5" y1="8" x2="19" y2="8" />
+                  <circle cx="5" cy="8" r="1" />
+
+                  {/* Task 2 */}
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <circle cx="5" cy="12" r="1" />
+
+                  {/* Task 3 */}
+                  <line x1="5" y1="16" x2="19" y2="16" />
+                  <circle cx="5" cy="16" r="1" />
+                </svg>
+              }
+              label="To-Do List"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="/parapahrasing-summarizing"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
+                  {/* Pencil for paraphrasing */}
+                  <path d="M12 1l-2 3h4l-2-3z" />
+                  <line x1="7" y1="12" x2="17" y2="12" />
+                  <path d="M14 15l2 2-4 4-2-2 4-4z" />
+                  <path d="M17 19l4-4-4-4" />
+                  <path d="M7 19l-4-4 4-4" />
+                </svg>
+              }
+              label="Paraphasing & Summarizing"
+              expanded={navOpen}
+            />
+            <NavItem
+              to="#"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+                </svg>
+
+              }
+              label="More Tools"
+              expanded={navOpen}
+              onClick={toggleMoreVisibility}
+            />
+
+            {moreVisible && (
+              <div className="space-y-1 mt-2">
+                <NavItem to="/ai-file-check" icon="🔍" label="Ai File Check" expanded={navOpen} />
+                <NavItem to="/ai-usage-check" icon="📊" label="Ai Usage Check" expanded={navOpen} />
+              </div>
+            )}
           </nav>
         </div>
 
@@ -401,8 +564,11 @@ const Home = () => {
               </div>
             </div>
           )}
-          <button className={`w-full flex items-center ${navOpen ? "gap-2 px-3 justify-start" : "justify-center"} py-2 rounded-xl bg-slate-900 hover:bg-slate-800`}>
-            <span className="text-xl opacity-60">⤴</span>
+          <button className={`w-full flex items-center ${navOpen ? "gap-2 px-3 justify-center" : "justify-center"} py-2 rounded-xl bg-slate-900 hover:bg-slate-800`}>
+            <span className="text-xl opacity-60"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
+            </svg>
+            </span>
             {navOpen && <span>Sign out</span>}
           </button>
         </div>
