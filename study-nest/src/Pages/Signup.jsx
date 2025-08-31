@@ -77,22 +77,21 @@ export default function Signup() {
                   get started.
                 </p>
 
-                <form onSubmit={onSubmit} className="mt-8 space-y-6">
-                  {/* Username */}
+                <form onSubmit={onSubmit} className="mt-8 space-y-6">{/* studentId */}
                   <div className="relative">
                     <label
-                      htmlFor="username"
+                      htmlFor="studentId"
                       className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
                     >
-                      Username
+                      Student Id
                     </label>
                     <input
-                      id="username"
-                      name="username"
+                      id="studentId"
+                      name="studentId"
                       type="text"
                       required
-                      placeholder="e.g., rafiuu"
-                      value={form.username}
+                      placeholder="e.g., 011223344"
+                      value={form.studentId}
                       onChange={onChange}
                       className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-emerald-500"
                     />
