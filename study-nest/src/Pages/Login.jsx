@@ -44,7 +44,7 @@ export default function Login() {
           <div className="relative order-2 lg:order-1">
             <div className="overflow-hidden rounded-3xl ring-1 ring-zinc-200 shadow-sm">
               <img
-                src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=85&w=3840&auto=format&fit=crop"
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Convocation_of_UIU%2C_2013.jpg/960px-Convocation_of_UIU%2C_2013.jpg?20150326164240"
                 alt="Study group collaborating at UIU"
                 className="h-[520px] w-full object-cover"
               />
