@@ -12,18 +12,36 @@ export default function Login() {
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  async function onSubmit(e) {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    // TODO: replace with your real auth call
-    await new Promise((r) => setTimeout(r, 900));
-    // redirect instead of alert
-    navigate("/dashboard");
-  } finally {
-    setLoading(false);
+ async function onSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+        const response = await fetch('http://localhost/login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: form.email, password: form.password }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // On successful login, redirect to the dashboard
+            navigate("/dashboard");
+        } else {
+            // Show the error message from the server
+            alert(result.message);
+        }
+
+    } catch(error) {
+        console.error("Login error:", error);
+        alert('An error occurred during login. Please check the console.');
+    }
+    finally {
+      setLoading(false);
+    }
   }
-}
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">

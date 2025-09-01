@@ -11,17 +11,35 @@ export default function Signup() {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
-  async function onSubmit(e) {
+   async function onSubmit(e) {
     e.preventDefault();
     setLoading(true);
     try {
-      // TODO: replace with your API call
-      await new Promise((r) => setTimeout(r, 900));
-      alert(`Signed up as ${form.username} 🎉`);
+      const response = await fetch('http://localhost/signup.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.message); // Or handle success with a redirect, etc.
+        // Optionally, redirect to login page: navigate('/login');
+      } else {
+        alert(result.message); // Show error message from the backend
+      }
+
+    } catch (error) {
+        console.error("Signup error:", error);
+        alert('An error occurred. Please check the console.');
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
