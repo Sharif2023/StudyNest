@@ -1,19 +1,24 @@
-function Footer() {
+import React from "react";
+
+export default function Footer({ sidebarWidth = 72 }) {
   return (
-    <footer className="bg-white">
+    <footer
+      className="bg-white dark:bg-zinc-950"
+      style={{ paddingLeft: sidebarWidth }}
+    >
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-2xl bg-white p-4 sm:p-6 ring-1 ring-zinc-200">
+        <div className="rounded-2xl bg-white dark:bg-zinc-900/40 p-4 sm:p-6 ring-1 ring-zinc-200 dark:ring-white/10">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               © {new Date().getFullYear()} StudyNest, UIU. All rights reserved.
             </p>
 
-            <div className="flex items-center gap-5 text-zinc-400">
+            <div className="flex items-center gap-5 text-zinc-400 dark:text-zinc-500">
               {/* Facebook */}
               <a
                 href="#"
                 aria-label="Facebook"
-                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="rounded hover:text-zinc-700 dark:hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-white/30"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                   <path
@@ -27,7 +32,7 @@ function Footer() {
               <a
                 href="#"
                 aria-label="Instagram"
-                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="rounded hover:text-zinc-700 dark:hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-white/30"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                   <path
@@ -41,7 +46,7 @@ function Footer() {
               <a
                 href="#"
                 aria-label="X"
-                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="rounded hover:text-zinc-700 dark:hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-white/30"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                   <path
@@ -55,7 +60,7 @@ function Footer() {
               <a
                 href="#"
                 aria-label="GitHub"
-                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="rounded hover:text-zinc-700 dark:hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-white/30"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                   <path
@@ -69,7 +74,7 @@ function Footer() {
               <a
                 href="#"
                 aria-label="YouTube"
-                className="rounded hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                className="rounded hover:text-zinc-700 dark:hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-white/30"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
                   <path
