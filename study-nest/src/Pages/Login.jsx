@@ -16,7 +16,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-        const response = await fetch('http://localhost/login.php', {
+        const response = await fetch('http://localhost/StudyNest/study-nest/src/api/login.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

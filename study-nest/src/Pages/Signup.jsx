@@ -15,7 +15,7 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch('http://localhost/signup.php', {
+      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/signup.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
