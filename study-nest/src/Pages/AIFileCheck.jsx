@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
+import Header from "../Components/Header";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 /**
  * StudyNest — AI File Check
  * -------------------------------------------------------------
