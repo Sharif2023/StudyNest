@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 /**
@@ -42,7 +41,7 @@ export default function AIFileCheck() {
     return () => { el.removeEventListener("dragover", over); el.removeEventListener("dragleave", leave); el.removeEventListener("drop", drop); };
   }, []);
 
-  async function handleFile(f){
+  async function handleFile(f) {
     setError(""); setResult(null); setFile(f);
     if (f.type.startsWith("text/") || /\.(md|txt)$/i.test(f.name)) {
       const content = await f.text(); setText(content);
@@ -59,7 +58,7 @@ export default function AIFileCheck() {
     return { words, chars, tokens };
   }, [text]);
 
-  async function runCheck(){
+  async function runCheck() {
     if (!file) { setError("Please select a file first."); return; }
     setLoading(true); setError(""); setResult(null);
     try {
@@ -87,14 +86,15 @@ export default function AIFileCheck() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <header className="sticky top-0 z-30 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+      <LeftNav></LeftNav>
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900">AI File Check</h1>
-            <p className="text-sm text-zinc-600">Upload a file to get summary, key points, study tips, and more.</p>
+            <h1 className="text-xl font-bold tracking-tight text-white">AI File Check</h1>
+            <p className="text-sm text-white">Upload a file to get summary, key points, study tips, and more.</p>
           </div>
-          <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
         </div>
       </header>
 
@@ -108,21 +108,21 @@ export default function AIFileCheck() {
                 <p className="mt-2 text-sm text-zinc-600">Drag & drop your file here</p>
                 <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">
                   Choose file
-                  <input type="file" className="hidden" onChange={e=> e.target.files?.[0] && handleFile(e.target.files[0])} />
+                  <input type="file" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
                 </label>
                 <p className="mt-2 text-xs text-zinc-500">Supports .txt, .md, .pdf, .docx (pdf/docx require backend extraction)</p>
               </>
             ) : (
               <div className="text-left">
                 <div className="text-sm font-semibold text-zinc-900">{file.name}</div>
-                <div className="mt-1 text-xs text-zinc-600">{file.type || "file"} • {(file.size/1024).toFixed(0)} KB</div>
+                <div className="mt-1 text-xs text-zinc-600">{file.type || "file"} • {(file.size / 1024).toFixed(0)} KB</div>
                 {text && (
                   <div className="mt-2 rounded-lg bg-zinc-50 p-2 text-xs text-zinc-600 max-h-40 overflow-auto ring-1 ring-zinc-200">
                     <pre className="whitespace-pre-wrap">{text.slice(0, 1000)}</pre>
                     {text.length > 1000 && <div className="mt-1 opacity-60">…truncated preview…</div>}
                   </div>
                 )}
-                <button onClick={()=>{setFile(null); setText(""); setResult(null);}} className="mt-3 rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50">Remove</button>
+                <button onClick={() => { setFile(null); setText(""); setResult(null); }} className="mt-3 rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50">Remove</button>
               </div>
             )}
           </div>
@@ -130,13 +130,13 @@ export default function AIFileCheck() {
           <div className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
             <h3 className="text-sm font-semibold text-zinc-900">Options</h3>
             <div className="mt-2 space-y-2 text-sm text-zinc-700">
-              <Toggle label="Summarize" value={opts.summarize} onChange={v=>setOpts({...opts, summarize:v})} />
-              <Toggle label="Key points" value={opts.keypoints} onChange={v=>setOpts({...opts, keypoints:v})} />
-              <Toggle label="Study tips" value={opts.tips} onChange={v=>setOpts({...opts, tips:v})} />
-              <Toggle label="Grammar & style" value={opts.grammar} onChange={v=>setOpts({...opts, grammar:v})} />
-              <Toggle label="Similarity hint (beta)" value={opts.similarity} onChange={v=>setOpts({...opts, similarity:v})} />
+              <Toggle label="Summarize" value={opts.summarize} onChange={v => setOpts({ ...opts, summarize: v })} />
+              <Toggle label="Key points" value={opts.keypoints} onChange={v => setOpts({ ...opts, keypoints: v })} />
+              <Toggle label="Study tips" value={opts.tips} onChange={v => setOpts({ ...opts, tips: v })} />
+              <Toggle label="Grammar & style" value={opts.grammar} onChange={v => setOpts({ ...opts, grammar: v })} />
+              <Toggle label="Similarity hint (beta)" value={opts.similarity} onChange={v => setOpts({ ...opts, similarity: v })} />
               <label className="mt-2 flex items-center gap-2 text-xs text-zinc-600">
-                <input type="checkbox" checked={anon} onChange={e=>setAnon(e.target.checked)} /> Post as Anonymous (do not attach identity)
+                <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} /> Post as Anonymous (do not attach identity)
               </label>
             </div>
           </div>
@@ -173,22 +173,23 @@ export default function AIFileCheck() {
           )}
         </section>
       </div>
+      <Footer />
     </main>
   );
 }
 
 /* -------------------- UI bits -------------------- */
-function Toggle({ label, value, onChange }){
+function Toggle({ label, value, onChange }) {
   return (
     <label className="flex items-center justify-between">
       <span>{label}</span>
-      <button type="button" onClick={()=>onChange(!value)} className={"h-6 w-11 rounded-full transition " + (value?"bg-emerald-600":"bg-zinc-300") }>
-        <span className={"block h-5 w-5 rounded-full bg-white transition translate-y-0.5 " + (value?"translate-x-6":"translate-x-0.5")}></span>
+      <button type="button" onClick={() => onChange(!value)} className={"h-6 w-11 rounded-full transition " + (value ? "bg-emerald-600" : "bg-zinc-300")}>
+        <span className={"block h-5 w-5 rounded-full bg-white transition translate-y-0.5 " + (value ? "translate-x-6" : "translate-x-0.5")}></span>
       </button>
     </label>
   );
 }
-function Metric({ label, value }){
+function Metric({ label, value }) {
   return (
     <div className="rounded-xl bg-white p-3 ring-1 ring-zinc-200">
       <div className="text-lg font-bold text-emerald-600">{value}</div>
@@ -196,7 +197,7 @@ function Metric({ label, value }){
     </div>
   );
 }
-function Card({ title, content }){
+function Card({ title, content }) {
   return (
     <article className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
       <div className="mb-2 flex items-center justify-between">
@@ -207,38 +208,38 @@ function Card({ title, content }){
     </article>
   );
 }
-function ListCard({ title, items, icon }){
+function ListCard({ title, items, icon }) {
   return (
     <article className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
-        <CopyBtn text={(items||[]).map((x,i)=>`${i+1}. ${x}`).join("\n")} />
+        <CopyBtn text={(items || []).map((x, i) => `${i + 1}. ${x}`).join("\n")} />
       </div>
       <ul className="list-disc pl-5 text-sm text-zinc-800 space-y-1">
-        {(items||[]).map((x,i)=>(
+        {(items || []).map((x, i) => (
           <li key={i}><span className="mr-1">{icon || "•"}</span>{x}</li>
         ))}
       </ul>
     </article>
   );
 }
-function CopyBtn({ text }){
+function CopyBtn({ text }) {
   return (
-    <button onClick={()=>navigator.clipboard.writeText(text||"")} className="rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50">Copy</button>
+    <button onClick={() => navigator.clipboard.writeText(text || "")} className="rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50">Copy</button>
   );
 }
-function SimilarityCard({ data }){
+function SimilarityCard({ data }) {
   // data: {score:0-1, matches:[{title, pct, link?}]}
   return (
     <article className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
       <h3 className="text-sm font-semibold text-zinc-900">Similarity (beta)</h3>
-      <div className="mt-2 text-sm text-zinc-700">Overall: <strong>{Math.round((data.score||0)*100)}%</strong> similar</div>
+      <div className="mt-2 text-sm text-zinc-700">Overall: <strong>{Math.round((data.score || 0) * 100)}%</strong> similar</div>
       <ul className="mt-2 space-y-2">
-        {(data.matches||[]).map((m,i)=> (
+        {(data.matches || []).map((m, i) => (
           <li key={i} className="flex items-center justify-between text-sm">
             <div className="truncate pr-2">{m.title}</div>
             <div className="flex items-center gap-2">
-              <div className="w-32 h-2 rounded bg-zinc-200 overflow-hidden"><div className="h-full bg-emerald-600" style={{width:`${Math.round(m.pct)}%`}} /></div>
+              <div className="w-32 h-2 rounded bg-zinc-200 overflow-hidden"><div className="h-full bg-emerald-600" style={{ width: `${Math.round(m.pct)}%` }} /></div>
               <span className="text-xs text-zinc-600">{Math.round(m.pct)}%</span>
               {m.link && <a className="text-xs font-semibold underline" href={m.link} target="_blank" rel="noreferrer">open</a>}
             </div>
@@ -250,7 +251,7 @@ function SimilarityCard({ data }){
 }
 
 /* -------------------- Demo generator -------------------- */
-function makeDemoResult(file, text, opts){
+function makeDemoResult(file, text, opts) {
   const base = text || `Demo content from ${file.name}`;
   return {
     summary: opts.summarize ? `This file covers the core ideas in a concise way. It appears to introduce the topic, explain 2–3 main concepts, and end with a brief recap.\n\nFocus areas:\n• Define key terms clearly\n• Connect sections with transitions\n• Add 1–2 concrete examples` : undefined,
