@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Q&A Forum (Peer Review & Voting)
@@ -112,14 +114,15 @@ export default function QnAForum() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+      <LeftNav></LeftNav>
       {/* Header */}
-      <div className="sticky top-0 z-30 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
+      <div className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Q&A Forum</h1>
-              <p className="text-sm text-zinc-600">Ask questions, review peers, and vote on the best answers.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Q&A Forum</h1>
+              <p className="text-sm text-white">Ask questions, review peers, and vote on the best answers.</p>
             </div>
             <button
               onClick={() => setAskOpen(true)}
@@ -136,7 +139,7 @@ export default function QnAForum() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by title, text, or tag…"
-                className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-white-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -148,7 +151,7 @@ export default function QnAForum() {
                     "rounded-xl px-3 py-1.5 font-semibold " +
                     (sort === s
                       ? "bg-zinc-900 text-white"
-                      : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50")
+                      : "border border-white text-white hover:bg-zinc-500")
                   }
                 >
                   {s}
@@ -166,7 +169,7 @@ export default function QnAForum() {
                   "rounded-full border px-3 py-1 text-xs font-semibold " +
                   (activeTag === t
                     ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-300 text-zinc-700 hover:bg-zinc-50")
+                    : "border-white text-white hover:bg-zinc-500")
                 }
               >
                 {t}
@@ -211,6 +214,7 @@ export default function QnAForum() {
           onAccept={onAcceptAnswer}
         />
       )}
+      <Footer />
     </div>
   );
 }

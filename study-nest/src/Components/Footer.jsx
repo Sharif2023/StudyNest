@@ -3,7 +3,7 @@ import React from "react";
 export default function Footer({ sidebarWidth = 72 }) {
   return (
     <footer
-      className="bg-slate-950 dark:bg-slate-950 fixed bottom-0 left-0 w-full"
+      className="bg-slate-950 dark:bg-slate-950 bottom-0 left-0 w-full"
       style={{ paddingLeft: sidebarWidth }}
     >
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
