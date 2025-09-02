@@ -50,6 +50,7 @@ export default function SummarizingParaphrasing({ open, onClose }) {
 
         <div className="px-5 py-4 space-y-4">
           {/* mode */}
+          <label className="block text-sm mb-1 text-slate-300">Choose what you wanted to do:</label>
           <div className="flex items-center gap-2">
             <button
               className={`px-3 py-1.5 rounded-lg border ${mode === "summarize" ? "bg-cyan-600 border-cyan-500" : "bg-slate-800 border-slate-700"}`}
