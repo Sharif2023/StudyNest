@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Shared Resource Library (Full)
@@ -79,22 +81,42 @@ export default function ResourceLibrary() {
     setOpen(false);
   };
 
+  const Select = ({ label, value, onChange, options }) => (
+  <label className="text-white inline-flex items-center gap-2 text-sm">
+    <span>{label}</span>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    >
+      {options.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+    </select>
+  </label>
+);
+
   const vote = (id, delta) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, votes: Math.max(0, x.votes + delta) } : x)));
   const toggleBookmark = (id) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, bookmarks: x.bookmarks ? 0 : 1 } : x)));
   const flag = (id) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, flagged: true } : x)));
 
+  // Toggle function to handle LeftNav visibility
+  const toggleLeftNav = () => setIsNavOpen((prev) => !prev);
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+      <LeftNav></LeftNav>
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Shared Resource Library</h1>
-            <p className="text-sm text-zinc-600">Books, slides, past papers, and study guides from your peers.</p>
+            <h1 className="text-xl font-bold tracking-tight text-white">Shared Resource Library</h1> {/* Changed to white */}
+            <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p> {/* Changed to white */}
           </div>
           <div className="flex items-center gap-2">
-            <a href="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
-            <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
+            <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+              Add resource
+            </button>
           </div>
         </div>
 
@@ -119,6 +141,7 @@ export default function ResourceLibrary() {
         </div>
       </header>
 
+
       {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {filtered.length === 0 ? (
@@ -142,11 +165,23 @@ export default function ResourceLibrary() {
 
       {open && <CreateModal onClose={() => setOpen(false)} onCreate={onCreate} />}
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
+      <Footer />
     </main>
   );
 }
 
 /* -------------------- Components -------------------- */
+function Toggle({ label, value, onChange }) {
+  return (
+    <label className="flex items-center justify-between">
+      <span>{label}</span>
+      <button type="button" onClick={() => onChange(!value)} className={"h-6 w-11 rounded-full transition " + (value ? "bg-emerald-600" : "bg-zinc-300")}>
+        <span className={"block h-5 w-5 rounded-full bg-white transition translate-y-0.5 " + (value ? "translate-x-6" : "translate-x-0.5")}></span>
+      </button>
+    </label>
+  );
+}
+
 function Select({ label, value, onChange, options }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm">
@@ -170,57 +205,58 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
   const isPdf = item.mime?.includes("pdf");
 
   return (
-    <article className="group flex h-full flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200">
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-50">
-        {latestIsFile && isImage ? (
-          <img src={item.url} alt={item.title} className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full place-items-center text-zinc-500">
-            <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs">{latestIsFile ? (isPdf ? "PDF" : item.mime?.split("/")[1] || "File") : "External link"}</span>
-          </div>
-        )}
-        <button onClick={onPreview} className="absolute inset-0 hidden items-center justify-center bg-black/0 text-white backdrop-blur-sm transition group-hover:flex group-hover:bg-black/30">
-          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">{latestIsFile ? "Preview" : "Open"}</span>
-        </button>
+    <article className="group flex flex-col h-full rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition-transform transform hover:scale-105 hover:shadow-xl">
+  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-50">
+    {latestIsFile && isImage ? (
+      <img src={item.url} alt={item.title} className="h-full w-full object-cover rounded-lg shadow-md" />
+    ) : (
+      <div className="grid h-full place-items-center text-zinc-500">
+        <FileIcon className="h-10 w-10" />
+        <span className="mt-1 text-xs">{latestIsFile ? (isPdf ? "PDF" : item.mime?.split("/")[1] || "File") : "External link"}</span>
       </div>
+    )}
+    <button onClick={onPreview} className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex">
+      <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">{latestIsFile ? "Preview" : "Open"}</span>
+    </button>
+  </div>
 
-      <div className="mt-3 min-w-0 flex-1">
-        <h3 className="truncate text-base font-semibold text-zinc-900" title={item.title}>{item.title}</h3>
-        <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{item.description}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
-          <span>•</span>
-          <span>by {item.author}</span>
-        </div>
-      </div>
+  <div className="mt-4 px-4 min-w-0 flex-1">
+    <h3 className="truncate text-lg font-semibold text-zinc-900" title={item.title}>{item.title}</h3>
+    <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{item.description}</p>
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
+      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
+      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
+      <span>•</span>
+      <span>by {item.author}</span>
+    </div>
+  </div>
 
-      {/* Tags */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {item.tags.map((t) => (
-          <span key={t} className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs">#{t}</span>
-        ))}
-      </div>
+  {/* Tags */}
+  <div className="mt-3 px-5 flex flex-wrap gap-2">
+    {item.tags.map((t) => (
+      <span key={t} className="rounded-full border border-zinc-300 px-3 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 transition">{`#${t}`}</span>
+    ))}
+  </div>
 
-      {/* Actions */}
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
-          <button onClick={() => onVote(item.id, +1)} className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">▲ {item.votes}</button>
-          <button onClick={() => onVote(item.id, -1)} className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">▼</button>
-          <button onClick={() => onBookmark(item.id)} className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">🔖 {item.bookmarks ? "Saved" : "Save"}</button>
-        </div>
-        <div className="space-x-2 text-xs">
-          <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">Report</button>
-          {item.srcType === "file" ? (
-            <a href={item.url} download className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">Download</a>
-          ) : (
-            <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-2 py-1 font-semibold hover:bg-zinc-50">Open link</a>
-          )}
-        </div>
-      </div>
-    </article>
+  {/* Actions */}
+  <div className="mt-3 px-4 flex items-center justify-between">
+    <div className="flex items-center gap-3 text-xs">
+      <button onClick={() => onVote(item.id, +1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▲ {item.votes}</button>
+      <button onClick={() => onVote(item.id, -1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▼</button>
+      <button onClick={() => onBookmark(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">🔖 {item.bookmarks ? "Saved" : "Save"}</button>
+    </div>
+    <div className="space-x-2 text-xs">
+      <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Report</button>
+      {item.srcType === "file" ? (
+        <a href={item.url} download className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
+      ) : (
+        <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Open link</a>
+      )}
+    </div>
+  </div>
+</article>
+
   );
 }
 
@@ -400,30 +436,30 @@ function EmptyState({ onNew }) {
 function Label({ children }) { return <label className="text-xs font-semibold text-zinc-600">{children}</label>; }
 
 /* -------------------- Icons -------------------- */
-function SearchIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z"/></svg>);} 
-function XIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"/></svg>);} 
-function FileIcon(props){return(<svg viewBox="0 0 24 24" className="h-10 w-10" {...props}><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z"/></svg>);} 
+function SearchIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z" /></svg>); }
+function XIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z" /></svg>); }
+function FileIcon(props) { return (<svg viewBox="0 0 24 24" className="h-10 w-10" {...props}><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z" /></svg>); }
 
 /* -------------------- Utils -------------------- */
-function uid(){return Math.random().toString(36).slice(2,9);} 
-function uniq(arr){return [...new Set(arr.filter(Boolean))];}
-function parseTags(s){return s.split(",").map(x=>x.trim()).filter(Boolean).slice(0,6);} 
-function timeAgo(ts){const d=(Date.now()-new Date(ts).getTime())/1000;const u=[[60,'s'],[60,'m'],[24,'h'],[7,'d']];let n=d,l='s';for(const [k,t] of u){if(n<k){l=t;break;}n=Math.floor(n/k);l=t;}return `${Math.max(1,Math.floor(n))}${l} ago`;}
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function uniq(arr) { return [...new Set(arr.filter(Boolean))]; }
+function parseTags(s) { return s.split(",").map(x => x.trim()).filter(Boolean).slice(0, 6); }
+function timeAgo(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; const u = [[60, 's'], [60, 'm'], [24, 'h'], [7, 'd']]; let n = d, l = 's'; for (const [k, t] of u) { if (n < k) { l = t; break; } n = Math.floor(n / k); l = t; } return `${Math.max(1, Math.floor(n))}${l} ago`; }
 
-function loadItems(){try{return JSON.parse(localStorage.getItem("studynest.resources"));}catch{return null;}}
-function saveItems(data){localStorage.setItem("studynest.resources",JSON.stringify(data));}
+function loadItems() { try { return JSON.parse(localStorage.getItem("studynest.resources")); } catch { return null; } }
+function saveItems(data) { localStorage.setItem("studynest.resources", JSON.stringify(data)); }
 
 /* -------------------- Seed -------------------- */
-function seedItems(){
+function seedItems() {
   return [
-    {id:uid(), title:"Algorithm Book Ch 1–3", kind:"book", course:"CSE220", semester:"Fall 2025", description:"Core textbook chapters 1–3", tags:["book","basics"], createdAt:new Date(Date.now()-36e5*20).toISOString(), author:"Nusrat", votes:2, bookmarks:0, flagged:false, srcType:"link", url:"https://example.com/book"},
-    {id:uid(), title:"EEE101 Past Papers", kind:"past paper", course:"EEE101", semester:"Fall 2025", description:"Midterm/final bundle", tags:["exam","practice"], createdAt:new Date(Date.now()-36e5*100).toISOString(), author:"Farhan", votes:5, bookmarks:1, flagged:false, srcType:"link", url:"https://example.com/papers"},
-    {id:uid(), title:"Math-III Lecture Slides", kind:"slide", course:"Math-III", semester:"Fall 2025", description:"Week 5: Laplace transforms", tags:["laplace","slides"], createdAt:new Date(Date.now()-36e5*50).toISOString(), author:"You", votes:1, bookmarks:0, flagged:false, srcType:"file", name:"math3-week5.pdf", url: samplePdf(), mime:"application/pdf", size: 120*1024},
+    { id: uid(), title: "Algorithm Book Ch 1–3", kind: "book", course: "CSE220", semester: "Fall 2025", description: "Core textbook chapters 1–3", tags: ["book", "basics"], createdAt: new Date(Date.now() - 36e5 * 20).toISOString(), author: "Nusrat", votes: 2, bookmarks: 0, flagged: false, srcType: "link", url: "https://example.com/book" },
+    { id: uid(), title: "EEE101 Past Papers", kind: "past paper", course: "EEE101", semester: "Fall 2025", description: "Midterm/final bundle", tags: ["exam", "practice"], createdAt: new Date(Date.now() - 36e5 * 100).toISOString(), author: "Farhan", votes: 5, bookmarks: 1, flagged: false, srcType: "link", url: "https://example.com/papers" },
+    { id: uid(), title: "Math-III Lecture Slides", kind: "slide", course: "Math-III", semester: "Fall 2025", description: "Week 5: Laplace transforms", tags: ["laplace", "slides"], createdAt: new Date(Date.now() - 36e5 * 50).toISOString(), author: "You", votes: 1, bookmarks: 0, flagged: false, srcType: "file", name: "math3-week5.pdf", url: samplePdf(), mime: "application/pdf", size: 120 * 1024 },
   ];
 }
 
 // tiny blank PDF blob for demo preview
-function samplePdf(){
+function samplePdf() {
   const b64 = "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PC9UeXBlIC9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmoKPDwvVHlwZSAvUGFnZXMvS2lkcyBbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlIC9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveCBbMCAwIDU5NSA4NDJdL0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDExMj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZChIZWxsbywgUERGKQpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDEwNSAwMDAwMCBuIAowMDAwMDAwMTk2IDAwMDAwIG4gCjAwMDAwMDAzMjQgMDAwMDAgbiAKMDAwMDAwMDQwNCAwMDAwMCBuIAowMDAwMDAwNDg1IDAwMDAwIG4gCnRyYWlsZXIKPDwvUm9vdCAxIDAgUi9TaXplIDY+PgpzdGFydHhyZWYKMTAyNQolJUVPRg==";
   const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   return URL.createObjectURL(new Blob([bin], { type: "application/pdf" }));
