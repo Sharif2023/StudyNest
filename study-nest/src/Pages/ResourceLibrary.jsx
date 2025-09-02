@@ -93,7 +93,7 @@ export default function ResourceLibrary() {
             <p className="text-sm text-zinc-600">Books, slides, past papers, and study guides from your peers.</p>
           </div>
           <div className="flex items-center gap-2">
-            <a href="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
+            <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
             <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
           </div>
         </div>

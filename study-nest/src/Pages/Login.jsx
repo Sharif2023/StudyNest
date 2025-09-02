@@ -34,7 +34,7 @@ export default function Login() {
       // Optionally store user in localStorage/sessionStorage
       // localStorage.setItem("user", JSON.stringify(data.user));
 
-      navigate("/dashboard");
+      navigate("/home");
     } catch (err) {
       alert(err.message);
     } finally {

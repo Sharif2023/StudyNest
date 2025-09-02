@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; 
 
 export default function Signup() {
-  const [form, setForm] = useState({ studentId: "", email: "", password: "" });
+  const navigate = useNavigate();
+  const initialForm = { studentId: "", email: "", password: "" };
+  const [form, setForm] = useState(initialForm);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   function onChange(e) {
     const { name, value } = e.target;
@@ -13,6 +16,7 @@ export default function Signup() {
 
   async function onSubmit(e) {
     e.preventDefault();
+    if (loading || submitted) return;
     setLoading(true);
     try {
       const res = await fetch("http://localhost/StudyNest/study-nest/src/api/signup.php", {
@@ -30,7 +34,15 @@ export default function Signup() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Signup failed");
       }
+
+      // Clear form and set submission state
+      setForm(initialForm);
+      setShowPw(false);
+      setSubmitted(true);
+
+      // Show success and navigate to login
       alert("Account created 🎉 Now log in.");
+      navigate("/login");
     } catch (err) {
       alert(err.message);
     } finally {
@@ -164,10 +176,10 @@ export default function Signup() {
                   {/* Submit */}
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || submitted}
                     className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
                   >
-                    {loading ? "Creating account…" : "Sign up"}
+                    {loading ? "Creating account…" : submitted ? "Submitted" : "Sign up"}
                   </button>
 
                   {/* Alt action */}

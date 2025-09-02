@@ -146,7 +146,7 @@ function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <a href="#home" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold">Sp</span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white font-bold"><img src="src/assets/logo.png" alt="Study-Nest-Logo" className="h-7 w-7" /></span>
             <span className="font-semibold tracking-tight">StudyNest</span>
           </a>
 
