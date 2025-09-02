@@ -212,8 +212,8 @@ export default function LeftNav({
 
                         {moreVisible && (
                             <div className="space-y-1 mt-2">
-                                <NavItem to="/ai-file-check" icon="🔍" label="Ai File Check" expanded={navOpen} />
-                                <NavItem to="/ai-usage-check" icon="📊" label="Ai Usage Check" expanded={navOpen} />
+                                <NavItem to="/ai-check" icon="🔍" label="Ai File Check" expanded={navOpen} />
+                                <NavItem to="/ai-usage" icon="📊" label="Ai Usage Check" expanded={navOpen} />
                             </div>
                         )}
                     </nav>
