@@ -3,10 +3,10 @@ import React from "react";
 export default function Footer({ sidebarWidth = 72 }) {
   return (
     <footer
-      className="bg-white dark:bg-zinc-950"
+      className="bg-slate-950 dark:bg-slate-950 fixed bottom-0 left-0 w-full"
       style={{ paddingLeft: sidebarWidth }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="rounded-2xl bg-white dark:bg-zinc-900/40 p-4 sm:p-6 ring-1 ring-zinc-200 dark:ring-white/10">
           <div className="flex items-center justify-between">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">

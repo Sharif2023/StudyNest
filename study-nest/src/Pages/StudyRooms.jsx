@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Online Study Rooms (Video + Chat)
@@ -40,17 +42,19 @@ export function RoomsLobby() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <header className="sticky top-0 z-20 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Study Rooms</h1>
-            <p className="text-sm text-zinc-600">Meet on video, chat, and collaborate live.</p>
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+      <LeftNav></LeftNav>
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6">
+          {/* Title and Subtitle */}
+          <div className="flex-shrink-0">
+            <h1 className="text-xl font-bold tracking-tight text-white">Study Rooms</h1>
+            <p className="text-sm text-white/70 hidden sm:block">Meet on video, chat, and collaborate live.</p>
           </div>
-          <Link to="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</Link>
-        </div>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+          {/* Input and Button */}
+          <div className="flex-grow flex items-center justify-end gap-3">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -81,21 +85,25 @@ export function RoomsLobby() {
           </ul>
         )}
       </div>
+      <Footer />
     </main>
   );
 }
 
 function RoomCard({ room }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200">
-      <div className="aspect-video w-full overflow-hidden rounded-xl bg-zinc-100 grid place-items-center text-zinc-400">
-        <CamIcon className="h-10 w-10" />
+    <article className="flex flex-col h-full rounded-2xl bg-white shadow-md ring-1 ring-zinc-200/50 transition-transform transform hover:scale-105 hover:shadow-lg p-4">
+      <div className="aspect-video w-full overflow-hidden rounded-xl bg-zinc-100 grid place-items-center text-zinc-400/80">
+        {/* The SVG for the camera icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10">
+          <path d="M4.5 4.5a3 3 0 00-3 3v9a3 3 0 003 3h8.25a3 3 0 003-3v-9a3 3 0 00-3-3H4.5zM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.94-.94 2.56-.27 2.56 1.06v11.38c0 1.33-1.62 2-2.56 1.06z" />
+        </svg>
       </div>
-      <h3 className="mt-3 truncate text-base font-semibold text-zinc-900" title={room.title}>{room.title}</h3>
-      <p className="mt-1 text-sm text-zinc-600">{room.course} • {timeAgo(room.createdAt)}</p>
+      <h3 className="mt-3 truncate text-lg font-semibold text-zinc-900" title={room.title}>{room.title}</h3>
+      <p className="mt-1 text-sm text-zinc-500 font-medium">{room.course} • {timeAgo(room.createdAt)}</p>
       <div className="mt-3 flex items-center justify-between text-xs text-zinc-600">
-        <span className="rounded-full bg-zinc-100 px-2 py-0.5">{room.participants} online</span>
-        <Link to={`/rooms/${room.id}`} className="rounded-xl border border-zinc-300 px-3 py-1 font-semibold hover:bg-zinc-50">Join</Link>
+        <span className="rounded-full bg-zinc-100/70 px-2 py-0.5 text-zinc-500 font-medium">{room.participants} online</span>
+        <Link to={`/rooms/${room.id}`} className="rounded-xl border border-zinc-200 px-3 py-1 font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors">Join</Link>
       </div>
     </article>
   );
@@ -250,8 +258,8 @@ export function StudyRoom() {
             </div>
             <ul className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
               {chat.map((m) => (
-                <li key={m.id} className={"rounded-xl px-3 py-2 text-sm " + (m.self ? "bg-emerald-600 text-white ml-8" : "bg-zinc-800 text-zinc-200 mr-8") }>
-                  <div className="text-[10px] opacity-70">{m.author} • {new Date(m.ts).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"})}</div>
+                <li key={m.id} className={"rounded-xl px-3 py-2 text-sm " + (m.self ? "bg-emerald-600 text-white ml-8" : "bg-zinc-800 text-zinc-200 mr-8")}>
+                  <div className="text-[10px] opacity-70">{m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                   <div className="break-words">{m.text}</div>
                 </li>
               ))}
@@ -313,20 +321,20 @@ function ToggleButton({ on, onClick, children, label }) {
   );
 }
 
-function Dot(){return (<span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />);} 
+function Dot() { return (<span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />); }
 
 /* ====================== Icons ====================== */
-function ArrowLeft(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M12 4 10.59 5.41 16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>);} 
-function CamIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M17 10.5V7a2 2 0 0 0-2-2H3A2 2 0 0 0 1 7v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z"/></svg>);} 
-function CamOffIcon(props){return(<svg viewBox="0 0 24 24" className="h-8 w-8" {...props}><path fill="currentColor" d="m2.1 3.5 18.4 18.4-1.4 1.4-3.44-3.44A2 2 0 0 1 15 21H3a2 2 0 0 1-2-2V7c0-.35.06-.68.17-1L.7 3.5 2.1 2.1l1.9 1.9H15a2 2 0 0 1 2 2v6.17l2-2V7l4 4v2l-3.17-3.17L2.1 3.5z"/></svg>);} 
-function MicIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zM11 19h2v3h-2z"/></svg>);} 
-function MicOffIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="m2.1 3.5 18.4 18.4-1.4 1.4-4.02-4.02A7 7 0 0 1 5 11h2a5 5 0 0 0 6.94 4.57L12 13.63V5a3 3 0 0 1 5.8-1.2l1.6 1.6-1.4 1.4L16.8 5.2A1 1 0 0 0 15 6v5.63l-2-2V5a1 1 0 0 0-2 0v6.63l-7.5-7.5zM11 19h2v3h-2z"/></svg>);} 
-function ScreenIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M3 4h18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7v2h3v2H7v-2h3v-2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>);} 
-function UserIcon(props){return(<svg viewBox="0 0 24 24" className="h-12 w-12" {...props}><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4 0-8 2-8 6v2h16v-2c0-4-4-6-8-6z"/></svg>);} 
+function ArrowLeft(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M12 4 10.59 5.41 16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>); }
+function CamIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M17 10.5V7a2 2 0 0 0-2-2H3A2 2 0 0 0 1 7v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z" /></svg>); }
+function CamOffIcon(props) { return (<svg viewBox="0 0 24 24" className="h-8 w-8" {...props}><path fill="currentColor" d="m2.1 3.5 18.4 18.4-1.4 1.4-3.44-3.44A2 2 0 0 1 15 21H3a2 2 0 0 1-2-2V7c0-.35.06-.68.17-1L.7 3.5 2.1 2.1l1.9 1.9H15a2 2 0 0 1 2 2v6.17l2-2V7l4 4v2l-3.17-3.17L2.1 3.5z" /></svg>); }
+function MicIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zM11 19h2v3h-2z" /></svg>); }
+function MicOffIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="m2.1 3.5 18.4 18.4-1.4 1.4-4.02-4.02A7 7 0 0 1 5 11h2a5 5 0 0 0 6.94 4.57L12 13.63V5a3 3 0 0 1 5.8-1.2l1.6 1.6-1.4 1.4L16.8 5.2A1 1 0 0 0 15 6v5.63l-2-2V5a1 1 0 0 0-2 0v6.63l-7.5-7.5zM11 19h2v3h-2z" /></svg>); }
+function ScreenIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M3 4h18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7v2h3v2H7v-2h3v-2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" /></svg>); }
+function UserIcon(props) { return (<svg viewBox="0 0 24 24" className="h-12 w-12" {...props}><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4 0-8 2-8 6v2h16v-2c0-4-4-6-8-6z" /></svg>); }
 
 /* ====================== Mock + utils ====================== */
-function uid(){return Math.random().toString(36).slice(2,9);} 
-function timeAgo(ts){const d=(Date.now()-new Date(ts).getTime())/1000;const u=[[60,'s'],[60,'m'],[24,'h'],[7,'d']];let n=d,l='s';for(const [k,t] of u){if(n<k){l=t;break;}n=Math.floor(n/k);l=t;}return `${Math.max(1,Math.floor(n))}${l} ago`;}
-function seedRooms(){return [{id:uid(), title:"CSE220 Group Session", course:"CSE220", createdAt:new Date(Date.now()-36e5).toISOString(), participants:2}]}
-function seedPeers(){return [{id:uid(), name:"Nusrat"},{id:uid(), name:"Farhan"}]}
-function seedChat(){return [{id:uid(), author:"Nusrat", text:"Hey! Ready to review DP?", ts:new Date(Date.now()-36e5).toISOString(), self:false}]} 
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function timeAgo(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; const u = [[60, 's'], [60, 'm'], [24, 'h'], [7, 'd']]; let n = d, l = 's'; for (const [k, t] of u) { if (n < k) { l = t; break; } n = Math.floor(n / k); l = t; } return `${Math.max(1, Math.floor(n))}${l} ago`; }
+function seedRooms() { return [{ id: uid(), title: "CSE220 Group Session", course: "CSE220", createdAt: new Date(Date.now() - 36e5).toISOString(), participants: 2 }] }
+function seedPeers() { return [{ id: uid(), name: "Nusrat" }, { id: uid(), name: "Farhan" }] }
+function seedChat() { return [{ id: uid(), author: "Nusrat", text: "Hey! Ready to review DP?", ts: new Date(Date.now() - 36e5).toISOString(), self: false }] } 
