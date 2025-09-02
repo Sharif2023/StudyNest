@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 export default function Signup() {
-  const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [form, setForm] = useState({ studentId: "", email: "", password: "" });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -15,9 +15,24 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
     try {
-      // TODO: replace with your API call
-      await new Promise((r) => setTimeout(r, 900));
-      alert(`Signed up as ${form.username} 🎉`);
+      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/signup.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId: form.studentId,
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Signup failed");
+      }
+      alert("Account created 🎉 Now log in.");
+    } catch (err) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
