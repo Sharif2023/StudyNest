@@ -13,17 +13,34 @@ export default function Login() {
   }
 
   async function onSubmit(e) {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    // TODO: replace with your real auth call
-    await new Promise((r) => setTimeout(r, 900));
-    // redirect instead of alert
-    navigate("/dashboard");
-  } finally {
-    setLoading(false);
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/login.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      // Optionally store user in localStorage/sessionStorage
+      // localStorage.setItem("user", JSON.stringify(data.user));
+
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
