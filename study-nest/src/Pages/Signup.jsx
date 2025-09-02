@@ -56,7 +56,7 @@ export default function Signup() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <Link to="/" className="inline-flex items-center gap-2">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold">
-            Sn
+            <img src="src/assets/logo.png" alt="Study-Nests-Logo" className="h-7 w-7" />
           </span>
           <span className="text-zinc-900 font-semibold tracking-tight">
             StudyNest
@@ -73,7 +73,7 @@ export default function Signup() {
               <img
                 src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=85&w=3840&auto=format&fit=crop"
                 alt="Study group collaborating at UIU"
-                className="h-[520px] w-full object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
 
