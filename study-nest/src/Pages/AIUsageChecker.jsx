@@ -1,4 +1,6 @@
 import React, { useState, useRef } from "react";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 
 export default function AIUsageChecker() {
     const [file, setFile] = useState(null);
@@ -21,11 +23,15 @@ export default function AIUsageChecker() {
     }
 
     return (
-        <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-            <header className="border-b border-zinc-200 bg-white/80 backdrop-blur">
+        <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+            <LeftNav></LeftNav>
+            {/* Header */}
+            <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
                 <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-zinc-900">AI Usage Checker</h1>
-                    <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
+                    <div>
+                        <h1 className="text-xl font-bold text-white">AI Usage Checker</h1>
+                        <p className="text-sm text-white">Check your AI usage %, Make it Huminize version.</p>
+                    </div>
                 </div>
             </header>
 
@@ -71,6 +77,7 @@ export default function AIUsageChecker() {
                     Humanize this
                 </button>
             </div>
+            <Footer />
         </main>
     );
 }

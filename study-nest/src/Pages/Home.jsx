@@ -406,6 +406,45 @@ export default function Home() {
 
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase">Shortcuts</h3>
+                </div>
+                {/* Adjusted grid container for shortcuts */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"> {/* Changed gap to gap-2 for tighter spacing */}
+                  <Link to="/forum" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Ask a question
+                  </Link>
+                  <Link to="/rooms" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Join room
+                  </Link>
+                  <Link to="/notes" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Add notes
+                  </Link>
+                  <Link to="/resources" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Resources
+                  </Link>
+                  <Link to="/calendar" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Calendar
+                  </Link>
+                  <Link to="/profile" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Profile
+                  </Link>
+                  <Link to="/ai-check" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    AI File Check
+                  </Link>
+                  <Link to="/ai-usage" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    AI Usage Checker
+                  </Link>
+                  <Link to="/humanize" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Humanize Writing
+                  </Link>
+                  <Link to="/search" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
+                    Search
+                  </Link>
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase">
                     Shared Resource Library
                   </h3>

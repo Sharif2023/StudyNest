@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Tagging & Topic Search (Global Discovery)
@@ -119,12 +121,28 @@ export default function TagSearch() {
 
   const clearAll = () => { setQ(""); setActiveTag(""); setType("all"); };
 
+  const Select = ({ label, value, onChange, options }) => (
+    <label className="text-white inline-flex items-center gap-2 text-sm">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <header className="sticky top-0 z-30 border-b border-zinc-200/70 bg-white/80 backdrop-blur">
+      <LeftNav />
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900">Search & Tags</h1>
-          <p className="text-sm text-zinc-600">Find anything across StudyNest by topic.</p>
+          <h1 className="text-xl font-bold tracking-tight text-white">Search & Tags</h1>
+          <p className="text-sm text-white">Find anything across StudyNest by topic.</p>
 
           {/* Search bar and type filters */}
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -134,7 +152,7 @@ export default function TagSearch() {
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") setQ(""); if (e.key === "Enter") setQ(e.currentTarget.value); }}
                 placeholder="Search notes, resources, forum posts, rooms…"
-                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-white bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               {q && (
                 <button onClick={() => setQ("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs rounded-md border border-zinc-300 px-2 py-0.5">Clear</button>
@@ -148,10 +166,10 @@ export default function TagSearch() {
                 ["resources", "Resources"],
                 ["rooms", "Rooms"],
               ].map(([val, label]) => (
-                <button key={val} onClick={() => setType(val)} className={"rounded-xl px-3 py-1.5 font-semibold " + (type === val ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50")}>{label}</button>
+                <button key={val} onClick={() => setType(val)} className={"rounded-xl px-3 py-1.5 font-semibold " + (type === val ? "bg-zinc-900 text-white" : "border border-white text-white hover:bg-zinc-500")}>{label}</button>
               ))}
               {(q || activeTag || type !== "all") && (
-                <button onClick={clearAll} className="rounded-xl px-3 py-1.5 text-sm border border-zinc-300 hover:bg-zinc-50">Reset</button>
+                <button onClick={clearAll} className="rounded-xl px-3 py-1.5 text-sm border border-white hover:bg-zinc-500">Reset</button>
               )}
             </div>
           </div>
@@ -179,6 +197,7 @@ export default function TagSearch() {
         <ResultGroup title="Resources" items={groups.resources} emptyHint="Add a resource" link="/resources" />
         <ResultGroup title="Study Rooms" items={groups.rooms} emptyHint="Start a study room" link="/rooms" />
       </div>
+      <Footer />
     </main>
   );
 }
@@ -236,28 +255,28 @@ function loadNotes() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.notes"));
     if (Array.isArray(raw)) return raw;
-  } catch {}
+  } catch { }
   return seedNotes();
 }
 function loadResources() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.resources"));
     if (Array.isArray(raw)) return raw;
-  } catch {}
+  } catch { }
   return seedResources();
 }
 function loadForum() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.forum"));
     if (Array.isArray(raw)) return raw;
-  } catch {}
+  } catch { }
   return seedForum();
 }
 function loadRooms() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.rooms"));
     if (Array.isArray(raw)) return raw;
-  } catch {}
+  } catch { }
   return seedRooms();
 }
 

@@ -100,6 +100,16 @@ export default function LeftNav({
                 <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 pb-20 custom-scroll">
                     <nav className="space-y-1">
                         <NavItem
+                            to="/search"
+                            icon={
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                            }
+                            label="Search"
+                            expanded={navOpen}
+                        />
+                        <NavItem
                             to="/home"
                             icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -212,8 +222,8 @@ export default function LeftNav({
 
                         {moreVisible && (
                             <div className="space-y-1 mt-2">
-                                <NavItem to="/ai-check" icon="🔍" label="Ai File Check" expanded={navOpen} />
-                                <NavItem to="/ai-usage" icon="📊" label="Ai Usage Check" expanded={navOpen} />
+                                <NavItem to="/ai-check" icon="🧠" label="Ai File Check" expanded={navOpen} />
+                                <NavItem to="/ai-usage" icon="🤖" label="Ai Usage Check" expanded={navOpen} />
                             </div>
                         )}
                     </nav>
