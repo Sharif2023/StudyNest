@@ -34,7 +34,7 @@ export default function Login() {
       // Optionally store user in localStorage/sessionStorage
       // localStorage.setItem("user", JSON.stringify(data.user));
 
-      navigate("/dashboard");
+      navigate("/home");
     } catch (err) {
       alert(err.message);
     } finally {
@@ -43,12 +43,12 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white h-fit w-full">
       {/* Brand */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <Link to="/" className="inline-flex items-center gap-2">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold">
-            Sn
+            <img src="src/assets/logo.png" alt="Study-Nests-Logo" className="h-7 w-7" />
           </span>
           <span className="text-zinc-900 font-semibold tracking-tight">StudyNest</span>
         </Link>
@@ -63,7 +63,7 @@ export default function Login() {
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Convocation_of_UIU%2C_2013.jpg/960px-Convocation_of_UIU%2C_2013.jpg?20150326164240"
                 alt="Study group collaborating at UIU"
-                className="h-[520px] w-full object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
             <div className="mt-6 flex items-center gap-3">

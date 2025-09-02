@@ -47,7 +47,7 @@ export function RoomsLobby() {
             <h1 className="text-xl font-bold tracking-tight text-zinc-900">Study Rooms</h1>
             <p className="text-sm text-zinc-600">Meet on video, chat, and collaborate live.</p>
           </div>
-          <Link to="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</Link>
+          <Link to="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</Link>
         </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -194,7 +194,7 @@ export function StudyRoom() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">Copy invite</button>
-            <Link to="/dashboard" className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">Leave</Link>
+            <Link to="/home" className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">Leave</Link>
           </div>
         </div>
       </div>

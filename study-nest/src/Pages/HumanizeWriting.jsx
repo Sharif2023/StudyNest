@@ -84,7 +84,7 @@ export default function HumanizeWriting(){
             <h1 className="text-xl font-bold tracking-tight text-zinc-900">Humanize Writing</h1>
             <p className="text-sm text-zinc-600">Make AI-ish text sound more personal, specific, and course-aware.</p>
           </div>
-          <a href="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
+          <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
         </div>
       </header>
 

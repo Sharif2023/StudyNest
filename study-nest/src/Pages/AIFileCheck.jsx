@@ -94,7 +94,7 @@ export default function AIFileCheck() {
             <h1 className="text-xl font-bold tracking-tight text-zinc-900">AI File Check</h1>
             <p className="text-sm text-zinc-600">Upload a file to get summary, key points, study tips, and more.</p>
           </div>
-          <a href="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
+          <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
         </div>
       </header>
 

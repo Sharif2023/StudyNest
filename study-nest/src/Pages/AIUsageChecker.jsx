@@ -25,7 +25,7 @@ export default function AIUsageChecker() {
             <header className="border-b border-zinc-200 bg-white/80 backdrop-blur">
                 <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
                     <h1 className="text-xl font-bold text-zinc-900">AI Usage Checker</h1>
-                    <a href="/dashboard" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
+                    <a href="/home" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50">Dashboard</a>
                 </div>
             </header>
 

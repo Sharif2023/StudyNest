@@ -114,9 +114,7 @@ export default function ResourceLibrary() {
             <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p> {/* Changed to white */}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-              Add resource
-            </button>
+            <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
           </div>
         </div>
 
