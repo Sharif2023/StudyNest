@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import LeftNav from "../Components/LeftNav";
+import Footer from "../Components/Footer";
 // Since we don't have access to the external files, we'll create the components here
 // import LeftNav from "../Components/LeftNav";
 // import Footer from "../Components/Footer";
@@ -148,6 +150,7 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
+      <LeftNav />
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -207,6 +210,7 @@ export default function App() {
 
       {open && <CreateModal onClose={() => setOpen(false)} onCreate={onCreate} />}
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
+      <Footer />
     </main>
   );
 }
