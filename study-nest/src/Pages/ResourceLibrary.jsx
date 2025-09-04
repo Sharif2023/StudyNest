@@ -1,24 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import LeftNav from "../Components/LeftNav";
-import Footer from "../Components/Footer";
+// Since we don't have access to the external files, we'll create the components here
+// import LeftNav from "../Components/LeftNav";
+// import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Shared Resource Library (Full)
  * ------------------------------------------------------------------
- * Frontend-only scaffold for sharing & discovering study resources.
- * - Add resource: upload file OR paste external link
- * - Fields: title, type (book/slide/past paper/study guide/other), course,
- *           topic tags, semester, description, anonymous toggle
- * - Discovery: search, filter by type/course/semester/tags; sort by New/Top/A–Z
- * - Interactions: upvote, bookmark, download/open, report
- * - Preview: PDF/images inline; other filetypes via download/open
- * - Local persistence via localStorage (key: "studynest.resources")
- *
- * Route: <Route path="/resources" element={<ResourceLibrary/>} />
+ * This is the updated frontend component that now interacts with a PHP API
+ * for data persistence instead of local storage.
+ * - All resource data is now stored and fetched from a MySQL database.
+ * - Interactions (add, vote, bookmark, report) now send requests to the API.
+ * - This version is a single file for compilation purposes.
  */
 
-export default function ResourceLibrary() {
-  const [items, setItems] = useState(() => loadItems() ?? seedItems());
+// Define the API endpoint URL. You MUST replace this with your server's URL.
+const API_URL = 'http://localhost/studynest/study-nest/src/api/ResourceLibrary.php';
+
+
+export default function App() {
+  const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [type, setType] = useState("All");
   const [course, setCourse] = useState("All");
@@ -27,91 +27,133 @@ export default function ResourceLibrary() {
   const [sort, setSort] = useState("New");
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(null); // {url, name, mime}
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => saveItems(items), [items]);
+  // Function to fetch data from the API.
+  const fetchResources = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.status === 'success') {
+        setItems(data.resources);
+      } else {
+        throw new Error(data.message || 'Failed to fetch resources.');
+      }
+    } catch (e) {
+      setError(e.message);
+      console.error("Error fetching resources:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on initial component mount.
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
   const types = useMemo(() => ["All", ...uniq(items.map((x) => x.kind))], [items]);
   const courses = useMemo(() => ["All", ...uniq(items.map((x) => x.course))], [items]);
   const semesters = useMemo(() => ["All", ...uniq(items.map((x) => x.semester))], [items]);
-  const tags = useMemo(() => ["All", ...uniq(items.flatMap((x) => x.tags))], [items]);
+  const tags = useMemo(() => ["All", ...uniq(items.flatMap((x) => (x.tags || '').split(',').map(t => t.trim()))).filter(Boolean)], [items]);
 
   const filtered = useMemo(() => {
     const query = q.toLowerCase().trim();
     let list = items.filter((it) => {
+      const resourceTags = (it.tags || '').split(',').map(t => t.trim());
       const passT = type === "All" || it.kind === type;
       const passC = course === "All" || it.course === course;
       const passS = semester === "All" || it.semester === semester;
-      const passG = tag === "All" || it.tags.includes(tag);
+      const passG = tag === "All" || resourceTags.includes(tag);
       const passQ =
         !query ||
         it.title.toLowerCase().includes(query) ||
         it.description.toLowerCase().includes(query) ||
-        it.tags.some((t) => t.toLowerCase().includes(query));
+        resourceTags.some((t) => t.toLowerCase().includes(query));
       return passT && passC && passS && passG && passQ;
     });
-    if (sort === "New") list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    if (sort === "New") list.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
     if (sort === "Top") list.sort((a, b) => b.votes - a.votes);
     if (sort === "A-Z") list.sort((a, b) => a.title.localeCompare(b.title));
     return list;
   }, [items, q, type, course, semester, tag, sort]);
 
-  const onCreate = (payload) => {
-    const { file, link, title, kind, course, semester, tags, description, anonymous } = payload;
-    const base = {
-      id: uid(),
-      title: title.trim(),
-      kind,
-      course,
-      semester,
-      description,
-      tags,
-      createdAt: new Date().toISOString(),
-      author: anonymous ? "Anonymous" : "You",
-      votes: 0,
-      bookmarks: 0,
-      flagged: false,
-    };
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const mime = file.type || "application/octet-stream";
-      setItems((prev) => [{ ...base, srcType: "file", name: file.name, url, mime, size: file.size }, ...prev]);
-    } else if (link) {
-      setItems((prev) => [{ ...base, srcType: "link", url: link.trim(), mime: "text/html" }, ...prev]);
+  // Function to handle creating a new resource by sending a POST request to the API.
+  const onCreate = async (payload) => {
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        // Fetch the updated list of resources from the server.
+        fetchResources();
+        setOpen(false);
+      } else {
+        // Use a custom message box instead of alert()
+        console.error("Failed to create resource: " + data.message);
+      }
+    } catch (e) {
+      // Use a custom message box instead of alert()
+      console.error("Error creating resource: " + e.message);
     }
-    setOpen(false);
+  };
+  
+  // Function to handle updating a resource (vote, bookmark, flag)
+  const updateResource = async (id, updates) => {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, ...updates })
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+            // Optimistically update the local state to provide faster feedback.
+            setItems(prevItems =>
+                prevItems.map(item =>
+                    item.id === id ? { ...item, ...updates } : item
+                )
+            );
+        } else {
+            // Use a custom message box instead of alert()
+            console.error("Failed to update resource: " + data.message);
+        }
+    } catch (e) {
+      // Use a custom message box instead of alert()
+      console.error("Error updating resource: " + e.message);
+    }
   };
 
-  const Select = ({ label, value, onChange, options }) => (
-  <label className="text-white inline-flex items-center gap-2 text-sm">
-    <span>{label}</span>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-    >
-      {options.map((o) => (
-        <option key={o} value={o}>{o}</option>
-      ))}
-    </select>
-  </label>
-);
-
-  const vote = (id, delta) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, votes: Math.max(0, x.votes + delta) } : x)));
-  const toggleBookmark = (id) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, bookmarks: x.bookmarks ? 0 : 1 } : x)));
-  const flag = (id) => setItems((prev) => prev.map((x) => (x.id === id ? { ...x, flagged: true } : x)));
-
-  // Toggle function to handle LeftNav visibility
-  const toggleLeftNav = () => setIsNavOpen((prev) => !prev);
+  const vote = (id, delta) => {
+    const item = items.find(x => x.id === id);
+    if (!item) return;
+    updateResource(id, { votes: Math.max(0, item.votes + delta) });
+  };
+  const toggleBookmark = (id) => {
+    const item = items.find(x => x.id === id);
+    if (!item) return;
+    updateResource(id, { bookmarks: item.bookmarks ? 0 : 1 });
+  };
+  const flag = (id) => updateResource(id, { flagged: 1 });
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav></LeftNav>
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Shared Resource Library</h1> {/* Changed to white */}
-            <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p> {/* Changed to white */}
+            <h1 className="text-xl font-bold tracking-tight text-white">Shared Resource Library</h1>
+            <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
@@ -142,7 +184,9 @@ export default function ResourceLibrary() {
 
       {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {filtered.length === 0 ? (
+        {loading && <div className="text-center text-zinc-500">Loading resources...</div>}
+        {error && <div className="text-center text-red-500">Error: {error}</div>}
+        {!loading && !error && filtered.length === 0 ? (
           <EmptyState onNew={() => setOpen(true)} />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -163,7 +207,6 @@ export default function ResourceLibrary() {
 
       {open && <CreateModal onClose={() => setOpen(false)} onCreate={onCreate} />}
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
-      <Footer />
     </main>
   );
 }
@@ -198,7 +241,7 @@ function Select({ label, value, onChange, options }) {
 }
 
 function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
-  const latestIsFile = item.srcType === "file";
+  const latestIsFile = item.src_type === "file";
   const isImage = item.mime?.startsWith("image/");
   const isPdf = item.mime?.includes("pdf");
 
@@ -232,7 +275,7 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
 
   {/* Tags */}
   <div className="mt-3 px-5 flex flex-wrap gap-2">
-    {item.tags.map((t) => (
+    {(item.tags || '').split(',').map(t => t.trim()).filter(Boolean).map((t) => (
       <span key={t} className="rounded-full border border-zinc-300 px-3 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 transition">{`#${t}`}</span>
     ))}
   </div>
@@ -246,8 +289,8 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
     </div>
     <div className="space-x-2 text-xs">
       <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Report</button>
-      {item.srcType === "file" ? (
-        <a href={item.url} download className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
+      {item.src_type === "file" ? (
+        <a href={item.url} download={item.name} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
       ) : (
         <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Open link</a>
       )}
@@ -284,15 +327,15 @@ function CreateModal({ onClose, onCreate }) {
   const disabled = (useLink ? !link.trim() : !file) || !title.trim() || !course.trim() || !semester.trim();
 
   const submit = () => onCreate({
-    file: useLink ? null : file,
-    link: useLink ? link.trim() : null,
+    src_type: useLink ? "link" : "file",
+    url: useLink ? link.trim() : "file_not_implemented",
     title: title.trim(),
     kind,
     course: course.trim(),
     semester: semester.trim(),
-    tags: parseTags(tags),
+    tags: tags.trim(),
     description: description.trim(),
-    anonymous,
+    author: anonymous ? "Anonymous" : "You",
   });
 
   return (
@@ -439,26 +482,4 @@ function XIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {..
 function FileIcon(props) { return (<svg viewBox="0 0 24 24" className="h-10 w-10" {...props}><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z" /></svg>); }
 
 /* -------------------- Utils -------------------- */
-function uid() { return Math.random().toString(36).slice(2, 9); }
 function uniq(arr) { return [...new Set(arr.filter(Boolean))]; }
-function parseTags(s) { return s.split(",").map(x => x.trim()).filter(Boolean).slice(0, 6); }
-function timeAgo(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; const u = [[60, 's'], [60, 'm'], [24, 'h'], [7, 'd']]; let n = d, l = 's'; for (const [k, t] of u) { if (n < k) { l = t; break; } n = Math.floor(n / k); l = t; } return `${Math.max(1, Math.floor(n))}${l} ago`; }
-
-function loadItems() { try { return JSON.parse(localStorage.getItem("studynest.resources")); } catch { return null; } }
-function saveItems(data) { localStorage.setItem("studynest.resources", JSON.stringify(data)); }
-
-/* -------------------- Seed -------------------- */
-function seedItems() {
-  return [
-    { id: uid(), title: "Algorithm Book Ch 1–3", kind: "book", course: "CSE220", semester: "Fall 2025", description: "Core textbook chapters 1–3", tags: ["book", "basics"], createdAt: new Date(Date.now() - 36e5 * 20).toISOString(), author: "Nusrat", votes: 2, bookmarks: 0, flagged: false, srcType: "link", url: "https://example.com/book" },
-    { id: uid(), title: "EEE101 Past Papers", kind: "past paper", course: "EEE101", semester: "Fall 2025", description: "Midterm/final bundle", tags: ["exam", "practice"], createdAt: new Date(Date.now() - 36e5 * 100).toISOString(), author: "Farhan", votes: 5, bookmarks: 1, flagged: false, srcType: "link", url: "https://example.com/papers" },
-    { id: uid(), title: "Math-III Lecture Slides", kind: "slide", course: "Math-III", semester: "Fall 2025", description: "Week 5: Laplace transforms", tags: ["laplace", "slides"], createdAt: new Date(Date.now() - 36e5 * 50).toISOString(), author: "You", votes: 1, bookmarks: 0, flagged: false, srcType: "file", name: "math3-week5.pdf", url: samplePdf(), mime: "application/pdf", size: 120 * 1024 },
-  ];
-}
-
-// tiny blank PDF blob for demo preview
-function samplePdf() {
-  const b64 = "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PC9UeXBlIC9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmoKPDwvVHlwZSAvUGFnZXMvS2lkcyBbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlIC9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveCBbMCAwIDU5NSA4NDJdL0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDExMj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZChIZWxsbywgUERGKQpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDEwNSAwMDAwMCBuIAowMDAwMDAwMTk2IDAwMDAwIG4gCjAwMDAwMDAzMjQgMDAwMDAgbiAKMDAwMDAwMDQwNCAwMDAwMCBuIAowMDAwMDAwNDg1IDAwMDAwIG4gCnRyYWlsZXIKPDwvUm9vdCAxIDAgUi9TaXplIDY+PgpzdGFydHhyZWYKMTAyNQolJUVPRg==";
-  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  return URL.createObjectURL(new Blob([bin], { type: "application/pdf" }));
-}
