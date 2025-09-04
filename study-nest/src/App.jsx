@@ -4,7 +4,6 @@ import LandingPage from "./Pages/LandingPage";
 import Login from "./Pages/Login";
 import Signup from "./Pages/Signup";
 import Profile from "./Pages/Profile";
-import Dashboard from "./Pages/Dashboard";
 import NotesRepository from "./Pages/NotesRepository";
 import QnAForum from "./Pages/QnAForum";
 import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
@@ -22,8 +21,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/notes" element={<NotesRepository />} />
         <Route path="/forum" element={<QnAForum />} />
         <Route path="/rooms" element={<RoomsLobby />} />
@@ -31,7 +30,6 @@ function App() {
         <Route path="/rooms/:roomId" element={<StudyRoom />} />
         <Route path="/search" element={<TagSearch />} />
         <Route path="/resources" element={<ResourceLibrary />} />
-        <Route path="/home" element={<Home />} />
         <Route path="/ai-check" element={<AIFileCheck />} />
         <Route path="/ai-usage" element={<AIUsageChecker />} />
         <Route path="/humanize" element={<HumanizeWriting />} />
