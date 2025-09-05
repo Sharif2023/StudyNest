@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+// We'll remove the LeftNav and Footer imports since their components are not provided.
+// import LeftNav from "../Components/LeftNav";
+// import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Q&A Forum (Peer Review & Voting)
@@ -16,13 +19,40 @@ import Footer from "../Components/Footer";
  * You can swap the mock API with your real backend later.
  */
 
+const API_ENDPOINT = 'http://localhost/studynest/study-nest/src/api/QnAForum.php';
+
 export default function QnAForum() {
-  const [questions, setQuestions] = useState(() => seedQuestions());
+  const [questions, setQuestions] = useState([]);
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
   const [sort, setSort] = useState("Hot"); // Hot | New | Top
   const [askOpen, setAskOpen] = useState(false);
   const [detail, setDetail] = useState(null); // question id
+
+  // Fetch all questions from the backend on initial load
+  useEffect(() => {
+    fetch(API_ENDPOINT)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        // Check if the response is an array before setting the state
+        if (Array.isArray(data)) {
+          // Data is now pre-sorted by the backend (newest first)
+          setQuestions(data);
+        } else {
+          console.error("API did not return an array:", data);
+          setQuestions([]); // Reset state if response is not an array
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching questions:', error);
+        setQuestions([]); // Also set to empty on fetch error
+      });
+  }, []);
 
   const tags = useMemo(() => {
     const t = new Set(["All"]);
@@ -56,61 +86,175 @@ export default function QnAForum() {
   const closeDetail = () => setDetail(null);
 
   const onCreateQuestion = (q) => {
-    setQuestions((prev) => [
-      { ...q, id: uid(), votes: 0, answers: [], createdAt: new Date().toISOString() },
-      ...prev,
-    ]);
+    // Optimistic UI update
+    const tempId = `temp-${Date.now()}`;
+    const newQuestion = {
+      ...q,
+      id: tempId,
+      votes: 0,
+      answers: [],
+      createdAt: new Date().toISOString()
+    };
+    setQuestions(prev => [newQuestion, ...prev]);
     setAskOpen(false);
+
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add_question',
+        title: q.title,
+        body: q.body,
+        tags: q.tags.join(','),
+        author: q.author,
+        anonymous: q.anonymous ? 1 : 0
+      }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Replace temp question with real data from server
+          setQuestions(prev => prev.map(item => item.id === tempId ? { ...newQuestion, id: data.id } : item));
+        } else {
+          // Revert on error
+          setQuestions(prev => prev.filter(item => item.id !== tempId));
+          alert('Error creating question: ' + data.message);
+        }
+      })
+      .catch(error => {
+        setQuestions(prev => prev.filter(item => item.id !== tempId));
+        alert('Error: ' + error.message);
+      });
   };
 
   const onVoteQuestion = (id, delta) => {
-    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, votes: q.votes + delta } : q)));
+    // Optimistic update
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: Number(q.votes) + delta } : q));
+    
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'vote_question', id, delta }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status !== 'success') {
+            // Revert on error
+            setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+            console.error('Error voting on question:', data.message);
+        }
+      })
+      .catch(error => {
+          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+          console.error('Error:', error)
+      });
   };
 
   const onAddAnswer = (qid, answer) => {
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === qid
-          ? { ...q, answers: [{ ...answer, id: uid(), votes: 0, helpful: 0, isAccepted: false }, ...q.answers] }
-          : q
-      )
-    );
+    const tempAnswerId = `temp-ans-${Date.now()}`;
+    const newAnswer = {
+        ...answer,
+        id: tempAnswerId,
+        votes: 0,
+        helpful: 0,
+        isAccepted: false,
+        createdAt: new Date().toISOString(),
+    };
+    
+    // Optimistic update
+    setQuestions(prev => prev.map(q => 
+        q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
+    ));
+
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add_answer',
+        question_id: qid,
+        body: answer.body,
+        author: answer.author
+      }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Re-fetch all questions to get the final state with the new answer ID
+          fetch(API_ENDPOINT).then(res => res.json()).then(setQuestions);
+        } else {
+          // Revert on error
+          setQuestions(prev => prev.map(q => 
+            q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
+          ));
+          console.error('Error adding answer:', data.message);
+        }
+      })
+      .catch(error => {
+        setQuestions(prev => prev.map(q => 
+            q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
+        ));
+        console.error('Error:', error);
+      });
   };
 
   const onVoteAnswer = (qid, aid, delta) => {
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === qid
-          ? {
-              ...q,
-              answers: q.answers.map((a) => (a.id === aid ? { ...a, votes: a.votes + delta } : a)),
-            }
-          : q
-      )
-    );
+    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: Number(a.votes) + delta } : a) } : q));
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'vote_answer', id: aid, delta }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status !== 'success') {
+          setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: a.votes - delta } : a) } : q));
+          console.error('Error voting on answer:', data.message);
+        }
+      })
+      .catch(error => {
+        setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: a.votes - delta } : a) } : q));
+        console.error('Error:', error);
+      });
   };
 
   const onPeerReview = (qid, aid) => {
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === qid
-          ? { ...q, answers: q.answers.map((a) => (a.id === aid ? { ...a, helpful: a.helpful + 1 } : a)) }
-          : q
-      )
-    );
+   setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'peer_review', id: aid }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status !== 'success') {
+          setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) - 1 } : a) } : q));
+          console.error('Error marking as helpful:', data.message);
+        }
+      })
+      .catch(error => {
+        setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) - 1 } : a) } : q));
+        console.error('Error:', error);
+      });
   };
 
   const onAcceptAnswer = (qid, aid) => {
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === qid
-          ? {
-              ...q,
-              answers: q.answers.map((a) => ({ ...a, isAccepted: a.id === aid })),
-            }
-          : q
-      )
-    );
+    setQuestions(prev => prev.map(q =>
+      q.id === qid ? { ...q, answers: q.answers.map(a => ({ ...a, isAccepted: a.id === aid })) } : q
+    ));
+    fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'accept_answer', question_id: qid, answer_id: aid }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status !== 'success') {
+          console.error('Error accepting answer:', data.message);
+          // Note: Reverting this optimistic update would be more complex, so we log the error.
+          // For a production app, you might re-fetch the question's state.
+        }
+      })
+      .catch(error => console.error('Error:', error));
   };
 
   return (
@@ -181,7 +325,7 @@ export default function QnAForum() {
 
       {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && !query ? (
           <EmptyState onNew={() => setAskOpen(true)} />
         ) : (
           <ul className="grid gap-4">
@@ -196,6 +340,7 @@ export default function QnAForum() {
             ))}
           </ul>
         )}
+
       </div>
 
       {/* Ask modal */}
@@ -206,7 +351,7 @@ export default function QnAForum() {
       {/* Detail drawer */}
       {detail && (
         <QuestionDrawer
-          question={questions.find((q) => q.id === detail)}
+          question={questions.find((q) => q.id == detail)}
           onClose={closeDetail}
           onAddAnswer={onAddAnswer}
           onVoteAnswer={onVoteAnswer}
@@ -241,7 +386,7 @@ function QuestionCard({ question, onOpen, onVote }) {
         <IconButton label="Upvote" onClick={up} pressed={sessionVote === 1}>
           <ChevronUp className="h-5 w-5" />
         </IconButton>
-        <div className="my-1 text-sm font-bold tabular-nums">{question.votes}</div>
+        <div className="my-1 text-sm font-bold tabular-nums">{formatVotes(question.votes)}</div>
         <IconButton label="Downvote" onClick={down} pressed={sessionVote === -1}>
           <ChevronDown className="h-5 w-5" />
         </IconButton>
@@ -278,12 +423,9 @@ function AskQuestionModal({ onClose, onCreate }) {
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [anonymous, setAnonymous] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const submit = async () => {
+  const submit = () => {
     if (!title.trim() || !body.trim()) return;
-    setSubmitting(true);
-    await fakeApi.delay(600);
     onCreate({ title: title.trim(), body: body.trim(), tags: parseTags(tags), anonymous, author: "You" });
   };
 
@@ -328,15 +470,15 @@ function AskQuestionModal({ onClose, onCreate }) {
             <p className="mt-1 text-xs text-zinc-500">Comma‑separated. Keep it specific so others can find it.</p>
           </div>
           <label className="inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500" />
-            Post anonymously (for shy students)
+            <input type="checkbox" className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
+            Post anonymously
           </label>
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-2">
           <button onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50">Cancel</button>
-          <button disabled={submitting} onClick={submit} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-            {submitting ? "Posting…" : "Post question"}
+          <button onClick={submit} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+            Post question
           </button>
         </div>
       </div>
@@ -349,17 +491,17 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
   const [anon, setAnon] = useState(false);
   if (!question) return null;
 
-  const submitAnswer = async () => {
+  const submitAnswer = () => {
     if (!answer.trim()) return;
-    await fakeApi.delay(500);
     onAddAnswer(question.id, { body: answer.trim(), author: anon ? "Anonymous" : "You" });
     setAnswer("");
+    setAnon(false);
   };
 
   return (
     <div className="fixed inset-0 z-40 flex">
-      <div className="hidden md:block w-1/4" onClick={onClose} />
-      <div className="ml-auto h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl ring-1 ring-zinc-200">
+      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative ml-auto h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl ring-1 ring-zinc-200">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3">
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Close">
@@ -378,8 +520,10 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
           <h2 className="text-xl font-semibold text-zinc-900">{question.title}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
             <Avatar name={question.anonymous ? "Anonymous" : question.author} />
-            <span>•</span><span>{timeAgo(question.createdAt)}</span>
-            <span>•</span><span className="rounded-full bg-zinc-100 px-2 py-0.5">{question.votes} votes</span>
+            <span>•</span>
+            <span>{timeAgo(question.createdAt)}</span>
+            <span>•</span>
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5">{question.answers.length} answers</span>
           </div>
           <p className="mt-4 whitespace-pre-wrap text-sm text-zinc-800">{question.body}</p>
         </div>
@@ -412,7 +556,7 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
                     <IconButton label="Upvote" onClick={() => onVoteAnswer(question.id, a.id, +1)}>
                       <ChevronUp className="h-4 w-4" />
                     </IconButton>
-                    <div className="my-1 text-sm font-bold tabular-nums">{a.votes}</div>
+                    <div className="my-1 text-sm font-bold tabular-nums">{formatVotes(a.votes)}</div>
                     <IconButton label="Downvote" onClick={() => onVoteAnswer(question.id, a.id, -1)}>
                       <ChevronDown className="h-4 w-4" />
                     </IconButton>
@@ -490,21 +634,21 @@ function Avatar({ name }) {
 /* -------------------- Icons (inline SVG) -------------------- */
 function PlusIcon(props) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M11 4h2v16h-2z"/><path fill="currentColor" d="M4 11h16v2H4z"/></svg>
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M11 4h2v16h-2z" /><path fill="currentColor" d="M4 11h16v2H4z" /></svg>
   );
 }
 function SearchIcon(props) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z"/></svg>
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z" /></svg>
   );
 }
-function ChevronUp(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>);} 
-function ChevronDown(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="m7.41 8.59 4.59 4.58 4.59-4.58L18 10l-6 6-6-6z"/></svg>);} 
-function XIcon(props){return(<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"/></svg>);} 
-function Check(props){return(<svg viewBox="0 0 24 24" className="h-4 w-4" {...props}><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>);} 
-function QuestionMark(props){return(<svg viewBox="0 0 24 24" className="h-7 w-7" {...props}><path fill="currentColor" d="M11 18h2v2h-2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-.88-5h1.75v-1c0-1.09.31-1.57 1.34-2.36.94-.72 1.79-1.51 1.79-2.97 0-2.21-1.79-3.67-4.23-3.67-2.27 0-4.05 1.22-4.33 3.49l1.94.26c.18-1.29 1-2.12 2.34-2.12 1.38 0 2.33.76 2.33 1.98 0 .88-.45 1.36-1.27 1.96-1.21.91-1.7 1.78-1.66 3.43V15z"/></svg>);} 
+function ChevronUp(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" /></svg>); }
+function ChevronDown(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="m7.41 8.59 4.59 4.58 4.59-4.58L18 10l-6 6-6-6z" /></svg>); }
+function XIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z" /></svg>); }
+function Check(props) { return (<svg viewBox="0 0 24 24" className="h-4 w-4" {...props}><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>); }
+function QuestionMark(props) { return (<svg viewBox="0 0 24 24" className="h-7 w-7" {...props}><path fill="currentColor" d="M11 18h2v2h-2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-.88-5h1.75v-1c0-1.09.31-1.57 1.34-2.36.94-.72 1.79-1.51 1.79-2.97 0-2.21-1.79-3.67-4.23-3.67-2.27 0-4.05 1.22-4.33 3.49l1.94.26c.18-1.29 1-2.12 2.34-2.12 1.38 0 2.33.76 2.33 1.98 0 .88-.45 1.36-1.27 1.96-1.21.91-1.7 1.78-1.66 3.43V15z" /></svg>); }
 
-/* -------------------- Utilities & Mock API -------------------- */
+/* -------------------- Utilities -------------------- */
 function parseTags(s) {
   return s
     .split(",")
@@ -512,74 +656,37 @@ function parseTags(s) {
     .filter(Boolean)
     .slice(0, 5);
 }
-function uid() { return Math.random().toString(36).slice(2, 9); }
 function timeAgo(ts) {
+  if (!ts) return "some time ago";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
   const units = [
     [60, "s"],
     [60, "m"],
     [24, "h"],
     [7, "d"],
+    [4.345, "w"],
+    [12, "mo"],
+    [100, "y"],
   ];
-  let n = diff, u = "s";
+  let n = diff;
+  let u = "s";
   for (let i = 0; i < units.length; i++) {
     const [step, label] = units[i];
     if (n < step) { u = label; break; }
-    n = Math.floor(n / step);
+    n /= step;
     u = label;
   }
-  return `${Math.max(1, Math.floor(n))}${u} ago`;
+  return `${Math.floor(n)}${u} ago`;
 }
 function freshnessBoost(ts) {
+  if (!ts) return 0;
   const hours = (Date.now() - new Date(ts).getTime()) / 36e5;
   return Math.max(0, Math.floor(24 - Math.min(24, hours))); // boost if <24h old
 }
-
-const fakeApi = {
-  delay(ms) { return new Promise((r) => setTimeout(r, ms)); },
-};
-
-function seedQuestions() {
-  const now = new Date();
-  const hoursAgo = (h) => new Date(now.getTime() - h * 36e5).toISOString();
-  return [
-    {
-      id: uid(),
-      title: "How to approach dynamic programming for coin change?",
-      body: "I get confused choosing between recursion + memo vs bottom-up. What is the intuition and how to derive states?",
-      tags: ["CSE220", "dp", "algorithm"],
-      author: "Rafi",
-      anonymous: false,
-      votes: 6,
-      createdAt: hoursAgo(5),
-      answers: [
-        { id: uid(), body: "Think in terms of optimal substructure: f(amount) = min over coins of 1 + f(amount-coin). Start with base f(0)=0.", author: "Nusrat", votes: 5, helpful: 3, isAccepted: true },
-        { id: uid(), body: "Draw states on paper first. If you can express any solution as a best of subproblems, memoize it.", author: "Anonymous", votes: 2, helpful: 1, isAccepted: false },
-      ],
-    },
-    {
-      id: uid(),
-      title: "What is the difference between BFS tree and shortest-path tree?",
-      body: "During lectures we built a BFS tree. Is it always the same as a shortest-path tree on unweighted graphs?",
-      tags: ["graph", "theory"],
-      author: "Farhan",
-      anonymous: false,
-      votes: 3,
-      createdAt: hoursAgo(30),
-      answers: [
-        { id: uid(), body: "Yes on unweighted graphs they coincide since BFS explores by layers.", author: "Sharif", votes: 4, helpful: 2, isAccepted: false },
-      ],
-    },
-    {
-      id: uid(),
-      title: "Where to find past papers for EEE101 labs?",
-      body: "Looking for resources to practice before the quiz.",
-      tags: ["EEE101", "resources"],
-      author: "Sami",
-      anonymous: true,
-      votes: 2,
-      createdAt: hoursAgo(2),
-      answers: [],
-    },
-  ];
+function formatVotes(votes) {
+  if (votes > 0) {
+    return `+${votes}`;
+  }
+  return votes; // Automatically handles 0 and negative numbers
 }
