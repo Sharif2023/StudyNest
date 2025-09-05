@@ -18,7 +18,7 @@ import Footer from "../Components/Footer";
  * Route: <Route path="/ai-check" element={<AIFileCheck/>} />
  */
 
-const DEMO_MODE = true; // set false when you have a backend endpoint
+const DEMO_MODE = false; // set false when you have a backend endpoint
 
 export default function AIFileCheck() {
   const [file, setFile] = useState(null);
@@ -71,11 +71,18 @@ export default function AIFileCheck() {
         body.append("file", file);
         body.append("options", JSON.stringify(opts));
         body.append("anonymous", String(anon));
-        if (text) body.append("text", text); // optional
+        if (text) body.append("text", text);
 
-        const res = await fetch("/api/ai-file-check", { method: "POST", body });
-        if (!res.ok) throw new Error(`Server error ${res.status}`);
-        const data = await res.json();
+        const res = await fetch("http://localhost/studynest/study-nest/src/api/AIFileCheck.php", {
+          method: "POST",
+          body
+        });
+
+        let data = null;
+        try { data = await res.json(); } catch { }
+        if (!res.ok) {
+          throw new Error(data?.error || `Server error ${res.status}`);
+        }
         setResult(data);
       }
     } catch (e) {
