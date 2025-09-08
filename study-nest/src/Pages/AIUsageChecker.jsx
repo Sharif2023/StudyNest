@@ -1,8 +1,10 @@
 import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
 export default function AIUsageChecker() {
+    const navigate = useNavigate();
     const [file, setFile] = useState(null);
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -16,11 +18,41 @@ export default function AIUsageChecker() {
     async function runCheck() {
         if (!file) return;
         setLoading(true);
-        // 🔽 Replace with real API later
-        await new Promise((r) => setTimeout(r, 1200));
-        setResult({ score: 0.32, feedback: "Mostly human-written with some AI-like sections." });
-        setLoading(false);
+        try {
+            const form = new FormData();
+            form.append("file", file);
+
+            const res = await fetch("http://localhost:8000/src/api/check_ai.php", {
+                method: "POST",
+                body: form,
+            });
+
+            const text = await res.text(); // read raw text first
+            let data;
+            try {
+                data = text ? JSON.parse(text) : null;
+            } catch (e) {
+                throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
+            }
+
+            if (!res.ok) {
+                throw new Error(data?.error || `HTTP ${res.status}`);
+            }
+
+            setResult({ score: data.score, feedback: data.feedback });
+        } catch (err) {
+            setResult({
+                score: 0,
+                feedback:
+                    err?.message ||
+                    "Request failed. Check the Network tab for the response body.",
+            });
+        } finally {
+            setLoading(false);
+        }
     }
+
+
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
@@ -65,11 +97,15 @@ export default function AIUsageChecker() {
                     </div>
                 )}
                 <button
+                    disabled={!result}
                     onClick={() => {
-                        const previewText = "Rewrite the intro and section 2 to be more personal.";
-                        localStorage.setItem("studynest.humanize.pending", JSON.stringify({
-                            text: previewText
-                        }));
+                        localStorage.setItem(
+                            "studynest.humanize.pending",
+                            JSON.stringify({
+                                text: result?.excerpt || "Please paste the text you want to humanize.",
+                                notes: result?.feedback, // optional: carry tips forward
+                            })
+                        );
                         navigate("/humanize");
                     }}
                     className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
