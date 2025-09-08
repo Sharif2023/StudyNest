@@ -224,6 +224,7 @@ export default function LeftNav({
                             <div className="space-y-1 mt-2">
                                 <NavItem to="/ai-check" icon="🧠" label="Ai File Check" expanded={navOpen} />
                                 <NavItem to="/ai-usage" icon="🤖" label="Ai Usage Check" expanded={navOpen} />
+                                <NavItem to="/humanize" icon="✍️" label="Humanize Writing" expanded={navOpen} />
                             </div>
                         )}
                     </nav>
