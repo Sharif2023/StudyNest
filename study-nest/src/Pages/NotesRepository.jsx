@@ -156,14 +156,16 @@ export default function NotesRepository() {
             <Select value={semester} onChange={setSemester} label="Semester" options={semesters} />
             <Select value={tag} onChange={setTag} label="Tag" options={tags} />
           </div>
+          {/* Divider on larger screens */}
+          <span className="hidden md:block h-6 w-px bg-zinc-300/70 mx-1" />
 
           {/* Right: Upload */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setUOpen(true)}
-              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
             >
-              + Upload Notes
+              <PlusIcon className="h-4 w-4" /> Upload Notes
             </button>
           </div>
         </div>
@@ -192,6 +194,11 @@ export default function NotesRepository() {
 }
 
 /* -------------------- Components -------------------- */
+function PlusIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M11 4h2v16h-2z" /><path fill="currentColor" d="M4 11h16v2H4z" /></svg>
+  );
+}
 
 // Dropdown select component for filters (course, semester, tags)
 function Select({ label, value, onChange, options }) {

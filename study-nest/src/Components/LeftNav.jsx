@@ -13,18 +13,46 @@ const Button = ({ variant = "soft", className = "", ...props }) => {
     return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
 };
 
-const NavItem = ({ to, icon, label, expanded, onClick }) => (
-    <Link
-        to={to}
-        onClick={onClick}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl
-               hover:bg-slate-800/50 group transition
-               focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-    >
-        <span className="text-xl text-slate-300 group-hover:text-white transition">{icon}</span>
-        {expanded && <span className="text-sm text-slate-100">{label}</span>}
-    </Link>
-);
+const NavItem = ({ to, icon, label, expanded, onClick }) => {
+    const collapsed = !expanded;
+
+    return (
+        <div className={`relative ${collapsed ? "group" : ""}`}>
+            <Link
+                to={to}
+                onClick={onClick}
+                title={collapsed ? label : undefined} // only for collapsed
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl
+                   hover:bg-slate-800/50 transition
+                   focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+            >
+                <span className="text-xl text-slate-300 group-hover:text-white transition">
+                    {icon}
+                </span>
+                {expanded && <span className="text-sm text-slate-100">{label}</span>}
+            </Link>
+
+            {/* Only render tooltip when collapsed */}
+            {collapsed && (
+                <div
+                    className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 
+                     hidden group-hover:flex z-[60] animate-fade-in"
+                    role="tooltip"
+                >
+                    {/* Tooltip box */}
+                    <div className="relative bg-slate-900/95 border border-slate-700 
+                          px-3 py-1.5 text-sm font-medium text-white 
+                          rounded-lg shadow-lg">
+                        {label}
+                        {/* Arrow */}
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1.5 w-3 h-3 
+                            rotate-45 bg-slate-900 border-l border-t border-slate-700" />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default function LeftNav({
     navOpen,
@@ -97,7 +125,7 @@ export default function LeftNav({
                 )}
 
                 {/* Nav list */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 pb-20 custom-scroll">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-2 py-2 pb-20 custom-scroll">
                     <nav className="space-y-1">
                         <NavItem
                             to="/search"

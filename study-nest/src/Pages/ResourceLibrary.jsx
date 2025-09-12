@@ -175,12 +175,7 @@ export default function App() {
             <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setOpen(true)}
-              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              Add resource
-            </button>
+
           </div>
         </div>
       </header>
@@ -202,6 +197,15 @@ export default function App() {
           <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
           <Select label="Tag" value={tag} onChange={setTag} options={tags} />
           <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+          {/* Divider on larger screens */}
+          <span className="hidden md:block h-6 w-px bg-zinc-300/70 mx-1" />
+
+          <button
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+          >
+            <PlusIcon className="h-4 w-4" /> Add Resource
+          </button>
         </div>
       </section>
 
@@ -237,6 +241,12 @@ export default function App() {
 }
 
 /* -------------------- Components -------------------- */
+function PlusIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M11 4h2v16h-2z" /><path fill="currentColor" d="M4 11h16v2H4z" /></svg>
+  );
+}
+
 function Toggle({ label, value, onChange }) {
   return (
     <label className="flex items-center justify-between">
