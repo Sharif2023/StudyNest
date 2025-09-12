@@ -32,6 +32,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   // Function to fetch data from the API.
   const fetchResources = async () => {
     setLoading(true);
@@ -109,27 +118,27 @@ export default function App() {
       console.error("Error creating resource: " + e.message);
     }
   };
-  
+
   // Function to handle updating a resource (vote, bookmark, flag)
   const updateResource = async (id, updates) => {
     try {
-        const response = await fetch(API_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, ...updates })
-        });
-        const data = await response.json();
-        if (data.status === 'success') {
-            // Optimistically update the local state to provide faster feedback.
-            setItems(prevItems =>
-                prevItems.map(item =>
-                    item.id === id ? { ...item, ...updates } : item
-                )
-            );
-        } else {
-            // Use a custom message box instead of alert()
-            console.error("Failed to update resource: " + data.message);
-        }
+      const response = await fetch(API_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates })
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        // Optimistically update the local state to provide faster feedback.
+        setItems(prevItems =>
+          prevItems.map(item =>
+            item.id === id ? { ...item, ...updates } : item
+          )
+        );
+      } else {
+        // Use a custom message box instead of alert()
+        console.error("Failed to update resource: " + data.message);
+      }
     } catch (e) {
       // Use a custom message box instead of alert()
       console.error("Error updating resource: " + e.message);
@@ -149,9 +158,16 @@ export default function App() {
   const flag = (id) => updateResource(id, { flagged: 1 });
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav />
-      {/* Header */}
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
+
+      {/* Header (no filters here anymore) */}
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
@@ -159,34 +175,38 @@ export default function App() {
             <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
-            <div className="relative w-full md:max-w-md">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search title, description, or #tag"
-                className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <Select label="Type" value={type} onChange={setType} options={types} />
-            <Select label="Course" value={course} onChange={setCourse} options={courses} />
-            <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
-            <Select label="Tag" value={tag} onChange={setTag} options={tags} />
-            <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+            <button
+              onClick={() => setOpen(true)}
+              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              Add resource
+            </button>
           </div>
         </div>
       </header>
 
+      {/* Filters — moved to body */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+          <div className="relative w-full md:max-w-md">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search title, description, or #tag"
+              className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <Select label="Type" value={type} onChange={setType} options={types} />
+          <Select label="Course" value={course} onChange={setCourse} options={courses} />
+          <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
+          <Select label="Tag" value={tag} onChange={setTag} options={tags} />
+          <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+        </div>
+      </section>
 
       {/* List */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {loading && <div className="text-center text-zinc-500">Loading resources...</div>}
         {error && <div className="text-center text-red-500">Error: {error}</div>}
         {!loading && !error && filtered.length === 0 ? (
@@ -212,6 +232,7 @@ export default function App() {
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
       <Footer />
     </main>
+
   );
 }
 
@@ -251,56 +272,56 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
 
   return (
     <article className="group flex flex-col h-full rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition-transform transform hover:scale-105 hover:shadow-xl">
-  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-50">
-    {latestIsFile && isImage ? (
-      <img src={item.url} alt={item.title} className="h-full w-full object-cover rounded-lg shadow-md" />
-    ) : (
-      <div className="grid h-full place-items-center text-zinc-500">
-        <FileIcon className="h-10 w-10" />
-        <span className="mt-1 text-xs">{latestIsFile ? (isPdf ? "PDF" : item.mime?.split("/")[1] || "File") : "External link"}</span>
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-50">
+        {latestIsFile && isImage ? (
+          <img src={item.url} alt={item.title} className="h-full w-full object-cover rounded-lg shadow-md" />
+        ) : (
+          <div className="grid h-full place-items-center text-zinc-500">
+            <FileIcon className="h-10 w-10" />
+            <span className="mt-1 text-xs">{latestIsFile ? (isPdf ? "PDF" : item.mime?.split("/")[1] || "File") : "External link"}</span>
+          </div>
+        )}
+        <button onClick={onPreview} className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex">
+          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">{latestIsFile ? "Preview" : "Open"}</span>
+        </button>
       </div>
-    )}
-    <button onClick={onPreview} className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex">
-      <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">{latestIsFile ? "Preview" : "Open"}</span>
-    </button>
-  </div>
 
-  <div className="mt-4 px-4 min-w-0 flex-1">
-    <h3 className="truncate text-lg font-semibold text-zinc-900" title={item.title}>{item.title}</h3>
-    <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{item.description}</p>
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
-      <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
-      <span>•</span>
-      <span>by {item.author}</span>
-    </div>
-  </div>
+      <div className="mt-4 px-4 min-w-0 flex-1">
+        <h3 className="truncate text-lg font-semibold text-zinc-900" title={item.title}>{item.title}</h3>
+        <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{item.description}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
+          <span>•</span>
+          <span>by {item.author}</span>
+        </div>
+      </div>
 
-  {/* Tags */}
-  <div className="mt-3 px-5 flex flex-wrap gap-2">
-    {(item.tags || '').split(',').map(t => t.trim()).filter(Boolean).map((t) => (
-      <span key={t} className="rounded-full border border-zinc-300 px-3 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 transition">{`#${t}`}</span>
-    ))}
-  </div>
+      {/* Tags */}
+      <div className="mt-3 px-5 flex flex-wrap gap-2">
+        {(item.tags || '').split(',').map(t => t.trim()).filter(Boolean).map((t) => (
+          <span key={t} className="rounded-full border border-zinc-300 px-3 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 transition">{`#${t}`}</span>
+        ))}
+      </div>
 
-  {/* Actions */}
-  <div className="mt-3 px-4 flex items-center justify-between">
-    <div className="flex items-center gap-3 text-xs">
-      <button onClick={() => onVote(item.id, +1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▲ {item.votes}</button>
-      <button onClick={() => onVote(item.id, -1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▼</button>
-      <button onClick={() => onBookmark(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">🔖 {item.bookmarks ? "Saved" : "Save"}</button>
-    </div>
-    <div className="space-x-2 text-xs">
-      <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Report</button>
-      {item.src_type === "file" ? (
-        <a href={item.url} download={item.name} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
-      ) : (
-        <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Open link</a>
-      )}
-    </div>
-  </div>
-</article>
+      {/* Actions */}
+      <div className="mt-3 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-xs">
+          <button onClick={() => onVote(item.id, +1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▲ {item.votes}</button>
+          <button onClick={() => onVote(item.id, -1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▼</button>
+          <button onClick={() => onBookmark(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">🔖 {item.bookmarks ? "Saved" : "Save"}</button>
+        </div>
+        <div className="space-x-2 text-xs">
+          <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Report</button>
+          {item.src_type === "file" ? (
+            <a href={item.url} download={item.name} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
+          ) : (
+            <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Open link</a>
+          )}
+        </div>
+      </div>
+    </article>
 
   );
 }

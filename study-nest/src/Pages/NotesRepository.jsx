@@ -16,6 +16,16 @@ export default function NotesRepository() {
   const [uOpen, setUOpen] = useState(false);
   const [preview, setPreview] = useState(null); // {url, mime, name}
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
+
   // ✅ Function to fetch notes from the API
   const fetchNotes = async () => {
     try {
@@ -90,8 +100,14 @@ export default function NotesRepository() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav />
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
@@ -145,20 +161,20 @@ export default function NotesRepository() {
 
 // Dropdown select component for filters (course, semester, tags)
 function Select({ label, value, onChange, options }) {
-    return (
-        <label className="text-white inline-flex items-center gap-2 text-sm">
-            <span>{label}</span>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-                {options.map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                ))}
-            </select>
-        </label>
-    );
+  return (
+    <label className="text-white inline-flex items-center gap-2 text-sm">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </label>
+  );
 };
 
 // ✅ UPDATED: NoteCard now works with the database schema
@@ -174,8 +190,8 @@ function NoteCard({ note }) {
           <img src={note.file_url} alt={note.title} className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full place-items-center p-4 text-center text-zinc-500">
-             <FileIcon className="h-10 w-10" />
-             <span className="mt-2 text-xs font-semibold">{note.title}</span>
+            <FileIcon className="h-10 w-10" />
+            <span className="mt-2 text-xs font-semibold">{note.title}</span>
           </div>
         )}
       </div>
@@ -193,7 +209,7 @@ function NoteCard({ note }) {
       </div>
 
       <div className="mt-4 flex items-center gap-2 border-t border-zinc-200 pt-4">
-         <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700">
+        <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700">
           Open
         </a>
         <a href={note.file_url} download className="flex-1 rounded-lg bg-zinc-200 px-3 py-2 text-center text-sm font-semibold text-zinc-800 hover:bg-zinc-300">

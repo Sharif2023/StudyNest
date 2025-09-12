@@ -29,6 +29,15 @@ export default function QnAForum() {
   const [askOpen, setAskOpen] = useState(false);
   const [detail, setDetail] = useState(null); // question id
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   // Fetch all questions from the backend on initial load
   useEffect(() => {
     fetch(API_ENDPOINT)
@@ -130,7 +139,7 @@ export default function QnAForum() {
   const onVoteQuestion = (id, delta) => {
     // Optimistic update
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: Number(q.votes) + delta } : q));
-    
+
     fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -139,31 +148,31 @@ export default function QnAForum() {
       .then(response => response.json())
       .then(data => {
         if (data.status !== 'success') {
-            // Revert on error
-            setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-            console.error('Error voting on question:', data.message);
+          // Revert on error
+          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+          console.error('Error voting on question:', data.message);
         }
       })
       .catch(error => {
-          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-          console.error('Error:', error)
+        setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+        console.error('Error:', error)
       });
   };
 
   const onAddAnswer = (qid, answer) => {
     const tempAnswerId = `temp-ans-${Date.now()}`;
     const newAnswer = {
-        ...answer,
-        id: tempAnswerId,
-        votes: 0,
-        helpful: 0,
-        isAccepted: false,
-        createdAt: new Date().toISOString(),
+      ...answer,
+      id: tempAnswerId,
+      votes: 0,
+      helpful: 0,
+      isAccepted: false,
+      createdAt: new Date().toISOString(),
     };
-    
+
     // Optimistic update
-    setQuestions(prev => prev.map(q => 
-        q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
+    setQuestions(prev => prev.map(q =>
+      q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
     ));
 
     fetch(API_ENDPOINT, {
@@ -183,15 +192,15 @@ export default function QnAForum() {
           fetch(API_ENDPOINT).then(res => res.json()).then(setQuestions);
         } else {
           // Revert on error
-          setQuestions(prev => prev.map(q => 
+          setQuestions(prev => prev.map(q =>
             q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
           ));
           console.error('Error adding answer:', data.message);
         }
       })
       .catch(error => {
-        setQuestions(prev => prev.map(q => 
-            q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
+        setQuestions(prev => prev.map(q =>
+          q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
         ));
         console.error('Error:', error);
       });
@@ -218,7 +227,7 @@ export default function QnAForum() {
   };
 
   const onPeerReview = (qid, aid) => {
-   setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
+    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
     fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -258,8 +267,14 @@ export default function QnAForum() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav></LeftNav>
+    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">

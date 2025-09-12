@@ -37,6 +37,15 @@ export default function TagSearch() {
   const forum = useMemo(() => loadForum(), []);
   const rooms = useMemo(() => loadRooms(), []);
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   const allItems = useMemo(() => {
     // normalize to a single index
     const n = notes.map((n) => ({
@@ -137,8 +146,14 @@ export default function TagSearch() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <LeftNav />
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold tracking-tight text-white">Search & Tags</h1>
