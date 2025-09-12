@@ -99,6 +99,27 @@ export default function NotesRepository() {
     setUOpen(false); // Close the upload modal after submission
   };
 
+  function Select({ label, value, onChange, options }) {
+    return (
+      <label className="inline-flex items-center gap-2 text-md">
+        <span className="text-zinc-900">{label}</span>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="rounded-xl border border-zinc-300 bg-zinc-100 text-zinc-800 
+                   px-3 py-2 text-sm focus:outline-none focus:ring-2 
+                   focus:ring-emerald-500"
+        >
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
       <LeftNav
@@ -114,28 +135,41 @@ export default function NotesRepository() {
             <h1 className="text-xl font-bold tracking-tight text-white">Lecture Notes</h1>
             <p className="text-sm text-white">Upload, organize, and version your course notes.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setUOpen(true)} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Upload</button>
-          </div>
         </div>
+      </header>
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-            <div className="relative w-full md:max-w-md">
+      {/* Search + Filters + Upload */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          {/* Left: search + filters */}
+          <div className="flex w-full flex-col sm:flex-row sm:items-center gap-3 md:gap-4">
+            <div className="relative w-full sm:max-w-md">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search title, description, or tag…"
-                className="w-full rounded-xl border border-zinc-300 bg-white pl-4 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-zinc-300 bg-white pl-4 pr-3 py-2 text-sm
+                     text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <Select value={course} onChange={setCourse} label="Course" options={courses} />
             <Select value={semester} onChange={setSemester} label="Semester" options={semesters} />
             <Select value={tag} onChange={setTag} label="Tag" options={tags} />
           </div>
-        </div>
-      </header>
 
+          {/* Right: Upload */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setUOpen(true)}
+              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              + Upload Notes
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Notes grid */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {filtered.length === 0 ? (
           <EmptyState onNew={() => setUOpen(true)} />
