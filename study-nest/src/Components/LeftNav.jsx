@@ -113,8 +113,8 @@ export default function LeftNav({
                         <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
                             <div className="h-9 w-9 rounded-xl bg-slate-800 grid place-content-center">😊</div>
                             <div className="text-sm">
-                                <div className="font-medium leading-tight text-white">Study Nest</div>
-                                <div className="text-xs text-slate-400">UIU Study Network</div>
+                                <div className="font-medium leading-tight text-white">Shariful Islam</div>
+                                <div className="text-xs text-slate-400">Id: 011221078</div>
                             </div>
                         </div>
                         <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl
