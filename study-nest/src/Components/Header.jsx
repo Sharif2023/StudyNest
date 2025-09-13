@@ -21,14 +21,9 @@ export default function Header({ sidebarWidth = 72 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
-  const [user, setUser] = useState(() => {
-    // Try "user" first; fall back to "admin" if your app stores that
-    const stored =
-      localStorage.getItem("user") ||
-      localStorage.getItem("admin") ||
-      "null";
+  const [auth, setAuth] = useState(() => {
     try {
-      return JSON.parse(stored);
+      return JSON.parse(localStorage.getItem("studynest.auth")) || null;
     } catch {
       return null;
     }
@@ -42,14 +37,13 @@ export default function Header({ sidebarWidth = 72 }) {
   const BASE_URL = ""; // e.g. "http://localhost:3000/" or your CDN origin
 
   useEffect(() => {
-    if (user?.profileImage) {
-      const full =
-        user.profileImage.startsWith("http")
-          ? user.profileImage
-          : `${BASE_URL}${user.profileImage}`;
+    if (auth?.profileImage) {
+      const full = auth.profileImage.startsWith("http")
+        ? auth.profileImage
+        : `${BASE_URL}${auth.profileImage}`;
       setProfileImage(full);
     }
-  }, [user]);
+  }, [auth]);
 
   // Close on outside click or ESC
   useEffect(() => {
@@ -71,11 +65,13 @@ export default function Header({ sidebarWidth = 72 }) {
 
   const navigate = useNavigate();
   const handleLogout = () => {
-    // Clear whichever key your app actually uses
+    // Clear whichever keys your app uses
+    localStorage.removeItem("studynest.auth");
     localStorage.removeItem("user");
     localStorage.removeItem("admin");
     navigate("/login");
   };
+
 
   return (
     <div
@@ -193,10 +189,10 @@ export default function Header({ sidebarWidth = 72 }) {
                     />
                     <div>
                       <div className="text-white text-sm font-medium">
-                        {user?.name || "Guest"}
+                        {auth?.email || "guest@example.com"}
                       </div>
                       <div className="text-slate-400 text-xs">
-                        {user?.email || "guest@example.com"}
+                        ID: {auth?.student_id || auth?.id || "—"}
                       </div>
                     </div>
                   </div>

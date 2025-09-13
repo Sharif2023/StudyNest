@@ -31,8 +31,8 @@ export default function Login() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Optionally store user in localStorage/sessionStorage
-      // localStorage.setItem("user", JSON.stringify(data.user));
+      // Persist authenticated user from backend for the app shell
+      localStorage.setItem("studynest.auth", JSON.stringify(data.user));
 
       navigate("/home");
     } catch (err) {
