@@ -10,6 +10,15 @@ export default function AIUsageChecker() {
     const [loading, setLoading] = useState(false);
     const inputRef = useRef();
 
+    //leftBar
+    const [navOpen, setNavOpen] = useState(false);
+    const [anonymous, setAnonymous] = useState(false);
+
+    // Match LeftNav’s expected widths
+    const COLLAPSED_W = 72;   // px
+    const EXPANDED_W = 248;  // px
+    const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
     async function handleFile(f) {
         setFile(f);
         setResult(null);
@@ -55,11 +64,17 @@ export default function AIUsageChecker() {
 
 
     return (
-        <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-            <LeftNav></LeftNav>
+        <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+            <LeftNav
+                navOpen={navOpen}
+                setNavOpen={setNavOpen}
+                anonymous={anonymous}
+                setAnonymous={setAnonymous}
+                sidebarWidth={sidebarWidth}
+            />
             {/* Header */}
             <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-                <div className="mx-auto max-w-7xl px-6 py-6 flex items-center justify-between">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                     <div>
                         <h1 className="text-xl font-bold text-white">AI Usage Checker</h1>
                         <p className="text-sm text-white">Check your AI usage %, Make it Huminize version.</p>

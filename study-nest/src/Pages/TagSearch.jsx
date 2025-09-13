@@ -37,6 +37,15 @@ export default function TagSearch() {
   const forum = useMemo(() => loadForum(), []);
   const rooms = useMemo(() => loadRooms(), []);
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   const allItems = useMemo(() => {
     // normalize to a single index
     const n = notes.map((n) => ({
@@ -137,44 +146,83 @@ export default function TagSearch() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white">
-      <LeftNav />
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold tracking-tight text-white">Search & Tags</h1>
           <p className="text-sm text-white">Find anything across StudyNest by topic.</p>
-
-          {/* Search bar and type filters */}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:max-w-xl">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Escape") setQ(""); if (e.key === "Enter") setQ(e.currentTarget.value); }}
-                placeholder="Search notes, resources, forum posts, rooms…"
-                className="w-full rounded-xl border border-white bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              {q && (
-                <button onClick={() => setQ("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs rounded-md border border-zinc-300 px-2 py-0.5">Clear</button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              {[
-                ["all", "All"],
-                ["forum", "Forum"],
-                ["notes", "Notes"],
-                ["resources", "Resources"],
-                ["rooms", "Rooms"],
-              ].map(([val, label]) => (
-                <button key={val} onClick={() => setType(val)} className={"rounded-xl px-3 py-1.5 font-semibold " + (type === val ? "bg-zinc-900 text-white" : "border border-white text-white hover:bg-zinc-500")}>{label}</button>
-              ))}
-              {(q || activeTag || type !== "all") && (
-                <button onClick={clearAll} className="rounded-xl px-3 py-1.5 text-sm border border-white hover:bg-zinc-500">Reset</button>
-              )}
-            </div>
-          </div>
         </div>
       </header>
+
+
+      {/* Search bar and type filters */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:max-w-xl">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setQ("");
+                if (e.key === "Enter") setQ(e.currentTarget.value);
+              }}
+              placeholder="Search notes, resources, forum posts, rooms…"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm
+                   text-zinc-900 placeholder-zinc-500 focus:outline-none
+                   focus:ring-2 focus:ring-emerald-500"
+            />
+            {q && (
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs rounded-md
+                     border border-zinc-300 px-2 py-0.5 bg-white hover:bg-zinc-50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            {[
+              ["all", "All"],
+              ["forum", "Forum"],
+              ["notes", "Notes"],
+              ["resources", "Resources"],
+              ["rooms", "Rooms"],
+            ].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setType(val)}
+                className={
+                  "rounded-xl px-3 py-1.5 font-semibold transition " +
+                  (type === val
+                    ? "bg-zinc-900 text-white"
+                    : "border border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50")
+                }
+              >
+                {label}
+              </button>
+            ))}
+            {(q || activeTag || type !== "all") && (
+              <button
+                onClick={clearAll}
+                className="rounded-xl px-3 py-1.5 text-sm border border-zinc-300
+                     bg-white hover:bg-zinc-50"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
 
       {/* Tag cloud */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">

@@ -29,6 +29,15 @@ export default function QnAForum() {
   const [askOpen, setAskOpen] = useState(false);
   const [detail, setDetail] = useState(null); // question id
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   // Fetch all questions from the backend on initial load
   useEffect(() => {
     fetch(API_ENDPOINT)
@@ -130,7 +139,7 @@ export default function QnAForum() {
   const onVoteQuestion = (id, delta) => {
     // Optimistic update
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: Number(q.votes) + delta } : q));
-    
+
     fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -139,31 +148,31 @@ export default function QnAForum() {
       .then(response => response.json())
       .then(data => {
         if (data.status !== 'success') {
-            // Revert on error
-            setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-            console.error('Error voting on question:', data.message);
+          // Revert on error
+          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+          console.error('Error voting on question:', data.message);
         }
       })
       .catch(error => {
-          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-          console.error('Error:', error)
+        setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
+        console.error('Error:', error)
       });
   };
 
   const onAddAnswer = (qid, answer) => {
     const tempAnswerId = `temp-ans-${Date.now()}`;
     const newAnswer = {
-        ...answer,
-        id: tempAnswerId,
-        votes: 0,
-        helpful: 0,
-        isAccepted: false,
-        createdAt: new Date().toISOString(),
+      ...answer,
+      id: tempAnswerId,
+      votes: 0,
+      helpful: 0,
+      isAccepted: false,
+      createdAt: new Date().toISOString(),
     };
-    
+
     // Optimistic update
-    setQuestions(prev => prev.map(q => 
-        q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
+    setQuestions(prev => prev.map(q =>
+      q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
     ));
 
     fetch(API_ENDPOINT, {
@@ -183,15 +192,15 @@ export default function QnAForum() {
           fetch(API_ENDPOINT).then(res => res.json()).then(setQuestions);
         } else {
           // Revert on error
-          setQuestions(prev => prev.map(q => 
+          setQuestions(prev => prev.map(q =>
             q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
           ));
           console.error('Error adding answer:', data.message);
         }
       })
       .catch(error => {
-        setQuestions(prev => prev.map(q => 
-            q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
+        setQuestions(prev => prev.map(q =>
+          q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
         ));
         console.error('Error:', error);
       });
@@ -218,7 +227,7 @@ export default function QnAForum() {
   };
 
   const onPeerReview = (qid, aid) => {
-   setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
+    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
     fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -258,70 +267,90 @@ export default function QnAForum() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav></LeftNav>
+    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">Q&A Forum</h1>
-              <p className="text-sm text-white">Ask questions, review peers, and vote on the best answers.</p>
-            </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-white">Q&A Forum</h1>
+            <p className="text-sm text-white">Ask questions, review peers, and vote on the best answers.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Search + Sort + Ask */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          {/* Search */}
+          <div className="relative w-full md:max-w-xl">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by title, text, or tag…"
+              className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm
+                   text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* Sort + Ask */}
+          <div className="flex items-center gap-2">
+            {["Hot", "New", "Top"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={
+                  "rounded-xl px-3 py-1.5 text-sm font-semibold transition " +
+                  (sort === s
+                    ? "bg-zinc-900 text-white"
+                    : "border border-zinc-300 text-zinc-800 bg-white hover:bg-zinc-50")
+                }
+              >
+                {s}
+              </button>
+            ))}
+
+            {/* Divider on larger screens */}
+            <span className="hidden md:block h-6 w-px bg-zinc-300/70 mx-1" />
+
             <button
               onClick={() => setAskOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
             >
               <PlusIcon className="h-4 w-4" /> Ask a question
             </button>
           </div>
-          {/* Search + Sort + Tags */}
-          <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative max-w-xl w-full">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by title, text, or tag…"
-                className="w-full rounded-xl border border-white-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              {(["Hot", "New", "Top"]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSort(s)}
-                  className={
-                    "rounded-xl px-3 py-1.5 font-semibold " +
-                    (sort === s
-                      ? "bg-zinc-900 text-white"
-                      : "border border-white text-white hover:bg-zinc-500")
-                  }
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Tag row */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {tags.map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTag(t)}
-                className={
-                  "rounded-full border px-3 py-1 text-xs font-semibold " +
-                  (activeTag === t
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-white text-white hover:bg-zinc-500")
-                }
-              >
-                {t}
-              </button>
-            ))}
-          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Tag row */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-3">
+        <div className="flex flex-wrap gap-2">
+          {tags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTag(t)}
+              className={
+                "rounded-full px-3 py-1 text-xs font-semibold transition " +
+                (activeTag === t
+                  ? "bg-zinc-900 text-white"
+                  : "border border-zinc-300 text-zinc-700 bg-white hover:bg-zinc-50")
+              }
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </section>
+
 
       {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">

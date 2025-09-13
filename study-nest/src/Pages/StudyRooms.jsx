@@ -26,6 +26,15 @@ export function RoomsLobby() {
   const [title, setTitle] = useState("");
   const navigate = useNavigate();
 
+  //leftBar
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+
+  // Match LeftNav’s expected widths
+  const COLLAPSED_W = 72;   // px
+  const EXPANDED_W = 248;  // px
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
   function create() {
     const finalTitle = title.trim() || "Quick Study Room";
     const id = uid();
@@ -42,8 +51,14 @@ export function RoomsLobby() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl">
-      <LeftNav></LeftNav>
+    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+      <LeftNav
+        navOpen={navOpen}
+        setNavOpen={setNavOpen}
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
+        sidebarWidth={sidebarWidth}
+      />
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6">
@@ -52,25 +67,30 @@ export function RoomsLobby() {
             <h1 className="text-xl font-bold tracking-tight text-white">Study Rooms</h1>
             <p className="text-sm text-white/70 hidden sm:block">Meet on video, chat, and collaborate live.</p>
           </div>
-
-          {/* Input and Button */}
-          <div className="flex-grow flex items-center justify-end gap-3">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Create a room: e.g., CSE220 Quiz Review"
-              className="w-full sm:max-w-md rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              type="button"
-              onClick={create}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              Start room
-            </button>
-          </div>
         </div>
       </header>
+
+      {/* Input and Button */}
+      <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Create a room: e.g., CSE220 Quiz Review"
+            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm 
+                 text-zinc-900 placeholder-zinc-400 focus:outline-none 
+                 focus:ring-2 focus:ring-emerald-500"
+          />
+          <button
+            type="button"
+            onClick={create}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white 
+                 hover:bg-emerald-700 transition"
+          >
+            Start room
+          </button>
+        </div>
+      </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {rooms.length === 0 ? (

@@ -13,6 +13,7 @@ import Home from "./Pages/Home";
 import AIFileCheck from "./Pages/AIFileCheck";
 import AIUsageChecker from "./Pages/AIUsageChecker";
 import HumanizeWriting from "./Pages/HumanizeWriting";
+import AdminDashboard from './pages/AdminDashboard.jsx';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="/ai-check" element={<AIFileCheck />} />
         <Route path="/ai-usage" element={<AIUsageChecker />} />
         <Route path="/humanize" element={<HumanizeWriting />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );
