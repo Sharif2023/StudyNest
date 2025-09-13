@@ -24,6 +24,15 @@ export default function Profile() {
 
   // ----- Profile state -----
   const [tab, setTab] = useState("overview");
+  const [auth, setAuth] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("studynest.auth")) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Keep your editable local profile (for avatar/bio/prefs)
   const [user, setUser] = useState(() => loadUser());
   const [dark, setDark] = useState(() => !!user?.prefs?.darkMode);
 
@@ -46,7 +55,7 @@ export default function Profile() {
 
   function updateUser(next) {
     setUser(next);
-    try { localStorage.setItem("studynest.user", JSON.stringify(next)); } catch {}
+    try { localStorage.setItem("studynest.user", JSON.stringify(next)); } catch { }
   }
 
   return (
@@ -72,8 +81,15 @@ export default function Profile() {
               <div className="flex items-center gap-4">
                 <Avatar url={user.avatar} name={user.name} size={64} />
                 <div>
-                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{user.name}</h1>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">{user.email}</p>
+                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                    {user.name || "Student"}
+                  </h1>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {auth?.email || "—"}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    ID: {auth?.student_id || auth?.id || "—"}
+                  </p>
                 </div>
               </div>
               <div className="sm:ml-auto flex items-center gap-2">
@@ -104,6 +120,9 @@ export default function Profile() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{user.name}</h2>
+                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        {auth?.email || "—"} • ID: {auth?.student_id || auth?.id || "—"}
+                      </p>
                       {user.prefs?.defaultAnonymous && (
                         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           Anonymous
@@ -191,7 +210,7 @@ export default function Profile() {
                       const res = loadLocal("studynest.resources", []);
                       const reset = res.map((r) => ({ ...r, bookmarks: 0 }));
                       localStorage.setItem("studynest.resources", JSON.stringify(reset));
-                    } catch {}
+                    } catch { }
                     setUser(loadUser());
                     setTab("overview");
                   }}
@@ -580,7 +599,7 @@ function loadUser() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.user"));
     if (raw && typeof raw === "object") return raw;
-  } catch {}
+  } catch { }
   const seed = {
     name: "You",
     email: "you@example.com",
@@ -590,6 +609,6 @@ function loadUser() {
   };
   try {
     localStorage.setItem("studynest.user", JSON.stringify(seed));
-  } catch {}
+  } catch { }
   return seed;
 }
