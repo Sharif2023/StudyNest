@@ -17,6 +17,7 @@ const SIDEBAR_WIDTH_COLLAPSED = 72;
 const SIDEBAR_WIDTH_EXPANDED = 260;
 
 export default function Profile() {
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
   // ----- Shell state (LeftNav) -----
   const [navOpen, setNavOpen] = useState(true);
   const [anonymous, setAnonymous] = useState(false);
@@ -32,7 +33,28 @@ export default function Profile() {
     }
   });
 
-  // Keep your editable local profile (for avatar/bio/prefs)
+  const [profile, setProfile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
+  });
+  const displayName = (profile?.name && profile.name.trim())
+    || (auth?.name && auth.name.trim())
+    || "Student";
+  // On mount, refresh profile from backend (session-based)
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+        const j = await r.json();
+        const p = j?.ok ? j.profile : j;
+        if (p) {
+          setProfile(p);
+          localStorage.setItem("studynest.profile", JSON.stringify(p));
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, []);
+
+  // Keep your editable local profile (for profile picture/bio/prefs)
   const [user, setUser] = useState(() => loadUser());
   const [dark, setDark] = useState(() => !!user?.prefs?.darkMode);
 
@@ -79,16 +101,16 @@ export default function Profile() {
           <div className="mb-6 rounded-2xl bg-white/90 dark:bg-slate-900/60 ring-1 ring-zinc-200 dark:ring-white/10 backdrop-blur p-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-4">
-                <Avatar url={user.avatar} name={user.name} size={64} />
+                <profile_picture url={user.profile_picture} name={user.name} size={64} />
                 <div>
                   <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {user.name || "Student"}
+                    {profile?.name || user.name || "Student"}
                   </h1>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {auth?.email || "—"}
+                    {profile?.email || auth?.email || "—"}
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    ID: {auth?.student_id || auth?.id || "—"}
+                    ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
                   </p>
                 </div>
               </div>
@@ -116,12 +138,12 @@ export default function Profile() {
               {/* Profile card */}
               <div className="rounded-2xl bg-white p-5 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
                 <div className="flex items-start gap-4">
-                  <Avatar url={user.avatar} name={user.name} size={56} />
+                  <profile_picture url={user.profile_picture} name={user.name} size={56} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{user.name}</h2>
+                      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{profile?.name || user.name}</h2>
                       <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        {auth?.email || "—"} • ID: {auth?.student_id || auth?.id || "—"}
+                        {profile?.email || auth?.email || "—"} • ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
                       </p>
                       {user.prefs?.defaultAnonymous && (
                         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -153,7 +175,7 @@ export default function Profile() {
               <nav className="rounded-2xl bg-white p-2 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
                 {[
                   ["overview", "Overview", "Home profile summary"],
-                  ["edit", "Edit Profile", "Name, email, bio, avatar"],
+                  ["edit", "Edit Profile", "Name, email, bio, profile_picture"],
                   ["prefs", "Preferences", "Dark mode, anonymity, focus"],
                   ["bookmarks", "Bookmarks", "Your saved resources"],
                   ["content", "My Content", "Notes, resources, rooms"],
@@ -233,7 +255,7 @@ function Overview({ user, notes, resources, rooms, bookmarks }) {
     <section className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex items-start gap-4">
-          <Avatar url={user.avatar} name={user.name} size={56} />
+          <profile_picture url={user.profile_picture} name={user.name} size={56} />
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {user.name} 👋</h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -270,35 +292,81 @@ function Overview({ user, notes, resources, rooms, bookmarks }) {
 }
 
 function EditProfile({ user, onChange }) {
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const [profile, setProfile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
+  });
+  const [auth] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
+  });
+
+  const id = profile?.id || auth?.id;
+  const student_id = profile?.student_id || auth?.student_id || "—";
+  const email = profile?.email || user.email;
+
+  const [name, setName] = useState(profile?.name || user.name || "");
   const [bio, setBio] = useState(user.bio || "");
-  const [avatar, setAvatar] = useState(user.avatar || "");
+  const [profile_picture, setprofile_picture] = useState(profile?.profile_picture_url || user.profile_picture || "");
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
-  function handleAvatar(e) {
+  function handleprofile_picture(e) {
     const f = e.target.files?.[0];
     if (!f) return;
+    // For now, we store a local object URL or you can build an upload endpoint later
     const url = URL.createObjectURL(f);
-    setAvatar(url);
+    setprofile_picture(url);
   }
 
-  function save() {
-    onChange({ ...user, name: name.trim() || user.name, email: email.trim() || user.email, bio: bio.trim(), avatar });
+  async function save() {
+    if (!id) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/profile.php`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id, name: name.trim() || "You", profile_picture_url: profile_picture || "" })
+      });
+      const j = await res.json();
+      if (j?.ok && j.profile) {
+        // Update profile cache for Header/LeftNav
+        setProfile(j.profile);
+        try {
+          localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+          // Optional: keep auth.name in sync so anywhere using 'auth' also reflects new name
+          const authRaw = localStorage.getItem("studynest.auth");
+          if (authRaw) {
+            const authObj = JSON.parse(authRaw);
+            localStorage.setItem("studynest.auth", JSON.stringify({ ...authObj, name: j.profile.name }));
+          }
+        } catch { }
+        onChange({ ...user, name: j.profile.name, email: j.profile.email, bio, profile_picture });
+      } else {
+        alert(j?.error || "Failed to save profile");
+      }
+    } catch (e) {
+      alert("Network error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <section className="grid gap-6 lg:grid-cols-3">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex flex-col items-center text-center">
-          <Avatar url={avatar} name={name} size={96} />
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
+          <profile_picture url={profile_picture} name={name} size={96} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleprofile_picture} />
           <button
             onClick={() => fileRef.current?.click()}
             className="mt-3 rounded-xl border border-zinc-300 px-3 py-1.5 text-sm font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-slate-800"
           >
-            Change avatar
+            Change profile picture
           </button>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            (For production, add an upload API and save a real file path to <code>profile_picture_url</code>.)
+          </p>
         </div>
       </div>
 
@@ -313,14 +381,39 @@ function EditProfile({ user, onChange }) {
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
             />
           </div>
+
+          {/* Email (read-only) */}
           <div>
             <Label>Email</Label>
             <input
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              disabled
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm bg-zinc-100 dark:bg-slate-800 dark:border-zinc-700 dark:text-zinc-400 cursor-not-allowed"
+            />
+          </div>
+
+          {/* Student ID (read-only) */}
+          <div>
+            <Label>Student ID</Label>
+            <input
+              value={student_id}
+              disabled
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm bg-zinc-100 dark:bg-slate-800 dark:border-zinc-700 dark:text-zinc-400 cursor-not-allowed"
+            />
+          </div>
+
+          {/* profile picture URL (optional direct link field) */}
+          <div>
+            <Label>Profile Picture URL (optional)</Label>
+            <input
+              value={profile_picture}
+              onChange={(e) => setprofile_picture(e.target.value)}
+              placeholder="https://example.com/me.jpg"
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
             />
           </div>
+
+          {/* Bio */}
           <div className="md:col-span-2">
             <Label>Bio</Label>
             <textarea
@@ -331,12 +424,14 @@ function EditProfile({ user, onChange }) {
             />
           </div>
         </div>
+
         <div className="mt-4 flex justify-end">
           <button
             onClick={save}
-            className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+            disabled={saving}
+            className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-60"
           >
-            Save changes
+            {saving ? "Saving..." : "Save changes"}
           </button>
         </div>
       </div>
@@ -536,7 +631,7 @@ function Security({ user, onClear }) {
 }
 
 /* -------------------- Small Components -------------------- */
-function Avatar({ url, name, size = 40 }) {
+function profile_picture({ url, name, size = 40 }) {
   return url ? (
     <img src={url} alt={name} className="rounded-full object-cover ring-2 ring-cyan-200/50 dark:ring-cyan-400/20" style={{ width: size, height: size }} />
   ) : (
@@ -602,9 +697,9 @@ function loadUser() {
   } catch { }
   const seed = {
     name: "You",
-    email: "you@example.com",
+    email: `{profile?.email || auth?.email || "—"}`,
     bio: "Student at StudyNest",
-    avatar: "",
+    profile_picture: "",
     prefs: { defaultAnonymous: false, darkMode: false, courseFocus: "" },
   };
   try {

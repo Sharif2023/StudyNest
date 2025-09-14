@@ -1,68 +1,76 @@
 <?php
-// profile.php
+// api/profile.php
+require __DIR__ . '/db.php'; // provides $pdo and CORS headers
 
-include 'db.php';  // Include database connection
+// Use PHP sessions for auth (matches your existing file)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-session_start();
-
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
-header("Access-Control-Allow-Headers: Content-Type");
-
-
-// Check if user is logged in
+// 401 if not logged in
 if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);  // Unauthorized request
-    echo json_encode(['error' => 'Unauthorized']);
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
     exit;
 }
 
-$user_id = $_SESSION['user_id']; // Get the logged-in user's ID
+$user_id = intval($_SESSION['user_id']);
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Fetch user's profile data
-    $stmt = $conn->prepare("SELECT id, name, email, bio, avatar FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $profile = $result->fetch_assoc();
-    
-    if ($profile) {
-        echo json_encode($profile);  // Return profile as JSON
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'Profile not found']);
-    }
-
-    exit;
+// Helper to fetch and return the canonical profile row
+function fetch_profile(PDO $pdo, int $id) {
+    $stmt = $pdo->prepare("
+        SELECT id, student_id, email, name, avatar_url, created_at, updated_at
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    return $row ?: null;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Update user's profile data
-    $data = json_decode(file_get_contents("php://input"), true);
+try {
+    // Support GET (read) and PUT/POST (update name/avatar only)
+    $method = $_SERVER['REQUEST_METHOD'];
 
-    // Check if the necessary fields are present
-    $name = $data['name'] ?? '';
-    $email = $data['email'] ?? '';
-    $bio = $data['bio'] ?? '';
-    $avatar = $data['avatar'] ?? '';  // Optional field: avatar (can be a URL or base64 encoded)
-
-    if (empty($name) || empty($email)) {
-        http_response_code(400);  // Bad request
-        echo json_encode(['error' => 'Name and email are required']);
+    if ($method === 'GET') {
+        $profile = fetch_profile($pdo, $user_id);
+        if (!$profile) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'error' => 'Profile not found']);
+            exit;
+        }
+        echo json_encode(['ok' => true, 'profile' => $profile]);
         exit;
     }
 
-    // Update user information in the database
-    $stmt = $conn->prepare("UPDATE users SET name=?, email=?, bio=?, avatar=? WHERE id=?");
-    $stmt->bind_param("ssssi", $name, $email, $bio, $avatar, $user_id);
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
-        http_response_code(500);  // Internal server error
-        echo json_encode(['error' => 'Failed to update profile']);
+    if ($method === 'PUT' || $method === 'POST') {
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+
+        // Only updatable fields:
+        $name = isset($data['name']) ? trim($data['name']) : '';
+        $avatar_url = isset($data['avatar_url']) ? trim($data['avatar_url']) : '';
+
+        if ($name === '') {
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'error' => 'name is required']);
+            exit;
+        }
+
+        // Email and student_id are intentionally NOT updatable here
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, avatar_url = ? WHERE id = ? LIMIT 1");
+        $stmt->execute([$name, $avatar_url !== '' ? $avatar_url : null, $user_id]);
+
+        // Return the fresh profile after update
+        $profile = fetch_profile($pdo, $user_id);
+        echo json_encode(['ok' => true, 'profile' => $profile]);
+        exit;
     }
 
-    exit;
+    // Method not allowed
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'Method not allowed']);
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

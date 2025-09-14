@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SummarizingParaphrasing from "./SummarizingParaphrasing";
 
@@ -63,14 +63,32 @@ export default function LeftNav({
 }) {
     const [moreVisible, setMoreVisible] = useState(false);
     const [spOpen, setSpOpen] = useState(false);
-    const toggleMoreVisibility = () => setMoreVisible((v) => !v);
-    const [auth, setAuth] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem("studynest.auth")) || null;
-        } catch {
-            return null;
-        }
+    const [profile, setProfile] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
     });
+
+    // Stay in sync if Header/Login/Edit updates localStorage
+    useEffect(() => {
+        const onStorage = (e) => {
+            if (e.key === "studynest.profile") {
+                try { setProfile(JSON.parse(e.newValue) || null); } catch { setProfile(null); }
+            }
+            if (e.key === "studynest.auth") {
+                // Fallback id if profile not ready yet
+                // (not strictly needed but keeps ID fresh)
+                // no state kept for auth here; we compute display only
+            }
+        };
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+    }, []);
+    const toggleMoreVisibility = () => setMoreVisible((v) => !v);
+    const [auth] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
+    });
+
+    const displayName = profile?.name || auth?.name || "You";
+    const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
 
     return (
         <>
@@ -118,16 +136,19 @@ export default function LeftNav({
                 {navOpen && (
                     <div className="px-3 py-2 border-b border-slate-800">
                         <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                            <div className="h-9 w-9 rounded-xl bg-slate-800 grid place-content-center">😊</div>
+                            <div className="h-9 w-9 rounded-xl overflow-hidden bg-slate-800 grid place-content-center">
+                                {profile?.avatar_url
+                                    ? <img src={profile.avatar_url} alt={displayName} className="h-9 w-9 object-cover" />
+                                    : <span className="text-white text-sm">{String(displayName || "U").slice(0, 1).toUpperCase()}</span>}
+                            </div>
                             <div className="text-sm">
-                                <div className="font-medium leading-tight text-white">Shariful Islam</div>
-                                <div className="font-medium leading-tight text-white">
-                                    ID: {auth?.student_id || auth?.id || "—"}
-                                </div>
+                                <div className="font-medium leading-tight text-white">{displayName}</div>
+                                <div className="font-medium leading-tight text-white">ID: {studentId}</div>
                             </div>
                         </div>
-                        <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl
-                          bg-slate-900 border border-slate-800 text-sm text-slate-200">
+
+                        {/* Points row unchanged */}
+                        <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200">
                             Points <span className="font-semibold">1,245</span>
                         </div>
                     </div>

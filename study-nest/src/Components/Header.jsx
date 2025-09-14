@@ -1,12 +1,13 @@
-// Header.jsx
+// Components/Header.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
 
 const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => {
   const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-3.5 py-2 text-sm" };
   const variants = {
-    soft:
-      "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50",
+    soft: "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50",
   };
   return (
     <button
@@ -17,10 +18,16 @@ const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => 
 };
 
 export default function Header({ sidebarWidth = 72 }) {
-  // ---- Profile dropdown state (mirrors AdminHeader behavior) ----
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
+  const [profile, setProfile] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("studynest.profile")) || null;
+    } catch {
+      return null;
+    }
+  });
   const [auth, setAuth] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("studynest.auth")) || null;
@@ -29,23 +36,54 @@ export default function Header({ sidebarWidth = 72 }) {
     }
   });
 
-  const [profileImage, setProfileImage] = useState(
-    "https://static.vecteezy.com/system/resources/previews/032/176/191/non_2x/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg"
-  );
-
-  // If your app builds relative image paths, adjust BASE_URL as needed
-  const BASE_URL = ""; // e.g. "http://localhost:3000/" or your CDN origin
-
+  // Keep in sync with localStorage updates from Login/EditProfile
   useEffect(() => {
-    if (auth?.profileImage) {
-      const full = auth.profileImage.startsWith("http")
-        ? auth.profileImage
-        : `${BASE_URL}${auth.profileImage}`;
-      setProfileImage(full);
-    }
-  }, [auth]);
+    const onStorage = (e) => {
+      if (e.key === "studynest.profile") {
+        try { setProfile(JSON.parse(e.newValue) || null); } catch { setProfile(null); }
+      }
+      if (e.key === "studynest.auth") {
+        try { setAuth(JSON.parse(e.newValue) || null); } catch { setAuth(null); }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-  // Close on outside click or ESC
+  // Fetch fresh profile from backend (requires active session)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+        const text = await res.text(); // robust parse (handles HTML errors too)
+        let j;
+        try { j = JSON.parse(text); } catch {
+          console.warn("Non-JSON response from profile.php:", text);
+          return;
+        }
+
+        // Accept both shapes: { ok:true, profile:{...} } OR raw profile object
+        const incoming = j?.ok ? j.profile : j;
+
+        if (incoming && (incoming.id || incoming.student_id || incoming.email)) {
+          setProfile(incoming);
+          try { localStorage.setItem("studynest.profile", JSON.stringify(incoming)); } catch { }
+        } else {
+          console.warn("Profile fetch returned unexpected payload:", j);
+        }
+      } catch (e) {
+        console.warn("Profile fetch failed:", e);
+      }
+    })();
+  }, []);
+
+  const avatar =
+    profile?.avatar_url || auth?.avatar_url ||
+    "https://static.vecteezy.com/system/resources/previews/032/176/191/non_2x/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg";
+
+  const email = profile?.email || auth?.email || "";
+  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
+  // Close dropdown on outside click or ESC
   useEffect(() => {
     function onDocClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -65,13 +103,11 @@ export default function Header({ sidebarWidth = 72 }) {
 
   const navigate = useNavigate();
   const handleLogout = () => {
-    // Clear whichever keys your app uses
     localStorage.removeItem("studynest.auth");
-    localStorage.removeItem("user");
-    localStorage.removeItem("admin");
+    localStorage.removeItem("studynest.profile");
+    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
     navigate("/login");
   };
-
 
   return (
     <div
@@ -145,32 +181,21 @@ export default function Header({ sidebarWidth = 72 }) {
             </svg>
           </button>
 
-          {/* Profile dropdown (like AdminHeader) */}
+          {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((v) => !v)}
-              className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 grid place-content-center text-white shadow-md ring-0 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+              className="h-9 w-9 rounded-xl overflow-hidden ring-0 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
               aria-expanded={profileOpen}
               aria-haspopup="true"
               aria-controls="profile-menu"
               aria-label="User menu"
             >
-              {/* If you want the avatar image instead of icon, replace svg with <img .../> */}
-              {/* <img src={profileImage} alt="Profile" className="h-9 w-9 rounded-xl object-cover" /> */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-6 h-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-              </svg>
+              <img
+                src={avatar}
+                alt="Profile"
+                className="h-9 w-9 object-cover"
+              />
             </button>
 
             {profileOpen && (
@@ -183,23 +208,23 @@ export default function Header({ sidebarWidth = 72 }) {
                 <li className="px-3 py-2">
                   <div className="flex items-center gap-3">
                     <img
-                      src={profileImage}
+                      src={avatar}
                       alt="Profile"
                       className="h-9 w-9 rounded-full border border-cyan-500/40 object-cover"
                     />
-                    <div>
-                      <div className="text-white text-sm font-medium">
-                        {auth?.email || "guest@example.com"}
+                    <div className="break-words pr-2">
+                      <div className="text-white text-xs font-smaller whitespace-normal">
+                        {email || "guest@example.com"}
                       </div>
-                      <div className="text-slate-400 text-xs">
-                        ID: {auth?.student_id || auth?.id || "—"}
+                      <div className="text-slate-400 text-xs whitespace-normal">
+                        ID: {studentId}
                       </div>
                     </div>
                   </div>
                 </li>
                 <li className="border-t border-slate-700/60 my-1" />
 
-                {/* Items */}
+                {/* Links */}
                 <li>
                   <Link
                     to="/profile"
@@ -207,14 +232,6 @@ export default function Header({ sidebarWidth = 72 }) {
                     role="menuitem"
                     onClick={() => setProfileOpen(false)}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm-7 8a7 7 0 0 1 14 0 1 1 0 0 1-1 1H6a1 1 0 0 1-1-1Z" />
-                    </svg>
                     Profile
                   </Link>
                 </li>
@@ -225,14 +242,6 @@ export default function Header({ sidebarWidth = 72 }) {
                     role="menuitem"
                     onClick={() => setProfileOpen(false)}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M12 8a1 1 0 0 1 1 1v3.382l2.447 1.63a1 1 0 1 1-1.11 1.664l-2.889-1.926A1 1 0 0 1 11 13V9a1 1 0 0 1 1-1ZM3 12a9 9 0 1 1 3.78 7.32 1 1 0 1 1 1.14-1.64A7 7 0 1 0 5 12H3Z" />
-                    </svg>
                     History
                   </Link>
                 </li>
@@ -243,14 +252,6 @@ export default function Header({ sidebarWidth = 72 }) {
                     role="menuitem"
                     onClick={() => setProfileOpen(false)}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M19.14 12.936a7.968 7.968 0 0 0 .06-.936 7.968 7.968 0 0 0-.06-.936l2.11-1.65a1 1 0 0 0 .24-1.31l-2-3.464a1 1 0 0 0-1.21-.44l-2.49 1a7.994 7.994 0 0 0-1.62-.936l-.38-2.65A1 1 0 0 0 12 0h-4a1 1 0 0 0-.99.85l-.38 2.65a7.994 7.994 0 0 0-1.62.936l-2.49-1a1 1 0 0 0-1.21.44l-2 3.465a1 1 0 0 0 .24 1.31l2.11 1.65c-.04.31-.06.62-.06.936s.02.626.06.936L.54 14.586a1 1 0 0 0-.24 1.31l2 3.464a1 1 0 0 0 1.21.44l2.49-1c.5.38 1.05.7 1.62.936l.38 2.65A1 1 0 0 0 8 24h4a1 1 0 0 0 .99-.85l.38-2.65c.57-.236 1.12-.556 1.62-.936l2.49 1a1 1 0 0 0 1.21-.44l2-3.465a1 1 0 0 0-.24-1.31l-2.11-1.65ZM10 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
-                    </svg>
                     Settings & Privacy
                   </Link>
                 </li>
@@ -261,14 +262,6 @@ export default function Header({ sidebarWidth = 72 }) {
                     className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 text-white text-sm py-2 hover:from-rose-500 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
                     role="menuitem"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M16 2a2 2 0 0 1 2 2v5a1 1 0 1 1-2 0V4H6v16h10v-5a1 1 0 1 1 2 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10Zm.293 7.293a1 1 0 0 1 1.414 1.414L16.414 12l1.293 1.293a1 1 0 1 1-1.414 1.414L14.586 13H10a1 1 0 1 1 0-2h4.586l1.707-1.707Z" />
-                    </svg>
                     Log out
                   </button>
                 </li>
