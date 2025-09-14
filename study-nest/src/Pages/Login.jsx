@@ -7,6 +7,8 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "", remember: true });
   const navigate = useNavigate();
 
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+
   function onChange(e) {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
@@ -16,7 +18,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/login.php", {
+      const res = await fetch(`${API_BASE}/login.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -31,8 +33,16 @@ export default function Login() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Persist authenticated user from backend for the app shell
+      // Persist authenticated user (session is set via PHP)
       localStorage.setItem("studynest.auth", JSON.stringify(data.user));
+
+      // Fetch canonical profile (email/id/name/avatar_url) into a dedicated cache
+      try {
+        const pres = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+        const pj = await pres.json();
+        const p = pj?.ok ? pj.profile : pj;
+        if (p) localStorage.setItem("studynest.profile", JSON.stringify(p));
+      } catch { /* non-fatal */ }
 
       navigate("/home");
     } catch (err) {
