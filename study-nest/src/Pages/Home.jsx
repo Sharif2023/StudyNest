@@ -356,9 +356,11 @@ export default function Home() {
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase">Live Now</h3>
-                  <Button variant="soft" size="sm">
-                    See all
-                  </Button>
+                  <Link to="/rooms">
+                    <Button variant="soft" size="sm">
+                      See all
+                    </Button>
+                  </Link>
                 </div>
                 <div className="space-y-3">
                   {live.map((c) => (
