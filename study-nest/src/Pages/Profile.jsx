@@ -101,7 +101,7 @@ export default function Profile() {
           <div className="mb-6 rounded-2xl bg-white/90 dark:bg-slate-900/60 ring-1 ring-zinc-200 dark:ring-white/10 backdrop-blur p-5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-4">
-                <profile_picture url={user.profile_picture} name={user.name} size={64} />
+                <profile_picture url={user.profile_picture_url} name={user.name} size={64} />
                 <div>
                   <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                     {profile?.name || user.name || "Student"}
@@ -115,12 +115,6 @@ export default function Profile() {
                 </div>
               </div>
               <div className="sm:ml-auto flex items-center gap-2">
-                <Link
-                  to="/home"
-                  className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Dashboard
-                </Link>
                 <Link
                   to="/search"
                   className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
@@ -139,25 +133,44 @@ export default function Profile() {
               <div className="rounded-2xl bg-white p-5 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
                 <div className="flex items-start gap-4">
                   <profile_picture url={user.profile_picture} name={user.name} size={56} />
+
                   <div className="flex-1 min-w-0">
+                    {/* Name row */}
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{profile?.name || user.name}</h2>
-                      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        {profile?.email || auth?.email || "—"} • ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
-                      </p>
+                      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                        {profile?.name || user.name}
+                      </h2>
                       {user.prefs?.defaultAnonymous && (
                         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           Anonymous
                         </span>
                       )}
                     </div>
+
+                    {/* Email */}
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 truncate">
+                      {profile?.email || auth?.email || "—"}
+                    </p>
+
+                    {/* ID */}
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
+                    </p>
+
+                    {/* Bio (optional) */}
                     {user.bio ? (
-                      <p className="mt-1 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{user.bio}</p>
+                      <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{user.bio}</p>
                     ) : (
-                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Add a short bio to personalize your profile.</p>
+                      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        Add a short bio to personalize your profile.
+                      </p>
                     )}
+
+                    {/* Focus (optional) */}
                     {user.prefs?.courseFocus && (
-                      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Focus: {user.prefs.courseFocus}</p>
+                      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Focus: {user.prefs.courseFocus}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -310,43 +323,89 @@ function EditProfile({ user, onChange }) {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
-  function handleprofile_picture(e) {
+  async function handleprofile_picture(e) {
     const f = e.target.files?.[0];
     if (!f) return;
-    // For now, we store a local object URL or you can build an upload endpoint later
-    const url = URL.createObjectURL(f);
-    setprofile_picture(url);
+
+    const form = new FormData();
+    form.append("file", f);
+
+    try {
+      const res = await fetch(`${API_BASE}/upload.php`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+
+      // only once
+      const j = await res.json();
+
+      if (j?.ok && j.url) {
+        setprofile_picture(j.url); // ✅ save local /images/... path
+      } else {
+        alert("Upload failed: " + (j?.error || "unknown error"));
+      }
+    } catch (err) {
+      alert("Upload error: " + err.message);
+    }
   }
 
   async function save() {
     if (!id) return;
     setSaving(true);
+
     try {
+      let finalUrl = profile_picture;
+
+      // If it's a blob, upload first
+      if (finalUrl.startsWith("blob:")) {
+        const f = fileRef.current?.files?.[0];
+        if (f) {
+          const formData = new FormData();
+          formData.append("file", f);
+
+          const uploadRes = await fetch(`${API_BASE}/upload.php`, {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+          const uploadJson = await uploadRes.json();
+          if (!uploadJson.ok) throw new Error(uploadJson.error || "Upload failed");
+          finalUrl = uploadJson.url;
+        }
+      }
+
+      // Save profile with correct field name
       const res = await fetch(`${API_BASE}/profile.php`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ id, name: name.trim() || "You", profile_picture_url: profile_picture || "" })
+        body: JSON.stringify({
+          id,
+          name: name.trim() || "Student",
+          profile_picture_url: finalUrl || "",
+          bio: bio || "",
+        }),
       });
+
       const j = await res.json();
+      console.log("profile.php response:", j);
+
       if (j?.ok && j.profile) {
-        // Update profile cache for Header/LeftNav
         setProfile(j.profile);
-        try {
-          localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
-          // Optional: keep auth.name in sync so anywhere using 'auth' also reflects new name
-          const authRaw = localStorage.getItem("studynest.auth");
-          if (authRaw) {
-            const authObj = JSON.parse(authRaw);
-            localStorage.setItem("studynest.auth", JSON.stringify({ ...authObj, name: j.profile.name }));
-          }
-        } catch { }
-        onChange({ ...user, name: j.profile.name, email: j.profile.email, bio, profile_picture });
+        localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+        onChange({
+          ...user,
+          name: j.profile.name,
+          email: j.profile.email,
+          bio: j.profile.bio,
+          profile_picture_url: finalUrl,
+        });
       } else {
         alert(j?.error || "Failed to save profile");
       }
     } catch (e) {
-      alert("Network error");
+      alert("Upload failed: " + e.message);
     } finally {
       setSaving(false);
     }
@@ -570,48 +629,90 @@ function ListCard({ title, empty, items, type }) {
 }
 
 function Security({ user, onClear }) {
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const [oldPwd, setOldPwd] = useState("");
   const [pwd1, setPwd1] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function changePwd() {
+  async function changePwd() {
+    setMsg("");
+    if (!oldPwd) return setMsg("Enter your current password");
     if (pwd1.length < 6) return setMsg("Password must be at least 6 characters");
     if (pwd1 !== pwd2) return setMsg("Passwords do not match");
-    setMsg("Password updated (demo)");
-    setPwd1(""); setPwd2("");
+
+    try {
+      setSaving(true);
+      const res = await fetch(`${API_BASE}/profile.php`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          old_password: oldPwd,
+          new_password: pwd1,
+        }),
+      });
+
+      const j = await res.json();
+      if (j?.ok) {
+        setMsg("✅ " + (j.message || "Password updated successfully"));
+        setOldPwd(""); setPwd1(""); setPwd2("");
+      } else {
+        setMsg("❌ " + (j.error || "Failed to update password"));
+      }
+    } catch (err) {
+      setMsg("❌ " + err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <section className="grid gap-6 md:grid-cols-2">
+      {/* Change password */}
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Change password (demo)</h3>
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Change password</h3>
         <div className="mt-3 space-y-3 text-sm">
+          <input
+            type="password"
+            value={oldPwd}
+            onChange={(e) => setOldPwd(e.target.value)}
+            placeholder="Current password"
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm 
+              focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
+          />
           <input
             type="password"
             value={pwd1}
             onChange={(e) => setPwd1(e.target.value)}
             placeholder="New password"
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm 
+              focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
           />
           <input
             type="password"
             value={pwd2}
             onChange={(e) => setPwd2(e.target.value)}
-            placeholder="Confirm password"
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
+            placeholder="Confirm new password"
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm 
+              focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
           />
           {msg && <div className="text-xs text-zinc-600 dark:text-zinc-400">{msg}</div>}
           <div className="flex justify-end">
             <button
               onClick={changePwd}
-              className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+              disabled={saving}
+              className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white 
+                hover:bg-cyan-700 disabled:opacity-60"
             >
-              Update
+              {saving ? "Updating..." : "Update"}
             </button>
           </div>
         </div>
       </div>
 
+      {/* Danger Zone (unchanged) */}
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Danger zone</h3>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -696,10 +797,10 @@ function loadUser() {
     if (raw && typeof raw === "object") return raw;
   } catch { }
   const seed = {
-    name: "You",
+    name: "Student",
     email: `{profile?.email || auth?.email || "—"}`,
     bio: "Student at StudyNest",
-    profile_picture: "",
+    profile_picture_url: "",
     prefs: { defaultAnonymous: false, darkMode: false, courseFocus: "" },
   };
   try {

@@ -77,9 +77,8 @@ export default function Header({ sidebarWidth = 72 }) {
     })();
   }, []);
 
-  const avatar =
-    profile?.avatar_url || auth?.avatar_url ||
-    "https://static.vecteezy.com/system/resources/previews/032/176/191/non_2x/business-avatar-profile-black-icon-man-of-user-symbol-in-trendy-flat-style-isolated-on-male-profile-people-diverse-face-for-social-network-or-web-vector.jpg";
+  const profile_pic =
+    profile?.profile_picture_url || auth?.profile_picture_url || null;
 
   const email = profile?.email || auth?.email || "";
   const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
@@ -191,11 +190,28 @@ export default function Header({ sidebarWidth = 72 }) {
               aria-controls="profile-menu"
               aria-label="User menu"
             >
-              <img
-                src={avatar}
-                alt="Profile"
-                className="h-9 w-9 object-cover"
-              />
+              {profile_pic ? (
+                <img
+                  src={profile_pic}
+                  alt="Profile"
+                  className="h-9 w-9 object-cover"
+                />
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-9 w-9 text-slate-300"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                  />
+                </svg>
+              )}
             </button>
 
             {profileOpen && (
@@ -207,11 +223,31 @@ export default function Header({ sidebarWidth = 72 }) {
                 {/* Header: user info */}
                 <li className="px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={avatar}
-                      alt="Profile"
-                      className="h-9 w-9 rounded-full border border-cyan-500/40 object-cover"
-                    />
+                    {profile_pic ? (
+                      <img
+                        src={profile_pic}
+                        alt="Profile"
+                        className="h-10 w-10 rounded-full border border-cyan-500/40 object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center border border-cyan-500/40">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                          className="h-6 w-6 text-slate-300"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
                     <div className="break-words pr-2">
                       <div className="text-white text-xs font-smaller whitespace-normal">
                         {email || "guest@example.com"}

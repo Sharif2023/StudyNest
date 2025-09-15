@@ -87,7 +87,7 @@ export default function LeftNav({
         try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
     });
 
-    const displayName = profile?.name || auth?.name || "You";
+    const displayName = profile?.name || auth?.name || "Student";
     const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
 
     return (
@@ -137,8 +137,8 @@ export default function LeftNav({
                     <div className="px-3 py-2 border-b border-slate-800">
                         <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
                             <div className="h-9 w-9 rounded-xl overflow-hidden bg-slate-800 grid place-content-center">
-                                {profile?.avatar_url
-                                    ? <img src={profile.avatar_url} alt={displayName} className="h-9 w-9 object-cover" />
+                                {profile?.profile_picture_url
+                                    ? <img src={profile.profile_picture_url} alt={displayName} className="h-9 w-9 object-cover" />
                                     : <span className="text-white text-sm">{String(displayName || "U").slice(0, 1).toUpperCase()}</span>}
                             </div>
                             <div className="text-sm">
