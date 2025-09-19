@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const initialForm = { studentId: "", email: "", password: "" };
+  const initialForm = { username: "", studentId: "", email: "", password: "" };
   const [form, setForm] = useState(initialForm);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,6 +24,7 @@ export default function Signup() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
+          username: form.username,
           studentId: form.studentId,
           email: form.email,
           password: form.password,
@@ -104,7 +105,27 @@ export default function Signup() {
                   get started.
                 </p>
 
-                <form onSubmit={onSubmit} className="mt-8 space-y-6">{/* studentId */}
+                <form onSubmit={onSubmit} className="mt-8 space-y-6">
+                  {/* Username */}
+                  <div className="relative">
+                    <label
+                      htmlFor="username"
+                      className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
+                    >
+                      Username
+                    </label>
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      placeholder="e.g., JaneDoe"
+                      value={form.username}
+                      onChange={onChange}
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  {/* studentId */}
                   <div className="relative">
                     <label
                       htmlFor="studentId"
