@@ -18,9 +18,14 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Step 1: Send credentials to the PHP backend
       const res = await fetch(`${API_BASE}/login.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // IMPORTANT: The `credentials: "include"` setting ensures that
+        // the browser sends cookies with this request. This is how the
+        // PHP session ID is passed to the server, and how the
+        // server establishes the session.
         credentials: "include",
         body: JSON.stringify({
           email: form.email,
@@ -33,10 +38,12 @@ export default function Login() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Persist authenticated user (session is set via PHP)
+      // Step 2: Persist user data in localStorage (for client-side use)
+      // The PHP session is already set on the server, this is just for
+      // convenience on the frontend.
       localStorage.setItem("studynest.auth", JSON.stringify(data.user));
 
-      // Fetch canonical profile (email/id/name/avatar_url) into a dedicated cache
+      // Fetch canonical profile data for the client-side cache
       try {
         const pres = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
         const pj = await pres.json();
@@ -44,6 +51,7 @@ export default function Login() {
         if (p) localStorage.setItem("studynest.profile", JSON.stringify(p));
       } catch { /* non-fatal */ }
 
+      // Step 3: Navigate to the home page on success
       navigate("/home");
     } catch (err) {
       alert(err.message);
