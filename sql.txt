@@ -85,3 +85,54 @@ ip varchar(64) DEFAULT NULL,
 created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
 PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS courses (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  course_code VARCHAR(32) NOT NULL,
+  course_title VARCHAR(255) NOT NULL,
+  department VARCHAR(120) NOT NULL,
+  program VARCHAR(120) NOT NULL,
+  course_thumbnail VARCHAR(512) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_department (department),
+  KEY idx_program (program)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 1) Staging table
+DROP TABLE IF EXISTS tmp_courses;
+CREATE TABLE tmp_courses (
+  course_code      VARCHAR(32)  NOT NULL,
+  course_title     VARCHAR(255) NOT NULL,
+  department       VARCHAR(120) NOT NULL,
+  program          VARCHAR(120) NOT NULL,
+  course_thumbnail VARCHAR(512) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2) Load CSV (adjust path if needed)
+LOAD DATA INFILE 'C:/xampp/htdocs/StudyNest/study-nest/src/Datasets/UIU_Course_List.csv'
+INTO TABLE tmp_courses
+CHARACTER SET utf8mb4
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '\\'
+LINES TERMINATED BY '\r\n'   -- change to '\n' if needed
+IGNORE 1 ROWS
+(course_code, course_title, department, program, course_thumbnail);
+
+-- 3) Clean (optional: trim spaces, remove blanks)
+UPDATE tmp_courses
+SET course_code      = TRIM(course_code),
+    course_title     = TRIM(course_title),
+    department       = TRIM(department),
+    program          = TRIM(program),
+    course_thumbnail = TRIM(course_thumbnail);
+
+DELETE FROM tmp_courses
+WHERE course_code IS NULL OR course_code = '';
+
+-- 4) Insert ALL rows into courses (duplicates allowed now)
+INSERT INTO courses (
+  course_code, course_title, department, program, course_thumbnail, created_at, updated_at
+)
+SELECT
+  course_code, course_title, department, program, course_thumbnail, NOW(), NOW()
+FROM tmp_courses;
