@@ -216,6 +216,7 @@ export default function Profile() {
               {tab === "overview" && (
                 <Overview
                   user={user}
+                  displayName={displayName}
                   notes={myNotes}
                   resources={myResources}
                   rooms={myRooms}
@@ -263,14 +264,14 @@ export default function Profile() {
 }
 
 /* -------------------- Sections -------------------- */
-function Overview({ user, notes, resources, rooms, bookmarks }) {
+function Overview({ user, displayName, notes, resources, rooms, bookmarks }) {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex items-start gap-4">
           <profile_picture url={user.profile_picture} name={user.name} size={56} />
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {user.name} 👋</h3>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {displayName} 👋</h3> 
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Quick snapshot of your activity and collections.
             </p>
