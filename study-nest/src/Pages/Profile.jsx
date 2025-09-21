@@ -395,6 +395,8 @@ function EditProfile({ user, onChange }) {
       if (j?.ok && j.profile) {
         setProfile(j.profile);
         localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+        window.dispatchEvent(new Event("studynest:profile-updated"));
+
         onChange({
           ...user,
           name: j.profile.name,
