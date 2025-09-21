@@ -9,7 +9,7 @@ function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
     if (m && m[0]) return m[0]; // e.g. http://localhost
-  } catch {}
+  } catch { }
   // last resort: current origin (better than crashing)
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
@@ -19,7 +19,7 @@ function toBackendUrl(url) {
   if (!url) return null;
   const ORIGIN = getBackendOrigin();
   if (/^https?:\/\//i.test(url)) return url;        // already absolute
-  if (url.startsWith("/"))       return ORIGIN + url; // root-relative path
+  if (url.startsWith("/")) return ORIGIN + url; // root-relative path
   return ORIGIN + "/" + url.replace(/^\/+/, "");     // plain relative path
 }
 
@@ -59,8 +59,8 @@ export default function Header({ sidebarWidth = 72 }) {
       }
     };
     const onLocalProfile = () => {
-      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch {}
-      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch {}
+      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch { }
+      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch { }
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("studynest:profile-updated", onLocalProfile);
@@ -81,7 +81,7 @@ export default function Header({ sidebarWidth = 72 }) {
         const incoming = j?.ok ? j.profile : j;
         if (incoming && (incoming.id || incoming.student_id || incoming.email)) {
           setProfile(incoming);
-          try { localStorage.setItem("studynest.profile", JSON.stringify(incoming)); } catch {}
+          try { localStorage.setItem("studynest.profile", JSON.stringify(incoming)); } catch { }
         }
       } catch (e) {
         console.warn("Profile fetch failed:", e);
@@ -114,7 +114,7 @@ export default function Header({ sidebarWidth = 72 }) {
   const handleLogout = () => {
     localStorage.removeItem("studynest.auth");
     localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => {});
+    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
     navigate("/login");
   };
 
@@ -146,7 +146,11 @@ export default function Header({ sidebarWidth = 72 }) {
         {/* Actions */}
         <div className="flex items-center gap-3">
           {/* Messages */}
-          <button className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition" aria-label="Messages">
+          <button
+            className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+            aria-label="Messages"
+            onClick={() => navigate('/messages')}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.068.157 2.148.279 3.238.364.466.037.893.281 1.153.671L12 21l2.652-3.978c.26-.39.687-.634 1.153-.67 1.09-.086 2.17-.208 3.238-.365 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
             </svg>
