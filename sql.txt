@@ -136,3 +136,29 @@ INSERT INTO courses (
 SELECT
   course_code, course_title, department, program, course_thumbnail, NOW(), NOW()
 FROM tmp_courses;
+
+USE studynest;
+
+CREATE TABLE IF NOT EXISTS meetings (
+  id           VARCHAR(16)  PRIMARY KEY,
+  title        VARCHAR(255) NOT NULL,
+  course       VARCHAR(64)  NULL,
+  created_by   INT UNSIGNED NULL,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status       ENUM('live','ended','scheduled') DEFAULT 'live',
+  starts_at    DATETIME NULL,
+  ends_at      DATETIME NULL,
+  participants INT UNSIGNED NOT NULL DEFAULT 1,
+  INDEX (status),
+  INDEX (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS meeting_participants (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  meeting_id   VARCHAR(16) NOT NULL,
+  user_id      INT UNSIGNED NULL,
+  display_name VARCHAR(100) NULL,
+  joined_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  left_at      TIMESTAMP NULL DEFAULT NULL,
+  FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

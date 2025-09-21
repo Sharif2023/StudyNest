@@ -1,6 +1,7 @@
 <?php
 // CORS for local dev (adjust origin if needed)
-function allow_cors() {
+function allow_cors()
+{
     $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
     header("Access-Control-Allow-Origin: $origin");
     header("Access-Control-Allow-Credentials: true");
@@ -31,14 +32,14 @@ $options = [
 try {
     // Connect without specifying a database to create the database if it doesn't exist
     $pdo = new PDO($dsn, $user, $pass, $options);
-    
+
     // Create database if it does not exist
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db_name` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
 
     // Re-connect with the database selected
     $dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
     $pdo = new PDO($dsn, $user, $pass, $options);
-    
+
     // Create users table if it does not exist
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS users (
@@ -49,8 +50,30 @@ try {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
 
+        CREATE TABLE IF NOT EXISTS meetings (
+            id VARCHAR(24) PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            course VARCHAR(64) NULL,
+            created_by INT UNSIGNED NULL,
+            status ENUM('live','scheduled','ended') NOT NULL DEFAULT 'live',
+            participants INT UNSIGNED NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_status_created (status, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS meeting_participants (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        meeting_id VARCHAR(24) NOT NULL,
+        user_id INT UNSIGNED NULL,
+        display_name VARCHAR(191) NULL,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        left_at TIMESTAMP NULL DEFAULT NULL,
+        CONSTRAINT fk_mp_meeting FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
+        KEY idx_meeting_time (meeting_id, joined_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed: ' . $e->getMessage()]);
