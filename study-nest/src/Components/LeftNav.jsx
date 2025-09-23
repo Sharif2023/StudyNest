@@ -1,6 +1,7 @@
 // Components/LeftNav.jsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import logoUrl from "../assets/logo.png";
 import SummarizingParaphrasing from "./SummarizingParaphrasing";
 
 const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
@@ -125,7 +126,7 @@ export default function LeftNav({
             className="h-8 w-8 rounded-xl bg-gradient-to-br from-white to-white grid place-content-center shadow-sm"
             title="Study Nest"
           >
-            <img src="src/assets/logo.png" alt="study-nest-logo" className="h-5 w-5" />
+            <img src={logoUrl} alt="Study Nest" className="h-5 w-5 object-contain" />
           </Link>
           {navOpen && <span className="font-semibold hidden xl:block text-white">Study Nest</span>}
           <button

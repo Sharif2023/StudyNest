@@ -7,6 +7,7 @@ import Profile from "./Pages/Profile";
 import NotesRepository from "./Pages/NotesRepository";
 import QnAForum from "./Pages/QnAForum";
 import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
+import NewMeetingForm from "./Pages/NewMeetingForm";
 import TagSearch from "./Pages/TagSearch";
 import ResourceLibrary from "./Pages/ResourceLibrary";
 import Home from "./Pages/Home";
@@ -31,6 +32,7 @@ function App() {
         <Route path="/rooms" element={<RoomsLobby />} />
         <Route path="/rooms/new" element={<NewRoomRedirect />} />
         <Route path="/rooms/:roomId" element={<StudyRoom />} />
+        <Route path="/rooms/newform" element={<NewMeetingForm />} />
         <Route path="/search" element={<TagSearch />} />
         <Route path="/resources" element={<ResourceLibrary />} />
         <Route path="/ai-check" element={<AIFileCheck />} />

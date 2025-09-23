@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
@@ -132,23 +132,37 @@ const leaderboard = [
   { id: "s3", name: "Tanvir", points: 960, streak: 11 },
 ];
 
-function CourseCard({ c }) {
+function CourseCard({ c, joinTo }) {
   const isLive = c.status === "live";
   const progress = isLive
-    ? Math.min(100, Math.floor(((Date.now() - c.startedAt) / (60 * 60 * 1000)) * 100))
+    ? Math.min(100, Math.floor(((Date.now() - (c.startedAt || Date.now())) / (60 * 60 * 1000)) * 100))
     : 0;
   const timeLeftMs = c.startAt ? Math.max(0, c.startAt - Date.now()) : 0;
   const minutesLeft = Math.ceil(timeLeftMs / 60000);
+
+  // normalize expected fields
+  const title = c.title;
+  const code = c.code;
+  const instructor = c.instructor; // mock items have this; API meetings won’t
+  const thumb = c.thumbnail || null;
+
   return (
     <Card className="overflow-hidden">
       <div className="flex">
-        <img src={c.thumbnail} alt="" className="h-24 w-32 object-cover" />
+        {thumb ? (
+          <img src={thumb} alt="" className="h-24 w-32 object-cover" />
+        ) : (
+          <div className="h-24 w-32 grid place-items-center bg-slate-900 text-slate-500">
+            No image
+          </div>
+        )}
         <div className="p-3 flex-1">
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-semibold leading-tight text-slate-100">{c.title}</div>
+              <div className="font-semibold leading-tight text-slate-100">{title}</div>
               <div className="text-xs text-slate-400">
-                {c.code} • {c.instructor}
+                {code}
+                {instructor ? <> • {instructor}</> : null}
               </div>
             </div>
             <div>
@@ -156,28 +170,36 @@ function CourseCard({ c }) {
                 <span className="px-2 py-0.5 rounded-full bg-rose-600/15 border border-rose-600/40 text-rose-300 text-xs inline-flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" /> LIVE
                 </span>
-              ) : (
+              ) : c.startAt ? (
                 <Badge tone="warn">Starts {formatTime(c.startAt)}</Badge>
-              )}
+              ) : null}
             </div>
           </div>
+
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             {(c.tags || []).slice(0, 3).map((t) => (
-              <Badge key={t} tone="accent">
-                {t}
-              </Badge>
+              <Badge key={t} tone="accent">{t}</Badge>
             ))}
-            {isLive && <span className="text-xs text-slate-400">👀 {c.viewers} watching</span>}
+            {isLive && typeof c.viewers === "number" && (
+              <span className="text-xs text-slate-400">👀 {c.viewers} watching</span>
+            )}
           </div>
+
           <div className="mt-2 flex items-center justify-between">
             {isLive ? (
               <ProgressBar value={progress} />
             ) : (
-              <div className="text-xs text-slate-400">~{minutesLeft} min</div>
+              c.startAt && <div className="text-xs text-slate-400">~{minutesLeft} min</div>
             )}
-            <Button className="ml-3" size="md">
-              {isLive ? "Join" : "Remind me"}
-            </Button>
+            {joinTo ? (
+              <Link to={joinTo} className="ml-3">
+                <Button size="md">{isLive ? "Join" : "Remind me"}</Button>
+              </Link>
+            ) : (
+              <Button className="ml-3" size="md">
+                {isLive ? "Join" : "Remind me"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -240,6 +262,23 @@ function Pomodoro() {
   );
 }
 
+function mapMeetingToCard(m) {
+  return {
+    id: m.id,
+    // prefer course_title (from courses table) → fallback to meeting title
+    title: m.course_title || m.title,
+    // show course code on the subtitle row
+    code: m.course || "—",
+    // image on the left (if your API returns this key)
+    thumbnail: m.course_thumbnail || m.thumbnail || null,
+    // "live" | "scheduled"
+    status: m.status,
+    // number on the right line ("👀 X watching")
+    viewers: typeof m.participants === "number" ? m.participants : 0,
+    // for the progress bar when live
+    startedAt: Date.parse(m.starts_at || m.created_at || Date.now()),
+  };
+}
 function StudyRoom({ anonymous }) {
   const [muted, setMuted] = useState(true);
   const videoRef = useRef(null);
@@ -333,17 +372,34 @@ export default function Home() {
   const [navOpen, setNavOpen] = useState(false); // collapsed by default
   const SIDEBAR_W = navOpen ? 240 : 72;
 
-  const [live, setLive] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/meetings.php`, { credentials: "include" });
+        // use the same absolute URL you use elsewhere in the app
+        const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", {
+          credentials: "include",
+        });
         const j = await r.json();
-        if (j.ok) setLive((j.rooms || []).filter(r => r.status === 'live'));
-      } catch { }
+        if (j.ok) setRooms(j.rooms || []);
+      } catch (e) {
+        console.warn(e);
+      }
     })();
   }, []);
-  
+  const featured = useMemo(() => {
+    const live = (rooms || []).filter(r => r.status === "live");
+    const scheduled = (rooms || [])
+      .filter(r => r.status === "scheduled")
+      .sort((a, b) => new Date(a.starts_at || a.created_at) - new Date(b.starts_at || b.created_at));
+
+    const pick = [...live.slice(0, 2)];
+    if (pick.length < 2) pick.push(...scheduled.slice(0, 2 - pick.length));
+    return pick;
+  }, [rooms]);
+
+
   const upcoming = mockCourses.filter((c) => c.status === "upcoming");
 
   return (
@@ -385,9 +441,13 @@ export default function Home() {
                   </Link>
                 </div>
                 <div className="space-y-3">
-                  {live.map((c) => (
-                    <CourseCard key={c.id} c={c} />
-                  ))}
+                  {featured.map((m) => {
+                    const cardData = mapMeetingToCard(m);
+                    return <CourseCard key={m.id} c={cardData} joinTo={`/rooms/${m.id}`} />;
+                  })}
+                  {featured.length === 0 && (
+                    <div className="text-sm text-slate-400">No sessions yet.</div>
+                  )}
                 </div>
               </Card>
 
