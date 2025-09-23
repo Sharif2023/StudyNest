@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS users (
     // Ensure new columns exist if table already created
     $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT NULL AFTER email;");
     $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(255) NULL AFTER bio;");
-
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed: ' . $e->getMessage()]);

@@ -1,28 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { useWebRTC } from "../realtime/useWebRTC";
+import { useMemo } from "react";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
-/**
- * StudyNest — Online Study Rooms (Video + Chat)
- * -------------------------------------------------------------
- * This is a frontend scaffold you can wire up to real signaling later.
- * It includes:
- * - Lobby: list rooms, create room, join
- * - Room: local camera, placeholder peers, mic/cam toggle, screen share
- * - Chat with Anonymous toggle, participants list, copy invite link
- * - Optional: /rooms/new autogenerates a room and redirects
- *
- * Routes to add in App.jsx:
- *   import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
- *   <Route path="/rooms" element={<RoomsLobby />} />
- *   <Route path="/rooms/new" element={<NewRoomRedirect />} />
- *   <Route path="/rooms/:roomId" element={<StudyRoom />} />
- */
-
-/* ====================== Lobby ====================== */
 export function RoomsLobby() {
-  const [rooms, setRooms] = useState(() => seedRooms());
+  const [rooms, setRooms] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", { credentials: "include" });
+        const j = await r.json();
+        if (j.ok) setRooms(j.rooms || []);
+      } catch (e) { console.warn(e); }
+    })();
+  }, []);
   const [title, setTitle] = useState("");
   const navigate = useNavigate();
 
@@ -35,19 +29,21 @@ export function RoomsLobby() {
   const EXPANDED_W = 248;  // px
   const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
-  function create() {
+  async function create() {
     const finalTitle = title.trim() || "Quick Study Room";
-    const id = uid();
-    const room = {
-      id,
-      title: finalTitle,
-      course: "CSE220",
-      createdAt: new Date().toISOString(),
-      participants: 1,
-    };
-    setRooms((prev) => [room, ...prev]);
-    setTitle("");
-    navigate(`/rooms/${id}`, { state: { title: finalTitle } });
+    try {
+      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: finalTitle, course: "CSE220" })
+      });
+      const j = await res.json();
+      if (j.ok && j.id) {
+        setTitle("");
+        navigate(`/rooms/${j.id}`, { state: { title: finalTitle } });
+      }
+    } catch (e) { console.warn(e); }
   }
 
   return (
@@ -120,7 +116,7 @@ function RoomCard({ room }) {
         </svg>
       </div>
       <h3 className="mt-3 truncate text-lg font-semibold text-zinc-900" title={room.title}>{room.title}</h3>
-      <p className="mt-1 text-sm text-zinc-500 font-medium">{room.course} • {timeAgo(room.createdAt)}</p>
+      <p className="mt-1 text-sm text-zinc-500 font-medium">{room.course || '—'} • {timeAgo(room.created_at)}</p>
       <div className="mt-3 flex items-center justify-between text-xs text-zinc-600">
         <span className="rounded-full bg-zinc-100/70 px-2 py-0.5 text-zinc-500 font-medium">{room.participants} online</span>
         <Link to={`/rooms/${room.id}`} className="rounded-xl border border-zinc-200 px-3 py-1 font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors">Join</Link>
@@ -151,38 +147,76 @@ export function StudyRoom() {
   const [cam, setCam] = useState(true);
   const [hand, setHand] = useState(false);
   const [anon, setAnon] = useState(false);
-  const [chat, setChat] = useState(() => seedChat());
+  const [chat, setChat] = useState([]);
   const [msg, setMsg] = useState("");
-  const [peers] = useState(() => seedPeers()); // placeholder peers; replace with live
-  const videoRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const [streams, setStreams] = useState([]);          // [{id, stream, name}]
+  const [participants, setParticipants] = useState([]);
   const [sharing, setSharing] = useState(false);
 
   const roomTitle = state?.title || `Room • ${roomId}`;
+  const displayName = (JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name) ||
+    (JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name) ||
+    "Student";
 
-  // Local media
+  const rtc = useMemo(() => useWebRTC(roomId, displayName), [roomId, displayName]);
+  useEffect(() => { rtc.setMic(mic); }, [mic, rtc]);
+  useEffect(() => { rtc.setCam(cam); }, [cam, rtc]);
+
+  // (A) Local media + attach to <video>
   useEffect(() => {
     let stream;
+    let cancelled = false;
+
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        // Prefer your rtc helper so the same stream is reused
+        stream = await rtc.getLocalStream();
+        if (!cancelled && localVideoRef.current && !localVideoRef.current.srcObject) {
+          localVideoRef.current.srcObject = stream;
+        }
       } catch (e) {
         console.warn("getUserMedia failed", e);
-        setCam(false);
-        setMic(false);
+        // Your fallback flags are fine:
+        if (e.name === "NotReadableError" || e.name === "NotAllowedError") {
+          setCam(false);
+          setMic(true);
+        } else {
+          setCam(false);
+          setMic(false);
+        }
       }
     })();
+
     return () => {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      cancelled = true;
+      // If you want to keep the stream alive for the room, don’t stop it here.
+      // If you do want to stop on leave:
+      stream?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [rtc]);
+
+  // (B) Wire subscriptions + connect once
+  useEffect(() => {
+    rtc.subscribeStreams(setStreams);
+    rtc.subscribeParticipants(setParticipants);
+    rtc.onChat((m) => {
+      setChat(prev => [...prev, {
+        id: uid(),
+        author: m.author,
+        text: m.text,
+        ts: m.ts,
+        self: m.author === "You",
+      }]);
+    });
+    rtc.connect();
+  }, [rtc]);
 
   function send() {
     if (!msg.trim()) return;
-    const m = { id: uid(), author: anon ? "Anonymous" : "You", text: msg.trim(), ts: new Date().toISOString(), self: true };
-    setChat((prev) => [...prev, m]);
+    const payload = { text: msg.trim(), author: anon ? "Anonymous" : "You", ts: new Date().toISOString() };
+    rtc.sendChat(payload);
     setMsg("");
-    // TODO: emit over socket to others
   }
 
   async function copyInvite() {
@@ -197,13 +231,10 @@ export function StudyRoom() {
 
   async function toggleShare() {
     if (!sharing) {
-      try {
-        const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        setSharing(true);
-        s.getVideoTracks()[0]?.addEventListener("ended", () => setSharing(false));
-      } catch (e) {
-        console.warn("Share canceled", e);
-      }
+      await rtc.startShare();
+      setSharing(true);
+      // when user stops from browser UI, useWebRTC already restores camera.
+      // We'll just reflect state when 'ended' fires (handled in hook).
     } else {
       setSharing(false);
     }
@@ -234,14 +265,12 @@ export function StudyRoom() {
           <div className="grid gap-3 sm:grid-cols-2">
             {/* Local */}
             <VideoTile label="You" muted={!mic} off={!cam}>
-              <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
             </VideoTile>
-            {/* Placeholder peers */}
-            {peers.map((p) => (
-              <VideoTile key={p.id} label={p.name} muted off>
-                <div className="grid h-full place-items-center text-zinc-400">
-                  <UserIcon className="h-12 w-12" />
-                </div>
+            {streams.map(s => (
+              <VideoTile key={s.id} label={s.name} muted={false} off={!s.stream}>
+                {s.stream ? <video autoPlay playsInline className="h-full w-full object-cover" ref={el => { if (el && !el.srcObject) el.srcObject = s.stream; }} /> :
+                  <div className="grid h-full place-items-center text-zinc-400"><UserIcon className="h-12 w-12" /></div>}
               </VideoTile>
             ))}
           </div>
@@ -294,8 +323,10 @@ export function StudyRoom() {
             <h3 className="text-sm font-semibold text-zinc-100">Participants</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
               <li className="flex items-center gap-2"><Dot /> You {hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}</li>
-              {peers.map((p) => (
-                <li key={p.id} className="flex items-center gap-2"><Dot /> {p.name}</li>
+              {participants.map(p => (
+                <li key={p.id} className="flex items-center gap-2">
+                  <Dot /> {p.name} {p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+                </li>
               ))}
             </ul>
           </div>

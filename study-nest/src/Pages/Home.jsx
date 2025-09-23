@@ -246,6 +246,18 @@ function StudyRoom({ anonymous }) {
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = muted;
   }, [muted]);
+
+  const [liveRooms, setLiveRooms] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", { credentials: "include" });
+        const j = await r.json();
+        if (j.ok) setLiveRooms((j.rooms || []).filter(r => r.status === 'live'));
+      } catch (e) { }
+    })();
+  }, []);
+
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       <div className="relative aspect-video bg-black">
@@ -321,7 +333,17 @@ export default function Home() {
   const [navOpen, setNavOpen] = useState(false); // collapsed by default
   const SIDEBAR_W = navOpen ? 240 : 72;
 
-  const live = mockCourses.filter((c) => c.status === "live");
+  const [live, setLive] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/meetings.php`, { credentials: "include" });
+        const j = await r.json();
+        if (j.ok) setLive((j.rooms || []).filter(r => r.status === 'live'));
+      } catch { }
+    })();
+  }, []);
+  
   const upcoming = mockCourses.filter((c) => c.status === "upcoming");
 
   return (
