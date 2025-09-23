@@ -121,8 +121,8 @@ export default function LeftNav({
         {/* Brand + Toggle */}
         <div className="flex items-center gap-2 px-3 py-3 border-b border-slate-800">
           <Link
-            to="/"
-            className="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 grid place-content-center shadow-sm"
+            to="/home"
+            className="h-8 w-8 rounded-xl bg-gradient-to-br from-white to-white grid place-content-center shadow-sm"
             title="Study Nest"
           >
             <img src="src/assets/logo.png" alt="study-nest-logo" className="h-5 w-5" />
