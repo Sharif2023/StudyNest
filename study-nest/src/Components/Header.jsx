@@ -126,7 +126,7 @@ export default function Header({ sidebarWidth = 72 }) {
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         {/* Logo / Title */}
         <div className="flex items-center gap-2">
-          <Link to="#" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition">
+          <Link to="/home" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition">
             Study Nest
           </Link>
         </div>
