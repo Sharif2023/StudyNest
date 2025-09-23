@@ -7,27 +7,31 @@ import Footer from "../Components/Footer";
 
 export function RoomsLobby() {
   const [rooms, setRooms] = useState([]);
+  const [title, setTitle] = useState("");
 
+  // Left nav state
+  const [navOpen, setNavOpen] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+  const COLLAPSED_W = 72;
+  const EXPANDED_W = 248;
+  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
+  const navigate = useNavigate();
+
+  // FETCH LIST (no roomId here)
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", { credentials: "include" });
+        const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", {
+          credentials: "include",
+        });
         const j = await r.json();
         if (j.ok) setRooms(j.rooms || []);
-      } catch (e) { console.warn(e); }
+      } catch (e) {
+        console.warn(e);
+      }
     })();
   }, []);
-  const [title, setTitle] = useState("");
-  const navigate = useNavigate();
-
-  //leftBar
-  const [navOpen, setNavOpen] = useState(false);
-  const [anonymous, setAnonymous] = useState(false);
-
-  // Match LeftNav’s expected widths
-  const COLLAPSED_W = 72;   // px
-  const EXPANDED_W = 248;  // px
-  const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
   async function create() {
     const finalTitle = title.trim() || "Quick Study Room";
@@ -47,7 +51,10 @@ export function RoomsLobby() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+    <main
+      className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl"
+      style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}
+    >
       <LeftNav
         navOpen={navOpen}
         setNavOpen={setNavOpen}
@@ -55,10 +62,10 @@ export function RoomsLobby() {
         setAnonymous={setAnonymous}
         sidebarWidth={sidebarWidth}
       />
+
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6">
-          {/* Title and Subtitle */}
           <div className="flex-shrink-0">
             <h1 className="text-xl font-bold tracking-tight text-white">Study Rooms</h1>
             <p className="text-sm text-white/70 hidden sm:block">Meet on video, chat, and collaborate live.</p>
@@ -66,28 +73,27 @@ export function RoomsLobby() {
         </div>
       </header>
 
-      {/* Input and Button */}
+      {/* Create */}
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 mt-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Create a room: e.g., CSE220 Quiz Review"
-            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm 
-                 text-zinc-900 placeholder-zinc-400 focus:outline-none 
-                 focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button
             type="button"
-            onClick={create}
+            onClick={() => navigate('/rooms/newform')}
             className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white 
-                 hover:bg-emerald-700 transition"
+       hover:bg-emerald-700 transition"
           >
             Start room
           </button>
         </div>
       </section>
 
+      {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {rooms.length === 0 ? (
           <EmptyRooms />
@@ -101,29 +107,43 @@ export function RoomsLobby() {
           </ul>
         )}
       </div>
+
       <Footer />
     </main>
   );
 }
 
 function RoomCard({ room }) {
+  const title = room.course_title || room.title;
   return (
-    <article className="flex flex-col h-full rounded-2xl bg-white shadow-md ring-1 ring-zinc-200/50 transition-transform transform hover:scale-105 hover:shadow-lg p-4">
-      <div className="aspect-video w-full overflow-hidden rounded-xl bg-zinc-100 grid place-items-center text-zinc-400/80">
-        {/* The SVG for the camera icon */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10">
-          <path d="M4.5 4.5a3 3 0 00-3 3v9a3 3 0 003 3h8.25a3 3 0 003-3v-9a3 3 0 00-3-3H4.5zM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.94-.94 2.56-.27 2.56 1.06v11.38c0 1.33-1.62 2-2.56 1.06z" />
-        </svg>
+    <article className="flex flex-col h-full rounded-2xl bg-white shadow-md ring-1 ring-zinc-200/50 p-4">
+      <div className="aspect-video w-full overflow-hidden rounded-xl bg-zinc-100 grid place-items-center">
+        {room.course_thumbnail
+          ? <img src={room.course_thumbnail} alt="" className="h-full w-full object-cover" />
+          : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10">
+            <path d="M4.5 4.5a3 3 0 00-3 3v9a3 3 0 003 3h8.25a3 3 0 003-3v-9a3 3 0 00-3-3H4.5zM19.94 18.75l-2.69-2.69V7.94l2.69-2.69c.94-.94 2.56-.27 2.56 1.06v11.38c0 1.33-1.62 2-2.56 1.06z" />
+          </svg>}
       </div>
-      <h3 className="mt-3 truncate text-lg font-semibold text-zinc-900" title={room.title}>{room.title}</h3>
-      <p className="mt-1 text-sm text-zinc-500 font-medium">{room.course || '—'} • {timeAgo(room.created_at)}</p>
+
+      <h3 className="mt-3 truncate text-lg font-semibold text-zinc-900" title={title}>
+        {title}
+      </h3>
+      <p className="mt-1 text-sm text-zinc-500 font-medium">
+        {room.course || '—'} • {timeAgo(room.created_at)}
+      </p>
+
       <div className="mt-3 flex items-center justify-between text-xs text-zinc-600">
-        <span className="rounded-full bg-zinc-100/70 px-2 py-0.5 text-zinc-500 font-medium">{room.participants} online</span>
-        <Link to={`/rooms/${room.id}`} className="rounded-xl border border-zinc-200 px-3 py-1 font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors">Join</Link>
+        <span className="rounded-full bg-zinc-100/70 px-2 py-0.5 text-zinc-500 font-medium">
+          {room.participants} online
+        </span>
+        <Link to={`/rooms/${room.id}`} className="rounded-xl border border-zinc-200 px-3 py-1 font-semibold text-zinc-600 hover:bg-zinc-50">
+          Join
+        </Link>
       </div>
     </article>
   );
 }
+
 
 function EmptyRooms() {
   return (
@@ -140,44 +160,72 @@ function EmptyRooms() {
 }
 
 /* ====================== Room ====================== */
+/* ====================== Room ====================== */
 export function StudyRoom() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const { state } = useLocation();
+
+  // 🔊🔇 Local UI state for media + chat (this was missing)
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [hand, setHand] = useState(false);
   const [anon, setAnon] = useState(false);
-  const [chat, setChat] = useState([]);
   const [msg, setMsg] = useState("");
+  const [chat, setChat] = useState([]);               // [{id, author, text, ts, self}]
   const localVideoRef = useRef(null);
-  const [streams, setStreams] = useState([]);          // [{id, stream, name}]
-  const [participants, setParticipants] = useState([]);
+  const [streams, setStreams] = useState([]);         // [{id, stream, name}]
+  const [participants, setParticipants] = useState([]); // [{id, name, hand}]
   const [sharing, setSharing] = useState(false);
 
-  const roomTitle = state?.title || `Room • ${roomId}`;
-  const displayName = (JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name) ||
+  const [room, setRoom] = useState(null);
+  const [ending, setEnding] = useState(false);
+
+  // Load this room’s details
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(
+          `http://localhost/StudyNest/study-nest/src/api/meetings.php?id=${roomId}`,
+          { credentials: "include" }
+        );
+        const j = await r.json();
+        if (j.ok) setRoom(j.room);
+      } catch (e) {
+        console.warn(e);
+      }
+    })();
+  }, [roomId]);
+
+  const isCreator = room?.created_by != null;
+  const roomTitle = state?.title || room?.title || `Room • ${roomId}`;
+
+  const displayName =
+    (JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name) ||
     (JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name) ||
     "Student";
 
+  // Create RTC helper
   const rtc = useMemo(() => useWebRTC(roomId, displayName), [roomId, displayName]);
-  useEffect(() => { rtc.setMic(mic); }, [mic, rtc]);
-  useEffect(() => { rtc.setCam(cam); }, [cam, rtc]);
 
-  // (A) Local media + attach to <video>
+  // Reflect mic/cam toggles to RTC
+  useEffect(() => { rtc.setMic?.(mic); }, [mic, rtc]);
+  useEffect(() => { rtc.setCam?.(cam); }, [cam, rtc]);
+
+  // Get local media once and attach to the local <video>
   useEffect(() => {
     let stream;
     let cancelled = false;
 
     (async () => {
       try {
-        // Prefer your rtc helper so the same stream is reused
         stream = await rtc.getLocalStream();
         if (!cancelled && localVideoRef.current && !localVideoRef.current.srcObject) {
           localVideoRef.current.srcObject = stream;
         }
       } catch (e) {
         console.warn("getUserMedia failed", e);
-        // Your fallback flags are fine:
+        // Conservative fallbacks
         if (e.name === "NotReadableError" || e.name === "NotAllowedError") {
           setCam(false);
           setMic(true);
@@ -190,27 +238,46 @@ export function StudyRoom() {
 
     return () => {
       cancelled = true;
-      // If you want to keep the stream alive for the room, don’t stop it here.
-      // If you do want to stop on leave:
+      // Stop tracks if you want to fully release devices on leave:
       stream?.getTracks().forEach(t => t.stop());
     };
   }, [rtc]);
 
-  // (B) Wire subscriptions + connect once
+  // Subscribe to remote streams/participants/chat, then connect
   useEffect(() => {
     rtc.subscribeStreams(setStreams);
     rtc.subscribeParticipants(setParticipants);
     rtc.onChat((m) => {
-      setChat(prev => [...prev, {
-        id: uid(),
-        author: m.author,
-        text: m.text,
-        ts: m.ts,
-        self: m.author === "You",
-      }]);
+      setChat(prev => [
+        ...prev,
+        {
+          id: uid(),
+          author: m.author,
+          text: m.text,
+          ts: m.ts,
+          self: m.author === "You",
+        },
+      ]);
     });
     rtc.connect();
   }, [rtc]);
+
+  async function endMeeting() {
+    try {
+      setEnding(true);
+      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: roomId }),
+      });
+      const j = await res.json();
+      if (j.ok) navigate("/rooms", { replace: true });
+      else alert(j.error || "Failed to end meeting");
+    } finally {
+      setEnding(false);
+    }
+  }
 
   function send() {
     if (!msg.trim()) return;
@@ -221,21 +288,16 @@ export function StudyRoom() {
 
   async function copyInvite() {
     const url = `${window.location.origin}/rooms/${roomId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      alert("Invite link copied");
-    } catch {
-      console.log(url);
-    }
+    try { await navigator.clipboard.writeText(url); alert("Invite link copied"); }
+    catch { console.log(url); }
   }
 
   async function toggleShare() {
     if (!sharing) {
       await rtc.startShare();
       setSharing(true);
-      // when user stops from browser UI, useWebRTC already restores camera.
-      // We'll just reflect state when 'ended' fires (handled in hook).
     } else {
+      // Your useWebRTC likely stops share on track ‘ended’; if not, add rtc.stopShare()
       setSharing(false);
     }
   }
@@ -252,8 +314,21 @@ export function StudyRoom() {
             <h1 className="text-sm font-semibold truncate max-w-[60vw]">{roomTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">Copy invite</button>
-            <Link to="/home" className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">Leave</Link>
+            <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
+              Copy invite
+            </button>
+            {isCreator && (
+              <button
+                onClick={endMeeting}
+                disabled={ending}
+                className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+              >
+                {ending ? "Ending…" : "End meeting"}
+              </button>
+            )}
+            <Link to="/home" className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
+              Leave
+            </Link>
           </div>
         </div>
       </div>
@@ -265,29 +340,40 @@ export function StudyRoom() {
           <div className="grid gap-3 sm:grid-cols-2">
             {/* Local */}
             <VideoTile label="You" muted={!mic} off={!cam}>
+              {/* Keep this <video> muted to avoid echo; mic toggle controls audio track, not element audio */}
               <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
             </VideoTile>
             {streams.map(s => (
               <VideoTile key={s.id} label={s.name} muted={false} off={!s.stream}>
-                {s.stream ? <video autoPlay playsInline className="h-full w-full object-cover" ref={el => { if (el && !el.srcObject) el.srcObject = s.stream; }} /> :
-                  <div className="grid h-full place-items-center text-zinc-400"><UserIcon className="h-12 w-12" /></div>}
+                {s.stream ? (
+                  <video
+                    autoPlay
+                    playsInline
+                    className="h-full w-full object-cover"
+                    ref={el => { if (el && !el.srcObject) el.srcObject = s.stream; }}
+                  />
+                ) : (
+                  <div className="grid h-full place-items-center text-zinc-400">
+                    <UserIcon className="h-12 w-12" />
+                  </div>
+                )}
               </VideoTile>
             ))}
           </div>
 
           {/* Controls */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <ToggleButton on={mic} onClick={() => setMic((s) => !s)} label={mic ? "Mute" : "Unmute"}>
+            <ToggleButton on={mic} onClick={() => setMic(s => !s)} label={mic ? "Mute" : "Unmute"}>
               {mic ? <MicIcon /> : <MicOffIcon />}
             </ToggleButton>
-            <ToggleButton on={cam} onClick={() => setCam((s) => !s)} label={cam ? "Camera off" : "Camera on"}>
+            <ToggleButton on={cam} onClick={() => setCam(s => !s)} label={cam ? "Camera off" : "Camera on"}>
               {cam ? <CamIcon /> : <CamOffIcon />}
             </ToggleButton>
             <ToggleButton on={sharing} onClick={toggleShare} label={sharing ? "Stop sharing" : "Share screen"}>
               <ScreenIcon />
             </ToggleButton>
             <button
-              onClick={() => setHand((s) => !s)}
+              onClick={() => setHand(s => !s)}
               className={"rounded-xl px-3 py-2 text-sm font-semibold " + (hand ? "bg-amber-500 text-black" : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800")}
             >
               ✋ Raise hand
@@ -301,28 +387,44 @@ export function StudyRoom() {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-zinc-100">Chat</h3>
               <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
-                <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900" />
+                <input
+                  type="checkbox"
+                  checked={anon}
+                  onChange={(e) => setAnon(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900"
+                />
                 Anonymous
               </label>
             </div>
             <ul className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
               {chat.map((m) => (
                 <li key={m.id} className={"rounded-xl px-3 py-2 text-sm " + (m.self ? "bg-emerald-600 text-white ml-8" : "bg-zinc-800 text-zinc-200 mr-8")}>
-                  <div className="text-[10px] opacity-70">{m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                  <div className="text-[10px] opacity-70">
+                    {m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
                   <div className="break-words">{m.text}</div>
                 </li>
               ))}
             </ul>
             <div className="mt-3 flex items-center gap-2">
-              <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Type a message" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-600" />
-              <button onClick={send} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Send</button>
+              <input
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                placeholder="Type a message"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+              <button onClick={send} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                Send
+              </button>
             </div>
           </div>
 
           <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
             <h3 className="text-sm font-semibold text-zinc-100">Participants</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              <li className="flex items-center gap-2"><Dot /> You {hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}</li>
+              <li className="flex items-center gap-2">
+                <Dot /> You {hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+              </li>
               {participants.map(p => (
                 <li key={p.id} className="flex items-center gap-2">
                   <Dot /> {p.name} {p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
