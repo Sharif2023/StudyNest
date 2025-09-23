@@ -91,7 +91,7 @@ const qaList = [
   {
     id: 13,
     course: "CSE 310",
-    question: "Clustered vs Non-clustered index trade-offs",
+    question: "Clustered vs Non-clustered Index Trade-Offs",
     votes: 15,
     answers: 6,
     tag: "DBMS",
