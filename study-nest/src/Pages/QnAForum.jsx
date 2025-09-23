@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
-// We'll remove the LeftNav and Footer imports since their components are not provided.
-// import LeftNav from "../Components/LeftNav";
-// import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Q&A Forum (Peer Review & Voting)
@@ -40,11 +37,19 @@ export default function QnAForum() {
 
   // Fetch all questions from the backend on initial load
   useEffect(() => {
-    fetch(API_ENDPOINT)
+    fetch(API_ENDPOINT, {
+      credentials: 'include',            // <-- add this
+      headers: {
+        'Accept': 'application/json',
+        // Optional: add Authorization if you use JWTs
+        ...(localStorage.getItem('token') && {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }),
+      },
+    })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (response.status === 401) throw new Error('Not authenticated');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return response.json();
       })
       .then((data) => {
@@ -109,7 +114,13 @@ export default function QnAForum() {
 
     fetch(API_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(localStorage.getItem('token') && {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }),
+      },
       body: JSON.stringify({
         action: 'add_question',
         title: q.title,
@@ -142,6 +153,7 @@ export default function QnAForum() {
 
     fetch(API_ENDPOINT, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'vote_question', id, delta }),
     })
@@ -177,6 +189,7 @@ export default function QnAForum() {
 
     fetch(API_ENDPOINT, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'add_answer',
@@ -209,6 +222,7 @@ export default function QnAForum() {
   const onVoteAnswer = (qid, aid, delta) => {
     setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: Number(a.votes) + delta } : a) } : q));
     fetch(API_ENDPOINT, {
+      credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'vote_answer', id: aid, delta }),
@@ -229,6 +243,7 @@ export default function QnAForum() {
   const onPeerReview = (qid, aid) => {
     setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
     fetch(API_ENDPOINT, {
+      credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'peer_review', id: aid }),
@@ -252,6 +267,7 @@ export default function QnAForum() {
     ));
     fetch(API_ENDPOINT, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'accept_answer', question_id: qid, answer_id: aid }),
     })
@@ -654,8 +670,11 @@ function IconButton({ children, onClick, pressed, label }) {
 function Avatar({ name }) {
   const initial = (name?.[0] || "?").toUpperCase();
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-bold text-white">
-      {initial}
+    <span className="flex items-center gap-2">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-bold text-white">
+        {initial}
+      </span>
+      <span className="text-xs font-medium text-zinc-700">{name}</span>
     </span>
   );
 }

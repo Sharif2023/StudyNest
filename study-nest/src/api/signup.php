@@ -1,14 +1,16 @@
 <?php
+// signup.php
 require __DIR__ . '/db.php';
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
 
+    $username = trim($data['username'] ?? '');
     $studentId = trim($data['studentId'] ?? '');
-    $email     = strtolower(trim($data['email'] ?? ''));
-    $password  = $data['password'] ?? '';
+    $email = strtolower(trim($data['email'] ?? ''));
+    $password = $data['password'] ?? '';
 
-    if ($studentId === '' || $email === '' || $password === '') {
+    if ($username === '' || $studentId === '' || $email === '' || $password === '') {
         http_response_code(422);
         echo json_encode(['ok' => false, 'error' => 'Missing required fields.']);
         exit;
@@ -33,18 +35,18 @@ try {
     }
 
     // Check uniqueness
-    $check = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ? LIMIT 1");
-    $check->execute([$email, $studentId]);
+    $check = $pdo->prepare("SELECT id FROM users WHERE email = ? OR student_id = ? OR username = ? LIMIT 1");
+    $check->execute([$email, $studentId, $username]);
     if ($check->fetch()) {
         http_response_code(409);
-        echo json_encode(['ok' => false, 'error' => 'Email or Student ID already exists.']);
+        echo json_encode(['ok' => false, 'error' => 'Email, Student ID, or Username already exists.']);
         exit;
     }
 
     $hash = password_hash($password, PASSWORD_BCRYPT);
 
-    $ins = $pdo->prepare("INSERT INTO users (student_id, email, password_hash) VALUES (?, ?, ?)");
-    $ins->execute([$studentId, $email, $hash]);
+    $ins = $pdo->prepare("INSERT INTO users (username, student_id, email, password_hash) VALUES (?, ?, ?, ?)");
+    $ins->execute([$username, $studentId, $email, $hash]);
 
     echo json_encode(['ok' => true, 'message' => 'Account created successfully.']);
 } catch (Throwable $e) {

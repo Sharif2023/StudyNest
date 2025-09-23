@@ -42,38 +42,21 @@ try {
 
     // Create users table if it does not exist
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS users (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            student_id VARCHAR(32) NOT NULL UNIQUE,
-            email VARCHAR(191) NOT NULL UNIQUE,
-            password_hash VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-        CREATE TABLE IF NOT EXISTS meetings (
-            id VARCHAR(24) PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            course VARCHAR(64) NULL,
-            created_by INT UNSIGNED NULL,
-            status ENUM('live','scheduled','ended') NOT NULL DEFAULT 'live',
-            participants INT UNSIGNED NOT NULL DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            KEY idx_status_created (status, created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-        CREATE TABLE IF NOT EXISTS meeting_participants (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        meeting_id VARCHAR(24) NOT NULL,
-        user_id INT UNSIGNED NULL,
-        display_name VARCHAR(191) NULL,
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        left_at TIMESTAMP NULL DEFAULT NULL,
-        CONSTRAINT fk_mp_meeting FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
-        KEY idx_meeting_time (meeting_id, joined_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
+CREATE TABLE IF NOT EXISTS users (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(191) NOT NULL UNIQUE,
+    student_id VARCHAR(32) NOT NULL UNIQUE,
+    email VARCHAR(191) NOT NULL UNIQUE,
+    bio TEXT NULL,
+    profile_picture_url VARCHAR(255) NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+");
+    // Ensure new columns exist if table already created
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT NULL AFTER email;");
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(255) NULL AFTER bio;");
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed: ' . $e->getMessage()]);

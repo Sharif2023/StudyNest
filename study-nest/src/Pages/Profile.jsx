@@ -158,8 +158,8 @@ export default function Profile() {
                     </p>
 
                     {/* Bio (optional) */}
-                    {user.bio ? (
-                      <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{user.bio}</p>
+                    {(profile?.bio ?? "").trim() ? (
+                      <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
                     ) : (
                       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                         Add a short bio to personalize your profile.
@@ -216,6 +216,7 @@ export default function Profile() {
               {tab === "overview" && (
                 <Overview
                   user={user}
+                  displayName={displayName}
                   notes={myNotes}
                   resources={myResources}
                   rooms={myRooms}
@@ -263,14 +264,14 @@ export default function Profile() {
 }
 
 /* -------------------- Sections -------------------- */
-function Overview({ user, notes, resources, rooms, bookmarks }) {
+function Overview({ user, displayName, notes, resources, rooms, bookmarks }) {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex items-start gap-4">
           <profile_picture url={user.profile_picture} name={user.name} size={56} />
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {user.name} 👋</h3>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {displayName} 👋</h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Quick snapshot of your activity and collections.
             </p>
@@ -318,7 +319,7 @@ function EditProfile({ user, onChange }) {
   const email = profile?.email || user.email;
 
   const [name, setName] = useState(profile?.name || user.name || "");
-  const [bio, setBio] = useState(user.bio || "");
+  const [bio, setBio] = useState(profile?.bio || "");
   const [profile_picture, setprofile_picture] = useState(profile?.profile_picture_url || user.profile_picture || "");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
@@ -394,6 +395,8 @@ function EditProfile({ user, onChange }) {
       if (j?.ok && j.profile) {
         setProfile(j.profile);
         localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+        window.dispatchEvent(new Event("studynest:profile-updated"));
+
         onChange({
           ...user,
           name: j.profile.name,
