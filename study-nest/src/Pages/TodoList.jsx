@@ -97,7 +97,7 @@ export default function TodoList() {
           {/* Page heading */}
           <div className="mb-6 rounded-2xl bg-white/90 dark:bg-slate-900/60 p-5 shadow ring-1 ring-zinc-200 dark:ring-white/10">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">To-Do List</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Manage your tasks (linked to ID {studentId})</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Managing my tasks (My ID: {studentId})</p>
           </div>
 
           {/* Add task form */}
