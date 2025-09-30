@@ -3,3 +3,5 @@
 /study-nest/src/api/uploads/*
 
 /study-nest/src/api/proofs/*
+
+/node_modules/*
