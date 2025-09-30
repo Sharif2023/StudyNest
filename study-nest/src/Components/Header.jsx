@@ -145,6 +145,24 @@ export default function Header({ sidebarWidth = 72 }) {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          {/* Group */}
+          {/* Groups */}
+          <button
+            className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+            aria-label="Groups"
+            onClick={() => navigate('/groups')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M17 20h5v-2a4 4 0 00-4-4h-1m-4 6v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2h9zm3-6a4 4 0 100-8 4 4 0 000 8zM6 8a4 4 0 118 0 4 4 0 01-8 0z" />
+            </svg>
+          </button>
+
           {/* Messages */}
           <button
             className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
@@ -205,6 +223,11 @@ export default function Header({ sidebarWidth = 72 }) {
                 <li>
                   <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
                     Profile
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/groups" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    Group Chat
                   </Link>
                 </li>
                 <li>
