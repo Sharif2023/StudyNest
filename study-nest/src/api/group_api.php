@@ -182,7 +182,7 @@ switch ($action) {
         $msg = trim($_POST['message'] ?? "");
         $attachmentUrl = null;
 
-        // Handle file upload if exists
+        // ✅ Handle file upload (image, pdf, audio, video, etc.)
         if (!empty($_FILES['attachment']['name'])) {
             $uploadDir = __DIR__ . "/uploads/";
             if (!is_dir($uploadDir))
