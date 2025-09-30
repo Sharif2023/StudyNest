@@ -35,8 +35,7 @@ ob_start();
 register_shutdown_function(function () {
     $out = ob_get_clean();
     if ($out === null)
-        return; // nothing printed
-    // If output doesn't look like JSON, wrap it
+        return;
     $trim = ltrim($out);
     if ($trim === '' || str_starts_with($trim, '{') || str_starts_with($trim, '[')) {
         echo $out; // already JSON
@@ -65,14 +64,9 @@ $DB_USER = 'root';
 $DB_PASS = '';
 $DB_CHARSET = 'utf8mb4';
 
-/**
- * Auth modes:
- *   - "link_key" (recommended for dev): require secret key via ?k=...
- *   - "none"     (totally open; for local DEV ONLY)
- */
-$AUTH_MODE = 'link_key';   // change to 'none' to disable auth entirely
-$ADMIN_LINK_KEY = 'MYKEY123';   // must match your frontend
-$ALLOW_LOCAL_ONLY = true;         // block non-local IPs for safety
+$AUTH_MODE = 'link_key';    // or 'none' for dev
+$ADMIN_LINK_KEY = 'MYKEY123';   // must match frontend
+$ALLOW_LOCAL_ONLY = true;
 
 /*************** Helpers ***************/
 function j($data)
@@ -108,20 +102,20 @@ $options = [
 try {
     $pdo = new PDO($dsn, $DB_USER, $DB_PASS, $options);
     $hasRole = false;
-$hasStatus = false;
-try {
-  $colStmt = $pdo->prepare("
-    SELECT COLUMN_NAME
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('role','status')
-  ");
-  $colStmt->execute([$DB_NAME]);
-  $cols = $colStmt->fetchAll(PDO::FETCH_COLUMN);
-  $hasRole   = in_array('role',   $cols, true);
-  $hasStatus = in_array('status', $cols, true);
-} catch (Throwable $e) {
-  // ignore — we’ll fall back to defaults
-}
+    $hasStatus = false;
+    try {
+        $colStmt = $pdo->prepare("
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('role','status')
+        ");
+        $colStmt->execute([$DB_NAME]);
+        $cols = $colStmt->fetchAll(PDO::FETCH_COLUMN);
+        $hasRole = in_array('role', $cols, true);
+        $hasStatus = in_array('status', $cols, true);
+    } catch (Throwable $e) {
+        // ignore
+    }
 } catch (Throwable $e) {
     http_response_code(500);
     j(['ok' => false, 'error' => 'db_connect_failed', 'detail' => $e->getMessage()]);
@@ -129,13 +123,10 @@ try {
 
 /*************** Routing + Auth ***************/
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
-
-// Health is open (no auth)
 if ($action === 'health') {
     j(['ok' => true, 'status' => 'admin_api_up']);
 }
 
-// Link-key auth (if enabled)
 if ($AUTH_MODE === 'link_key') {
     $k = $_GET['k'] ?? ($_POST['k'] ?? (body_json()['k'] ?? ''));
     if (!is_string($k) || !hash_equals($ADMIN_LINK_KEY, $k)) {
@@ -143,7 +134,6 @@ if ($AUTH_MODE === 'link_key') {
         j(['ok' => false, 'error' => 'forbidden', 'detail' => 'missing_or_invalid_key']);
     }
 }
-// If $AUTH_MODE === 'none', no auth is enforced.
 
 /*************** Routes ***************/
 switch ($action) {
@@ -169,22 +159,11 @@ switch ($action) {
     /* ---------- Users ---------- */
     case 'list_users': {
         $q = trim($_GET['q'] ?? '');
-
-        // If the columns don't exist, substitute constants so SELECT still works.
         $selectRole = $hasRole ? "role" : "'User'";
         $selectStatus = $hasStatus ? "status" : "'Active'";
-
-        $baseSql = "
-    SELECT id, username, email,
-           $selectRole   AS role,
-           $selectStatus AS status,
-           created_at
-    FROM users
-  ";
+        $baseSql = "SELECT id, username, email, $selectRole AS role, $selectStatus AS status, created_at FROM users";
         $order = " ORDER BY created_at DESC LIMIT 500";
-
         if ($q !== '') {
-            // Only add role filter if the column exists
             if ($hasRole) {
                 $sql = $baseSql . " WHERE username LIKE :q OR email LIKE :q OR role LIKE :q" . $order;
             } else {
@@ -195,22 +174,17 @@ switch ($action) {
         } else {
             $stmt = $pdo->query($baseSql . $order);
         }
-
         j(['ok' => true, 'users' => $stmt->fetchAll()]);
     }
-
 
     case 'toggle_user_status': {
         $b = body_json();
         $id = (int) ($b['id'] ?? 0);
         if (!$id)
             j(['ok' => false, 'error' => 'missing_id']);
-
         if (!$hasStatus) {
-            // Column not present — report a friendly note and don't fail hard
             j(['ok' => true, 'id' => $id, 'new_status' => 'Active', 'note' => 'status_column_missing']);
         }
-
         $row = $pdo->prepare("SELECT status FROM users WHERE id=?");
         $row->execute([$id]);
         $cur = $row->fetchColumn();
@@ -221,14 +195,12 @@ switch ($action) {
         j(['ok' => true, 'id' => $id, 'new_status' => $next]);
     }
 
-
     case 'set_user_role': {
         $b = body_json();
         $id = (int) ($b['id'] ?? 0);
         $role = $b['role'] ?? '';
         if (!$id || !in_array($role, ['User', 'Admin'], true))
             j(['ok' => false, 'error' => 'invalid_input']);
-
         if (!$hasRole) {
             j(['ok' => true, 'id' => $id, 'new_role' => $role, 'note' => 'role_column_missing']);
         } else {
@@ -236,7 +208,6 @@ switch ($action) {
             j(['ok' => true, 'id' => $id, 'new_role' => $role]);
         }
     }
-
 
     case 'delete_user': {
         $b = body_json();
@@ -247,107 +218,60 @@ switch ($action) {
         j(['ok' => true, 'deleted_id' => $id]);
     }
 
-    /* ---------- Content Moderation ---------- */
+    /* ---------- Content ---------- */
     case 'list_content': {
         $q = trim($_GET['q'] ?? '');
-
         if ($q === '') {
-            // No filters -> simple, fast query
             $union = "
-      SELECT 'Resource' AS type, id, title, author,
-             CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
-             0 AS reports, created_at
-      FROM resources
-      UNION ALL
-      SELECT 'Note' AS type, id, title, NULL AS author,
-             'Active' AS status, 0 AS reports, created_at
-      FROM notes
-      UNION ALL
-      SELECT 'Q&A' AS type, id, title, author,
-             'Active' AS status, 0 AS reports, created_at
-      FROM questions
-      UNION ALL
-      SELECT 'Answer' AS type, id,
-             LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
-             author, 'Active' AS status, 0 AS reports, created_at
-      FROM answers
-    ";
-            $final = "SELECT * FROM ( $union ) t ORDER BY created_at DESC LIMIT 500";
-            $stmt = $pdo->query($final);
+                SELECT 'Resource' AS type, id, title, author,
+                       CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
+                       created_at FROM resources
+                UNION ALL
+                SELECT 'Note' AS type, id, title, NULL AS author,
+                       'Active' AS status, created_at FROM notes
+                UNION ALL
+                SELECT 'Q&A' AS type, id, title, author,
+                       'Active' AS status, created_at FROM questions
+                UNION ALL
+                SELECT 'Answer' AS type, id,
+                       LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
+                       author, 'Active' AS status, created_at FROM answers
+            ";
+            $stmt = $pdo->query("SELECT * FROM ($union) t ORDER BY created_at DESC LIMIT 500");
         } else {
             $like = "%$q%";
-            // Use positional placeholders for each segment
             $union = "
-      SELECT 'Resource' AS type, id, title, author,
-             CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
-             0 AS reports, created_at
-      FROM resources
-      WHERE (title LIKE ? OR author LIKE ? OR kind LIKE ? OR course LIKE ?)
-
-      UNION ALL
-
-      SELECT 'Note' AS type, id, title, NULL AS author,
-             'Active' AS status, 0 AS reports, created_at
-      FROM notes
-      WHERE (title LIKE ? OR course LIKE ? OR semester LIKE ?)
-
-      UNION ALL
-
-      SELECT 'Q&A' AS type, id, title, author,
-             'Active' AS status, 0 AS reports, created_at
-      FROM questions
-      WHERE (title LIKE ? OR author LIKE ? OR tags LIKE ?)
-
-      UNION ALL
-
-      SELECT 'Answer' AS type, id,
-             LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
-             author, 'Active' AS status, 0 AS reports, created_at
-      FROM answers
-      WHERE (author LIKE ? OR body LIKE ?)
-    ";
-            $final = "SELECT * FROM ( $union ) t ORDER BY created_at DESC LIMIT 500";
-            $stmt = $pdo->prepare($final);
-            $stmt->execute([
-                // resources (4)
-                $like,
-                $like,
-                $like,
-                $like,
-                // notes (3)
-                $like,
-                $like,
-                $like,
-                // questions (3)
-                $like,
-                $like,
-                $like,
-                // answers (2)
-                $like,
-                $like,
-            ]);
+                SELECT 'Resource' AS type, id, title, author,
+                       CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
+                       created_at FROM resources WHERE (title LIKE ? OR author LIKE ?)
+                UNION ALL
+                SELECT 'Note' AS type, id, title, NULL AS author,
+                       'Active' AS status, created_at FROM notes WHERE (title LIKE ?)
+                UNION ALL
+                SELECT 'Q&A' AS type, id, title, author,
+                       'Active' AS status, created_at FROM questions WHERE (title LIKE ? OR author LIKE ?)
+                UNION ALL
+                SELECT 'Answer' AS type, id,
+                       LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
+                       author, 'Active' AS status, created_at FROM answers WHERE (author LIKE ? OR body LIKE ?)
+            ";
+            $stmt = $pdo->prepare("SELECT * FROM ($union) t ORDER BY created_at DESC LIMIT 500");
+            $stmt->execute([$like, $like, $like, $like, $like, $like, $like]);
         }
-
         j(['ok' => true, 'content' => $stmt->fetchAll()]);
     }
 
-
     case 'toggle_content_status': {
         $b = body_json();
-        $type = $b['type'] ?? '';
         $id = (int) ($b['id'] ?? 0);
-        if (!$id || !$type)
-            j(['ok' => false, 'error' => 'invalid_input']);
-        if ($type !== 'Resource')
-            j(['ok' => false, 'error' => 'toggle_not_supported_for_type']);
+        if (!$id)
+            j(['ok' => false, 'error' => 'missing_id']);
         $row = $pdo->prepare("SELECT flagged FROM resources WHERE id=?");
         $row->execute([$id]);
         $cur = $row->fetchColumn();
-        if ($cur === false)
-            j(['ok' => false, 'error' => 'not_found']);
         $next = ($cur ? 0 : 1);
         $pdo->prepare("UPDATE resources SET flagged=? WHERE id=?")->execute([$next, $id]);
-        j(['ok' => true, 'id' => $id, 'new_status' => ($next ? 'Reported' : 'Active')]);
+        j(['ok' => true, 'id' => $id, 'new_status' => $next ? 'Reported' : 'Active']);
     }
 
     case 'delete_content': {
@@ -358,34 +282,160 @@ switch ($action) {
             j(['ok' => false, 'error' => 'invalid_input']);
         switch ($type) {
             case 'Resource':
-                $stmt = $pdo->prepare("DELETE FROM resources WHERE id=?");
+                $pdo->prepare("DELETE FROM resources WHERE id=?")->execute([$id]);
                 break;
             case 'Note':
-                $stmt = $pdo->prepare("DELETE FROM notes WHERE id=?");
+                $pdo->prepare("DELETE FROM notes WHERE id=?")->execute([$id]);
                 break;
             case 'Q&A':
-                $stmt = $pdo->prepare("DELETE FROM questions WHERE id=?");
+                $pdo->prepare("DELETE FROM questions WHERE id=?")->execute([$id]);
                 break;
             case 'Answer':
-                $stmt = $pdo->prepare("DELETE FROM answers WHERE id=?");
+                $pdo->prepare("DELETE FROM answers WHERE id=?")->execute([$id]);
                 break;
             default:
                 j(['ok' => false, 'error' => 'unknown_type']);
         }
-        $stmt->execute([$id]);
         j(['ok' => true, 'deleted' => ['type' => $type, 'id' => $id]]);
     }
 
-    /* ---------- Meetings ---------- */
-    case 'end_meeting': {
-        $b = body_json();
-        $id = $b['id'] ?? '';
-        if (!$id)
-            j(['ok' => false, 'error' => 'missing_meeting_id']);
-        $pdo->prepare("UPDATE meetings SET status='ended', ends_at=COALESCE(ends_at, NOW()) WHERE id=?")->execute([$id]);
-        j(['ok' => true, 'meeting_id' => $id, 'status' => 'ended']);
+    /* ---------- Groups Management ---------- */
+    case 'upload_csv': {
+        if ($_SERVER['REQUEST_METHOD'] !== "POST")
+            j(['ok' => false, 'error' => 'invalid_method']);
+        if (!isset($_FILES['csv']))
+            j(['ok' => false, 'error' => 'no_file_uploaded']);
+        $file = $_FILES['csv']['tmp_name'];
+        $csv = array_map('str_getcsv', file($file));
+
+        $created = 0;
+        $first = true;
+        foreach ($csv as $row) {
+            if ($first) {
+                $first = false;
+                continue;
+            } // skip header row
+
+            $program = trim($row[0] ?? '');
+            $code = trim($row[1] ?? '');
+            $title = trim($row[2] ?? '');
+            $section = trim($row[3] ?? '');
+
+            if ($program === '' || $code === '' || $title === '' || $section === '')
+                continue;
+
+            // Build group name as Program/Course Code/Course Title/Section
+            $groupName = "$program / $code / $title / $section";
+
+            try {
+                $stmt = $pdo->prepare("INSERT IGNORE INTO groups(section_name) VALUES (?)");
+                $stmt->execute([$groupName]);
+                if ($stmt->rowCount() > 0)
+                    $created++;
+            } catch (Throwable $e) {
+                // ignore duplicates or errors
+            }
+        }
+        j(['ok' => true, 'created' => $created]);
     }
 
+
+    case 'list_groups': {
+        $stmt = $pdo->query("SELECT * FROM groups ORDER BY section_name");
+        j(['ok' => true, 'groups' => $stmt->fetchAll()]);
+    }
+
+        if ($action === "list_requests") {
+            $res = $conn->query("
+        SELECT gm.id, u.username, g.section_name, gm.status, gm.proof_url
+        FROM group_members gm
+        JOIN users u ON gm.user_id = u.id
+        JOIN groups g ON gm.group_id = g.id
+        WHERE gm.status='pending'
+    ");
+            echo json_encode(["ok" => true, "requests" => $res->fetch_all(MYSQLI_ASSOC)]);
+            exit;
+        }
+
+    /* ---------- Groups: list join requests ---------- */
+    case 'list_requests': {
+        $stmt = $pdo->query("
+        SELECT gm.id, u.username, u.student_id, g.section_name, gm.status, gm.proof_url
+        FROM group_members gm
+        JOIN users u ON gm.user_id = u.id
+        JOIN groups g ON gm.group_id = g.id
+        WHERE gm.status='pending'
+        ORDER BY gm.id DESC
+    ");
+        j(['ok' => true, 'requests' => $stmt->fetchAll()]);
+    }
+
+    /* ---------- Approve or reject a join request ---------- */
+    case 'approve_member': {
+        if ($_SERVER['REQUEST_METHOD'] !== "POST")
+            j(['ok' => false, 'error' => 'invalid_method']);
+        $b = body_json();
+        $id = (int) ($b['id'] ?? 0);
+        $status = ($b['status'] === 'accepted') ? 'accepted' : 'rejected';
+        $stmt = $pdo->prepare("UPDATE group_members SET status=? WHERE id=?");
+        $stmt->execute([$status, $id]);
+        j(['ok' => true, 'status' => $status]);
+    }
+
+    case 'list_members': {
+        $group_id = (int) ($_GET['group_id'] ?? 0);
+        $sql = "
+            SELECT u.id, u.username, u.email, gm.status, gm.joined_at
+            FROM group_members gm
+            JOIN users u ON gm.user_id = u.id
+            WHERE gm.group_id = ? AND gm.status='accepted'
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$group_id]);
+        j(['ok' => true, 'members' => $stmt->fetchAll()]);
+    }
+
+    /* ---------- Delete a group ---------- */
+    case 'delete_group': {
+        $b = body_json();
+        $id = (int) ($b['id'] ?? 0);
+        if (!$id)
+            j(['ok' => false, 'error' => 'missing_group_id']);
+        // Delete group → members + messages auto-deleted via ON DELETE CASCADE
+        $pdo->prepare("DELETE FROM groups WHERE id=?")->execute([$id]);
+        j(['ok' => true, 'deleted_group' => $id]);
+    }
+
+    /* ---------- Remove a member from group ---------- */
+    case 'delete_member': {
+        $b = body_json();
+        $id = (int) ($b['id'] ?? 0); // row id in group_members
+        if (!$id)
+            j(['ok' => false, 'error' => 'missing_member_id']);
+        $pdo->prepare("DELETE FROM group_members WHERE id=?")->execute([$id]);
+        j(['ok' => true, 'deleted_member' => $id]);
+    }
+
+    /* ---------- Delete all groups ---------- */
+    case 'delete_all_groups': {
+        if ($_SERVER['REQUEST_METHOD'] !== "POST") {
+            j(['ok' => false, 'error' => 'invalid_method']);
+        }
+        // CASCADE will remove members + messages automatically
+        $pdo->exec("DELETE FROM groups");
+        j(['ok' => true, 'message' => 'All groups deleted']);
+    }
+
+    /* ---------- Delete all pending requests ---------- */
+    case 'delete_all_requests': {
+        if ($_SERVER['REQUEST_METHOD'] !== "POST") {
+            j(['ok' => false, 'error' => 'invalid_method']);
+        }
+        $pdo->exec("DELETE FROM group_members WHERE status='pending'");
+        j(['ok' => true, 'message' => 'All pending requests deleted']);
+    }
+
+    /* ---------- Default ---------- */
     default:
         j(['ok' => false, 'error' => 'unknown_action']);
 }
