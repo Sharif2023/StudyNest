@@ -38,6 +38,12 @@ export default function GroupChat() {
     const fileInputRef = useRef(null);
     const listRef = useRef(null);
     const [loading, setLoading] = useState(false);
+    const [recording, setRecording] = useState(false);
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [audioBlob, setAudioBlob] = useState(null);
+    const [recordingStart, setRecordingStart] = useState(null);
+    const [elapsed, setElapsed] = useState(0);
+    const [hasNew, setHasNew] = useState(false);
 
     const myUserId = 1; // TODO: replace with real logged-in user ID
 
@@ -52,6 +58,39 @@ export default function GroupChat() {
         }
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            let chunks = [];
+
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: "audio/webm" });
+                setAudioBlob(blob);
+                chunks = [];
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+            setRecording(true);
+            setRecordingStart(Date.now());
+            setElapsed(0);
+        } catch (err) {
+            console.error("Mic error:", err);
+            alert("Microphone access is blocked. Please allow it in your browser.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorder) {
+            mediaRecorder.stop();
+            setRecording(false);
+            setRecordingStart(null);
+            setElapsed(0);
+        }
+    };
+
     useEffect(() => {
         loadMessages();
         const t = setInterval(loadMessages, POLL_MS);
@@ -59,8 +98,21 @@ export default function GroupChat() {
     }, [id]);
 
     useEffect(() => {
-        listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-    }, [messages]);
+  const el = listRef.current;
+  if (!el) return;
+
+  // Default values to avoid NaN
+  const scrollHeight = el.scrollHeight || 0;
+  const scrollTop = el.scrollTop || 0;
+  const clientHeight = el.clientHeight || 0;
+
+  const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+  if (nearBottom) {
+    el.scrollTo({ top: scrollHeight, behavior: "smooth" });
+  }
+}, [messages]);
+
 
     const [group, setGroup] = useState(null);
 
@@ -75,15 +127,30 @@ export default function GroupChat() {
             });
     }, [id]);
 
+
+    useEffect(() => {
+        let timer;
+        if (recording && recordingStart) {
+            timer = setInterval(() => {
+                setElapsed(Math.floor((Date.now() - recordingStart) / 1000));
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [recording, recordingStart]);
+
+
     // Send message
     const sendMessage = async () => {
-        if (!text.trim() && !file) return;
+        if (!text.trim() && !file && !audioBlob) return;
         setLoading(true);
         try {
             const fd = new FormData();
             fd.append("group_id", String(id));
             if (text.trim()) fd.append("message", text.trim());
             if (file) fd.append("attachment", file);
+            if (audioBlob) {
+                fd.append("attachment", audioBlob, "voice_message.webm");
+            }
 
             const res = await fetch(`${API_BASE}?action=send_message`, {
                 method: "POST",
@@ -93,6 +160,7 @@ export default function GroupChat() {
             if (j.ok) {
                 setText("");
                 setFile(null);
+                setAudioBlob(null); // clear after send
                 loadMessages();
             }
         } catch (e) {
@@ -131,6 +199,12 @@ export default function GroupChat() {
                                 >
                                     <div className="font-semibold mb-1">{m.username}</div>
                                     {m.message && <div>{m.message}</div>}
+
+                                    {m.attachment_url && isAudio(m.attachment_url) && (
+                                        <audio controls className="w-full mt-2">
+                                            <source src={m.attachment_url} />
+                                        </audio>
+                                    )}
 
                                     {m.attachment_url && (() => {
                                         const url = m.attachment_url;
@@ -180,6 +254,49 @@ export default function GroupChat() {
                         >
                             📎
                         </button>
+                        <div className="flex gap-2 items-center">
+                            {!recording ? (
+                                <button
+                                    onClick={startRecording}
+                                    className="h-10 w-10 rounded-full bg-emerald-600 text-white grid place-items-center"
+                                    title="Start Recording"
+                                >
+                                    🎤
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={stopRecording}
+                                    className="h-10 w-10 rounded-full bg-red-600 text-white grid place-items-center animate-pulse"
+                                    title="Stop Recording"
+                                >
+                                    ⏹️
+                                </button>
+                            )}
+
+                            {audioBlob && (
+                                <div className="flex items-center gap-2">
+                                    <audio controls src={URL.createObjectURL(audioBlob)} />
+                                    <button
+                                        onClick={() => setAudioBlob(null)}
+                                        className="text-xs px-2 py-1 bg-red-600 rounded-md"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {recording && (
+                            <div className="flex items-center gap-2 bg-red-600/20 px-3 py-2 rounded-lg text-red-400 text-sm">
+                                🔴 Recording... {elapsed}s
+                                <button
+                                    onClick={stopRecording}
+                                    className="ml-3 px-2 py-1 bg-red-600 text-white rounded-md text-xs"
+                                >
+                                    Stop
+                                </button>
+                            </div>
+                        )}
 
                         {file && (
                             <div className="flex items-center gap-2">
@@ -189,10 +306,9 @@ export default function GroupChat() {
                                 </button>
                             </div>
                         )}
-
                         <button
                             onClick={sendMessage}
-                            disabled={loading || (!text.trim() && !file)}
+                            disabled={loading || (!text.trim() && !file && !audioBlob)}
                             className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white text-sm shadow"
                         >
                             Send
