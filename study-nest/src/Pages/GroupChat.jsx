@@ -18,17 +18,14 @@ const isAudio = (url) => /^(mp3|wav|ogg|m4a|aac|flac)$/.test(getExt(url));
 const isVideo = (url) => /^(mp4|webm|ogg|mov|mkv|m4v)$/.test(getExt(url));
 const isPDF = (url) => getExt(url) === "pdf";
 
-// FileChip
-const FileChip = ({ name, ext }) => {
-    return (
-        <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-slate-700/30 text-slate-200 text-sm">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-black/20 text-[10px] font-semibold">
-                {ext.toUpperCase()}
-            </span>
-            <span className="truncate max-w-[220px]">{name}</span>
+const FileChip = ({ name, ext }) => (
+    <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-slate-700/30 text-slate-200 text-sm">
+        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-black/20 text-[10px] font-semibold">
+            {ext.toUpperCase()}
         </span>
-    );
-};
+        <span className="truncate max-w-[220px]">{name}</span>
+    </span>
+);
 
 export default function GroupChat() {
     const { id } = useParams(); // group_id
@@ -45,12 +42,16 @@ export default function GroupChat() {
     const [elapsed, setElapsed] = useState(0);
     const [hasNew, setHasNew] = useState(false);
 
-    const myUserId = 1; // TODO: replace with real logged-in user ID
+    // ✅ load logged-in user from localStorage
+    const stored = localStorage.getItem("studynest.auth");
+    const me = stored ? JSON.parse(stored) : null;
+    const myUserId = me?.id;
 
-    // Load messages
     const loadMessages = async () => {
         try {
-            const res = await fetch(`${API_BASE}?action=messages&group_id=${id}`);
+            const res = await fetch(`${API_BASE}?action=messages&group_id=${id}`, {
+                credentials: "include",
+            });
             const j = await res.json();
             if (j.ok) setMessages(j.messages || []);
         } catch (e) {
@@ -98,24 +99,21 @@ export default function GroupChat() {
     }, [id]);
 
     useEffect(() => {
-  const el = listRef.current;
-  if (!el) return;
+        const el = listRef.current;
+        if (!el) return;
 
-  // Default values to avoid NaN
-  const scrollHeight = el.scrollHeight || 0;
-  const scrollTop = el.scrollTop || 0;
-  const clientHeight = el.clientHeight || 0;
+        const scrollHeight = el.scrollHeight || 0;
+        const scrollTop = el.scrollTop || 0;
+        const clientHeight = el.clientHeight || 0;
 
-  const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
 
-  if (nearBottom) {
-    el.scrollTo({ top: scrollHeight, behavior: "smooth" });
-  }
-}, [messages]);
-
+        if (nearBottom) {
+            el.scrollTo({ top: scrollHeight, behavior: "smooth" });
+        }
+    }, [messages]);
 
     const [group, setGroup] = useState(null);
-
     useEffect(() => {
         fetch(`http://localhost/StudyNest/study-nest/src/api/admin_api.php?action=list_groups&k=MYKEY123`)
             .then((r) => r.json())
@@ -127,7 +125,6 @@ export default function GroupChat() {
             });
     }, [id]);
 
-
     useEffect(() => {
         let timer;
         if (recording && recordingStart) {
@@ -138,14 +135,18 @@ export default function GroupChat() {
         return () => clearInterval(timer);
     }, [recording, recordingStart]);
 
-
-    // Send message
+    // ✅ Send message with correct user_id
     const sendMessage = async () => {
         if (!text.trim() && !file && !audioBlob) return;
+        if (!myUserId) {
+            alert("You must be logged in to send messages.");
+            return;
+        }
         setLoading(true);
         try {
             const fd = new FormData();
             fd.append("group_id", String(id));
+            fd.append("user_id", String(myUserId));
             if (text.trim()) fd.append("message", text.trim());
             if (file) fd.append("attachment", file);
             if (audioBlob) {
@@ -155,12 +156,13 @@ export default function GroupChat() {
             const res = await fetch(`${API_BASE}?action=send_message`, {
                 method: "POST",
                 body: fd,
+                credentials: "include",
             });
             const j = await res.json();
             if (j.ok) {
                 setText("");
                 setFile(null);
-                setAudioBlob(null); // clear after send
+                setAudioBlob(null);
                 loadMessages();
             }
         } catch (e) {
@@ -176,16 +178,13 @@ export default function GroupChat() {
             <Header sidebarWidth={72} />
 
             <div className="flex" style={{ paddingLeft: 72, height: "calc(100vh - 64px)" }}>
-                {/* Right: group chat */}
                 <main className="flex-1 flex flex-col">
-                    {/* Header */}
                     <div className="border-b border-slate-700 p-3">
                         <div className="text-sm font-semibold">
                             {group ? group.section_name : "Loading..."}
                         </div>
                     </div>
 
-                    {/* Messages */}
                     <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2">
                         {messages.map((m) => {
                             const mine = m.user_id === myUserId;
@@ -193,19 +192,12 @@ export default function GroupChat() {
                                 <div
                                     key={m.id}
                                     className={`max-w-[72%] md:max-w-[70%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap border ${mine
-                                        ? "ml-auto bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-transparent"
-                                        : "bg-slate-800/90 text-slate-100 border-slate-700/60"
+                                            ? "ml-auto bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-transparent"
+                                            : "bg-slate-800/90 text-slate-100 border-slate-700/60"
                                         }`}
                                 >
                                     <div className="font-semibold mb-1">{m.username}</div>
                                     {m.message && <div>{m.message}</div>}
-
-                                    {m.attachment_url && isAudio(m.attachment_url) && (
-                                        <audio controls className="w-full mt-2">
-                                            <source src={m.attachment_url} />
-                                        </audio>
-                                    )}
-
                                     {m.attachment_url && (() => {
                                         const url = m.attachment_url;
                                         const name = url.split("/").pop();
@@ -223,7 +215,6 @@ export default function GroupChat() {
                                             </div>
                                         );
                                     })()}
-
                                     <div className="text-[11px] mt-1 text-right opacity-70">
                                         {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                     </div>
