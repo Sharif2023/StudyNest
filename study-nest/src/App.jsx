@@ -17,6 +17,8 @@ import AIUsageChecker from "./Pages/AIUsageChecker";
 import HumanizeWriting from "./Pages/HumanizeWriting";
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Messages from "./pages/Messages";
+import Groups from "./Pages/Groups";
+import GroupChat from "./Pages/GroupChat";
 
 
 function App() {
@@ -42,6 +44,8 @@ function App() {
         <Route path="/humanize" element={<HumanizeWriting />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/group/:id" element={<GroupChat />} />
       </Routes>
     </BrowserRouter>
   );
