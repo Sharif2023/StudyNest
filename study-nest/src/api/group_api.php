@@ -1,9 +1,26 @@
 <?php
+session_start();
+
+/*************** CORS ***************/
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 /*************** JSON + error handling ***************/
 header("Content-Type: application/json; charset=utf-8");
 ini_set('display_errors', '0');
 ini_set('html_errors', '0');
 error_reporting(E_ALL);
+
+// Debug helper (optional, remove in production)
+error_log("SESSION USER_ID: " . ($_SESSION['user_id'] ?? 'none'));
 
 set_exception_handler(function ($e) {
     http_response_code(500);
@@ -17,12 +34,17 @@ set_exception_handler(function ($e) {
     exit;
 });
 
+/*************** Require login ***************/
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(["ok" => false, "error" => "Not logged in"]);
+    exit;
+}
+
+$user_id = $_SESSION['user_id']; // ✅ always from session
+
+
 /*************** DB Connection ***************/
 require "db.php"; // must define $pdo (PDO connection)
-
-/*************** Session / User ***************/
-session_start();
-$user_id = $_SESSION['user_id'] ?? 1; // fallback for testing
 
 /*************** Helpers ***************/
 function j($data)
