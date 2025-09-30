@@ -5,6 +5,16 @@ import Footer from "../Components/Footer";
 
 const API = "http://localhost/StudyNest/study-nest/src/api/group_api.php";
 
+function getAuthUser() {
+    try {
+        const raw = localStorage.getItem("studynest.auth");
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
 export default function Groups() {
     const [groups, setGroups] = useState([]);
     const [myGroups, setMyGroups] = useState([]);
@@ -12,19 +22,25 @@ export default function Groups() {
     const [joinModal, setJoinModal] = useState({ open: false, groupId: null });
     const [proofFile, setProofFile] = useState(null);
 
+    const me = getAuthUser();
+
     useEffect(() => {
-        // Fetch my groups
-        fetch(`${API}?action=my_groups`)
+        fetch(`${API}?action=my_groups`, { credentials: "include" })
             .then((r) => r.json())
             .then((j) => j.ok && setMyGroups(j.groups));
 
-        // Fetch all groups
-        fetch("http://localhost/StudyNest/study-nest/src/api/admin_api.php?action=list_groups&k=MYKEY123")
+        fetch(
+            "http://localhost/StudyNest/study-nest/src/api/admin_api.php?action=list_groups&k=MYKEY123"
+        )
             .then((r) => r.json())
             .then((j) => j.ok && setGroups(j.groups));
     }, []);
 
     const joinGroup = async (id) => {
+        if (!me) {
+            alert("You must be logged in to join groups.");
+            return;
+        }
         const proof = await new Promise((resolve) => {
             const input = document.createElement("input");
             input.type = "file";
@@ -42,11 +58,12 @@ export default function Groups() {
         const r = await fetch(`${API}?action=join_group`, {
             method: "POST",
             body: fd,
+            credentials: "include",
         });
         const j = await r.json();
         if (j.ok) {
             alert("Join request sent with routine proof!");
-            fetch(`${API}?action=my_groups`)
+            fetch(`${API}?action=my_groups`, { credentials: "include" })
                 .then((r) => r.json())
                 .then((j) => j.ok && setMyGroups(j.groups));
         } else {
@@ -54,12 +71,12 @@ export default function Groups() {
         }
     };
 
-    const myStatus = (id) => myGroups.find((g) => g.id === id)?.status || null;
-
     const leaveGroup = (id) => {
+        if (!me) return alert("You must be logged in.");
         fetch(`${API}?action=leave_group`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ group_id: id }),
         })
             .then((r) => r.json())
@@ -67,7 +84,7 @@ export default function Groups() {
                 if (j.ok) {
                     alert("You left the group!");
                     // refresh groups
-                    fetch(`${API}?action=my_groups`)
+                    fetch(`${API}?action=my_groups`, { credentials: "include" })
                         .then((r) => r.json())
                         .then((j) => j.ok && setMyGroups(j.groups));
                 } else {
@@ -77,21 +94,25 @@ export default function Groups() {
     };
 
     const cancelRequest = async (id) => {
+        if (!me) return alert("You must be logged in.");
         const r = await fetch(`${API}?action=cancel_request`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ group_id: id }),
         });
         const j = await r.json();
         if (j.ok) {
             alert("Join request cancelled!");
-            fetch(`${API}?action=my_groups`)
+            fetch(`${API}?action=my_groups`, { credentials: "include" })
                 .then((r) => r.json())
                 .then((j) => j.ok && setMyGroups(j.groups));
         } else {
             alert("Failed: " + j.error);
         }
     };
+
+    const myStatus = (id) => myGroups.find((g) => g.id === id)?.status || null;
 
     const getCourseCode = (sectionName) => {
         const parts = sectionName.split(" / ");
@@ -171,19 +192,19 @@ export default function Groups() {
                                             </button>
                                         </div>
                                     ) : (
-                                            <button
-                                                onClick={() =>
-                                                    !alreadyInCourse && setJoinModal({ open: true, groupId: g.id })
-                                                }
-                                                disabled={alreadyInCourse}
-                                                className={`px-3 py-1.5 rounded-lg transition ${alreadyInCourse
-                                                    ? "bg-gray-600 cursor-not-allowed"
-                                                    : "bg-emerald-600 hover:bg-emerald-500"
-                                                    }`}
-                                            >
-                                                {alreadyInCourse ? "Locked" : "Join"}
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() =>
+                                                !alreadyInCourse && setJoinModal({ open: true, groupId: g.id })
+                                            }
+                                            disabled={alreadyInCourse}
+                                            className={`px-3 py-1.5 rounded-lg transition ${alreadyInCourse
+                                                ? "bg-gray-600 cursor-not-allowed"
+                                                : "bg-emerald-600 hover:bg-emerald-500"
+                                                }`}
+                                        >
+                                            {alreadyInCourse ? "Locked" : "Join"}
+                                        </button>
+                                    )}
                                 </li>
                             );
 
@@ -269,14 +290,17 @@ export default function Groups() {
                                     const r = await fetch(`${API}?action=join_group`, {
                                         method: "POST",
                                         body: fd,
+                                        credentials: "include",
                                     });
                                     const j = await r.json();
                                     if (j.ok) {
                                         alert("Join request sent with routine!");
                                         setProofFile(null);
                                         setJoinModal({ open: false, groupId: null });
+
+                                        setMyGroups(prev => [...prev, { id: joinModal.groupId, status: "pending", section_name: "" }]);
                                         // refresh groups
-                                        fetch(`${API}?action=my_groups`)
+                                        fetch(`${API}?action=my_groups`, { credentials: "include" })
                                             .then((r) => r.json())
                                             .then((j) => j.ok && setMyGroups(j.groups));
                                     } else {
