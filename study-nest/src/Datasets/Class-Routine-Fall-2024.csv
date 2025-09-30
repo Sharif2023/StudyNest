@@ -1,0 +1,366 @@
+Program,Course Code,Course Title,Section
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AH
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AI
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AJ
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AK
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AL
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AM
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AN
+BSCSE,BDS 1201,History of the Emergence of Bangladesh,AO
+BSDS,BDS 1201,History of the Emergence of Bangladesh,BA
+BSDS,BDS 1201,History of the Emergence of Bangladesh,BB
+BSCSE,BIO 3105,Biology for Engineers,A
+BSCSE,BIO 3105,Biology for Engineers,B
+BSCSE,BIO 3105,Biology for Engineers,C
+BSCSE,BIO 3105,Biology for Engineers,D
+BSCSE,BIO 3105,Biology for Engineers,E
+BSCSE,BIO 3105,Biology for Engineers,F
+BSDS,BIO 3107,Biology,BA
+BSDS,BIO 3107,Biology,BB
+BSCSE,CSE 1111,Structured Programming Language,A
+BSCSE,CSE 1111,Structured Programming Language,B
+BSCSE,CSE 1111,Structured Programming Language,C
+BSCSE,CSE 1111,Structured Programming Language,D
+BSCSE,CSE 1111,Structured Programming Language,E
+BSCSE,CSE 1111,Structured Programming Language,F
+BSCSE,CSE 1111,Structured Programming Language,H
+BSCSE,CSE 1111,Structured Programming Language,I
+BSCSE,CSE 1111,Structured Programming Language,J
+BSCSE,CSE 1111,Structured Programming Language,K
+BSCSE,CSE 1111,Structured Programming Language,L
+BSCSE,CSE 1111,Structured Programming Language,M
+BSCSE,CSE 1111,Structured Programming Language,N
+BSCSE,CSE 1111,Structured Programming Language,P
+BSCSE,CSE 1111,Structured Programming Language,Q
+BSCSE,CSE 1115,Object Oriented Programming,A
+BSCSE,CSE 1115,Object Oriented Programming,B
+BSCSE,CSE 1115,Object Oriented Programming,C
+BSCSE,CSE 1115,Object Oriented Programming,D
+BSCSE,CSE 1115,Object Oriented Programming,E
+BSCSE,CSE 1115,Object Oriented Programming,F
+BSCSE,CSE 1115,Object Oriented Programming,G
+BSCSE,CSE 1115,Object Oriented Programming,H
+BSCSE,CSE 1115,Object Oriented Programming,I
+BSCSE,CSE 1115,Object Oriented Programming,J
+BSCSE,CSE 1115,Object Oriented Programming,K
+BSCSE,CSE 1115,Object Oriented Programming,L
+BSCSE,CSE 1115,Object Oriented Programming,M
+BSCSE,CSE 1115,Object Oriented Programming,N
+BSCSE,CSE 1115,Object Oriented Programming,O
+BSCSE,CSE 1115,Object Oriented Programming,P
+BSCSE,CSE 1115,Object Oriented Programming,Q
+BSCSE,CSE 1115,Object Oriented Programming,R
+BSCSE,CSE 1325,Digital Logic Design,A
+BSCSE,CSE 1325,Digital Logic Design,B
+BSCSE,CSE 1325,Digital Logic Design,C
+BSCSE,CSE 1325,Digital Logic Design,D
+BSCSE,CSE 1325,Digital Logic Design,E
+BSCSE,CSE 1325,Digital Logic Design,F
+BSCSE,CSE 1325,Digital Logic Design,G
+BSCSE,CSE 1325,Digital Logic Design,H
+BSCSE,CSE 1325,Digital Logic Design,I
+BSCSE,CSE 1325,Digital Logic Design,J
+BSCSE,CSE 1325,Digital Logic Design,K
+BSCSE,CSE 1325,Digital Logic Design,L
+BSCSE,CSE 1325,Digital Logic Design,M
+BSCSE,CSE 2213,Discrete Mathematics,A
+BSCSE,CSE 2213,Discrete Mathematics,B
+BSDS,CSE 2213,Discrete Mathematics,BA
+BSDS,CSE 2213,Discrete Mathematics,BB
+BSDS,CSE 2213,Discrete Mathematics,BC
+BSDS,CSE 2213,Discrete Mathematics,BD
+BSCSE,CSE 2213,Discrete Mathematics,C
+BSCSE,CSE 2213,Discrete Mathematics,D
+BSCSE,CSE 2213,Discrete Mathematics,E
+BSCSE,CSE 2213,Discrete Mathematics,F
+BSCSE,CSE 2213,Discrete Mathematics,G
+BSCSE,CSE 2213,Discrete Mathematics,H
+BSCSE,CSE 2213,Discrete Mathematics,I
+BSCSE,CSE 2213,Discrete Mathematics,J
+BSCSE,CSE 2213,Discrete Mathematics,K
+BSCSE,CSE 2213,Discrete Mathematics,L
+BSCSE,CSE 2213,Discrete Mathematics,M
+BSCSE,CSE 2213,Discrete Mathematics,N
+BSCSE,CSE 2213,Discrete Mathematics,O
+BSCSE,CSE 2215,Data Structure and Algorithms I,A
+BSCSE,CSE 2215,Data Structure and Algorithms I,B
+BSDS,CSE 2215,Data Structure and Algorithms I,BA
+BSDS,CSE 2215,Data Structure and Algorithms I,BB
+BSDS,CSE 2215,Data Structure and Algorithms I,BC
+BSDS,CSE 2215,Data Structure and Algorithms I,BD
+BSCSE,CSE 2215,Data Structure and Algorithms I,C
+BSCSE,CSE 2215,Data Structure and Algorithms I,D
+BSCSE,CSE 2215,Data Structure and Algorithms I,F
+BSCSE,CSE 2215,Data Structure and Algorithms I,G
+BSCSE,CSE 2215,Data Structure and Algorithms I,H
+BSCSE,CSE 2215,Data Structure and Algorithms I,I
+BSCSE,CSE 2215,Data Structure and Algorithms I,J
+BSCSE,CSE 2217,Data Structure and Algorithms II,A
+BSCSE,CSE 2217,Data Structure and Algorithms II,B
+BSCSE,CSE 2217,Data Structure and Algorithms II,C
+BSCSE,CSE 2217,Data Structure and Algorithms II,D
+BSCSE,CSE 2217,Data Structure and Algorithms II,E
+BSCSE,CSE 2217,Data Structure and Algorithms II,F
+BSCSE,CSE 2217,Data Structure and Algorithms II,G
+BSCSE,CSE 2217,Data Structure and Algorithms II,H
+BSCSE,CSE 2217,Data Structure and Algorithms II,I
+BSCSE,CSE 2233,Theory of Computation,A
+BSCSE,CSE 2233,Theory of Computation,B
+BSCSE,CSE 2233,Theory of Computation,C
+BSCSE,CSE 2233,Theory of Computation,D
+BSCSE,CSE 2233,Theory of Computation,E
+BSCSE,CSE 2233,Theory of Computation,F
+BSCSE,CSE 2233,Theory of Computation,G
+BSCSE,CSE 2233,Theory of Computation,H
+BSCSE,CSE 2233,Theory of Computation,I
+BSCSE,CSE 3313,Computer Architecture,A
+BSCSE,CSE 3313,Computer Architecture,B
+BSCSE,CSE 3313,Computer Architecture,C
+BSCSE,CSE 3313,Computer Architecture,D
+BSCSE,CSE 3313,Computer Architecture,E
+BSCSE,CSE 3313,Computer Architecture,F
+BSCSE,CSE 3313,Computer Architecture,G
+BSCSE,CSE 3313,Computer Architecture,H
+BSCSE,CSE 3313,Computer Architecture,I
+BSCSE,CSE 3313,Computer Architecture,J
+BSCSE,CSE 3313,Computer Architecture,K
+BSCSE,CSE 3411,System Analysis and Design,A
+BSCSE,CSE 3411,System Analysis and Design,B
+BSCSE,CSE 3411,System Analysis and Design,C
+BSCSE,CSE 3411,System Analysis and Design,D
+BSCSE,CSE 3421,Software Engineering,A
+BSCSE,CSE 3421,Software Engineering,B
+BSCSE,CSE 3421,Software Engineering,C
+BSCSE,CSE 3521,Database Management Systems,A
+BSCSE,CSE 3521,Database Management Systems,B
+BSCSE,CSE 3521,Database Management Systems,C
+BSCSE,CSE 3521,Database Management Systems,D
+BSCSE,CSE 3521,Database Management Systems,E
+BSCSE,CSE 3521,Database Management Systems,F
+BSCSE,CSE 3521,Database Management Systems,G
+BSCSE,CSE 3521,Database Management Systems,H
+BSCSE,CSE 3521,Database Management Systems,I
+BSCSE,CSE 3711,Computer Networks,A
+BSCSE,CSE 3711,Computer Networks,B
+BSCSE,CSE 3711,Computer Networks,C
+BSCSE,CSE 3711,Computer Networks,D
+BSCSE,CSE 3711,Computer Networks,E
+BSCSE,CSE 3711,Computer Networks,F
+BSCSE,CSE 3715,Data Communication,A
+BSCSE,CSE 3811,Artificial Intelligence,A
+BSCSE,CSE 3811,Artificial Intelligence,B
+BSCSE,CSE 3811,Artificial Intelligence,C
+BSCSE,CSE 3811,Artificial Intelligence,D
+BSCSE,CSE 3811,Artificial Intelligence,E
+BSCSE,CSE 3811,Artificial Intelligence,F
+BSCSE,CSE 3811,Artificial Intelligence,G
+BSCSE,CSE 3811,Artificial Intelligence,H
+BSCSE,CSE 4325,Microprocessors and Microcontrollers,A
+BSCSE,CSE 4325,Microprocessors and Microcontrollers,B
+BSCSE,CSE 4325,Microprocessors and Microcontrollers,C
+BSCSE,CSE 4325,Microprocessors and Microcontrollers,D
+BSCSE,CSE 4329,Digital System Design,A
+BSCSE,CSE 4435,Software Architecture,A
+BSCSE,CSE 4435,Software Architecture,B
+BSCSE,CSE 4451,Human Computer Interaction,A
+BSCSE,CSE 4451,Human Computer Interaction,B
+BSCSE,CSE 4495,Software Testing and Quality Assurance,A
+BSCSE,CSE 4495,Software Testing and Quality Assurance,B
+BSCSE,CSE 4509,Operating Systems,A
+BSCSE,CSE 4509,Operating Systems,B
+BSCSE,CSE 4509,Operating Systems,C
+BSCSE,CSE 4531,Computer Security,B
+BSCSE,CSE 4531,Computer Security,C
+BSCSE,CSE 4531,Computer Security,D
+BSCSE,CSE 4611,Compiler Design,A
+BSCSE,CSE 4783,Cryptography,A
+BSCSE,CSE 4883,Digital Image Processing,A
+BSCSE,CSE 4883,Digital Image Processing,B
+BSCSE,CSE 4889,Machine Learning,A
+BSCSE,CSE 4889,Machine Learning,B
+BSCSE,CSE 4891,Data Mining,A
+BSCSE,CSE 4893,Introduction to Bioinformatics,A
+BSDS,DS 1101,Fundamentals of Data Science,BA
+BSDS,DS 1101,Fundamentals of Data Science,BB
+BSDS,DS 1115,Object Oriented Programming for Data Science,BA
+BSDS,DS 1115,Object Oriented Programming for Data Science,BB
+BSDS,DS 1501,Programming for Data Science,BA
+BSDS,DS 1501,Programming for Data Science,BB
+BSCSE,ECO 4101,Economics,A
+BSCSE,ECO 4101,Economics,B
+BSCSE,ECO 4101,Economics,C
+BSCSE,ECO 4101,Economics,D
+BSCSE,ECO 4101,Economics,E
+BSCSE,EEE 2113,Electrical Circuits,A
+BSCSE,EEE 2113,Electrical Circuits,B
+BSCSE,EEE 2113,Electrical Circuits,C
+BSCSE,EEE 2113,Electrical Circuits,D
+BSCSE,EEE 2113,Electrical Circuits,E
+BSCSE,EEE 2113,Electrical Circuits,F
+BSCSE,EEE 2113,Electrical Circuits,G
+BSCSE,EEE 2113,Electrical Circuits,H
+BSCSE,EEE 2113,Electrical Circuits,I
+BSCSE,EEE 2113,Electrical Circuits,J
+BSCSE,EEE 2113,Electrical Circuits,K
+BSCSE,EEE 2113,Electrical Circuits,L
+BSCSE,EEE 2113,Electrical Circuits,M
+BSCSE,EEE 2113,Electrical Circuits,N
+BSCSE,EEE 2113,Electrical Circuits,O
+BSCSE,EEE 2113,Electrical Circuits,P
+BSCSE,EEE 2113,Electrical Circuits,Q
+BSCSE,EEE 2123,Electronics,A
+BSCSE,EEE 2123,Electronics,B
+BSCSE,EEE 2123,Electronics,C
+BSCSE,EEE 2123,Electronics,D
+BSCSE,EEE 2123,Electronics,E
+BSCSE,EEE 2123,Electronics,F
+BSCSE,EEE 2123,Electronics,G
+BSCSE,EEE 2123,Electronics,H
+BSCSE,EEE 4261,Green Computing,A
+BSCSE,EEE 4261,Green Computing,B
+BSCSE,EEE 4261,Green Computing,C
+BSCSE,ENG 1011,English I,AA
+BSCSE,ENG 1011,English I,AB
+BSCSE,ENG 1011,English I,AC
+BSCSE,ENG 1011,English I,AD
+BSCSE,ENG 1011,English I,AE
+BSCSE,ENG 1011,English I,AF
+BSCSE,ENG 1011,English I,AG
+BSCSE,ENG 1011,English I,AH
+BSCSE,ENG 1011,English I,AI
+BSCSE,ENG 1011,English I,AJ
+BSCSE,ENG 1011,English I,AK
+BSCSE,ENG 1011,English I,AL
+BSCSE,ENG 1011,English I,AM
+BSCSE,ENG 1011,English I,AN
+BSCSE,ENG 1011,English I,AO
+BSDS,ENG 1011,English I,BA
+BSDS,ENG 1011,English I,BB
+BSCSE,ENG 1013,English II,AA
+BSCSE,ENG 1013,English II,AB
+BSCSE,ENG 1013,English II,AC
+BSCSE,ENG 1013,English II,AD
+BSCSE,ENG 1013,English II,AE
+BSCSE,ENG 1013,English II,AF
+BSCSE,ENG 1013,English II,AG
+BSCSE,ENG 1013,English II,AH
+BSCSE,ENG 1013,English II,AI
+BSCSE,ENG 1013,English II,AJ
+BSCSE,ENG 1013,English II,AK
+BSCSE,ENG 1013,English II,AL
+BSCSE,ENG 1013,English II,AM
+BSCSE,ENG 1013,English II,AN
+BSCSE,ENG 1013,English II,AO
+BSDS,ENG 1013,English II,BA
+BSDS,ENG 1013,English II,BB
+BSCSE,IPE 3401,Industrial and Operational Management,A
+BSCSE,IPE 3401,Industrial and Operational Management,B
+BSCSE,IPE 3401,Industrial and Operational Management,C
+BSCSE,IPE 3401,Industrial and Operational Management,D
+BSCSE,IPE 3401,Industrial and Operational Management,E
+BSCSE,IPE 3401,Industrial and Operational Management,F
+BSCSE,IPE 3401,Industrial and Operational Management,G
+BSCSE,MATH 1151,Fundamental Calculus,A
+BSCSE,MATH 1151,Fundamental Calculus,B
+BSDS,MATH 1151,Fundamental Calculus,BA
+BSDS,MATH 1151,Fundamental Calculus,BB
+BSCSE,MATH 1151,Fundamental Calculus,C
+BSCSE,MATH 1151,Fundamental Calculus,D
+BSCSE,MATH 1151,Fundamental Calculus,E
+BSCSE,MATH 1151,Fundamental Calculus,F
+BSCSE,MATH 1151,Fundamental Calculus,G
+BSCSE,MATH 1151,Fundamental Calculus,H
+BSCSE,MATH 1151,Fundamental Calculus,I
+BSCSE,MATH 1151,Fundamental Calculus,J
+BSCSE,MATH 1151,Fundamental Calculus,K
+BSCSE,MATH 1151,Fundamental Calculus,L
+BSCSE,MATH 1151,Fundamental Calculus,M
+BSCSE,MATH 1151,Fundamental Calculus,N
+BSCSE,MATH 1151,Fundamental Calculus,O
+BSCSE,MATH 1151,Fundamental Calculus,R
+BSDS,MATH 1153,Advanced Calculus,BA
+BSDS,MATH 1153,Advanced Calculus,BB
+BSDS,MATH 2107,Linear Algebra,BA
+BSDS,MATH 2107,Linear Algebra,BB
+BSCSE,MATH 2183,Calculus and Linear Algebra,A
+BSCSE,MATH 2183,Calculus and Linear Algebra,B
+BSCSE,MATH 2183,Calculus and Linear Algebra,C
+BSCSE,MATH 2183,Calculus and Linear Algebra,D
+BSCSE,MATH 2183,Calculus and Linear Algebra,E
+BSCSE,MATH 2183,Calculus and Linear Algebra,F
+BSCSE,MATH 2183,Calculus and Linear Algebra,G
+BSCSE,MATH 2183,Calculus and Linear Algebra,H
+BSCSE,MATH 2183,Calculus and Linear Algebra,I
+BSCSE,MATH 2183,Calculus and Linear Algebra,J
+BSCSE,MATH 2183,Calculus and Linear Algebra,K
+BSCSE,MATH 2183,Calculus and Linear Algebra,L
+BSCSE,MATH 2183,Calculus and Linear Algebra,M
+BSCSE,MATH 2183,Calculus and Linear Algebra,N
+BSCSE,MATH 2183,Calculus and Linear Algebra,O
+BSCSE,MATH 2183,Calculus and Linear Algebra,P
+BSCSE,MATH 2183,Calculus and Linear Algebra,Q
+BSCSE,MATH 2183,Calculus and Linear Algebra,R
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,A
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,B
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,C
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,D
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,E
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,F
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,G
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,H
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,I
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,J
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,K
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,L
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,M
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,N
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,O
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,P
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,Q
+BSCSE,MATH 2201,Coordinate Geometry and Vector Analysis,R
+BSCSE,MATH 2205,Probability and Statistics,A
+BSCSE,MATH 2205,Probability and Statistics,B
+BSCSE,MATH 2205,Probability and Statistics,C
+BSCSE,MATH 2205,Probability and Statistics,D
+BSCSE,MATH 2205,Probability and Statistics,E
+BSCSE,MATH 2205,Probability and Statistics,F
+BSCSE,MATH 2205,Probability and Statistics,G
+BSCSE,MATH 2205,Probability and Statistics,H
+BSCSE,MATH 2205,Probability and Statistics,I
+BSCSE,MATH 2205,Probability and Statistics,J
+BSCSE,PHY 2105,Physics,A
+BSCSE,PHY 2105,Physics,B
+BSDS,PHY 2105,Physics,BA
+BSDS,PHY 2105,Physics,BB
+BSDS,PHY 2105,Physics,BC
+BSCSE,PHY 2105,Physics,C
+BSCSE,PHY 2105,Physics,D
+BSCSE,PHY 2105,Physics,E
+BSCSE,PHY 2105,Physics,F
+BSCSE,PHY 2105,Physics,G
+BSCSE,PHY 2105,Physics,H
+BSCSE,PHY 2105,Physics,I
+BSCSE,PHY 2105,Physics,J
+BSCSE,PHY 2105,Physics,K
+BSCSE,PHY 2105,Physics,L
+BSCSE,PHY 2105,Physics,M
+BSCSE,PHY 2105,Physics,N
+BSCSE,PHY 2105,Physics,O
+BSCSE,PHY 2105,Physics,P
+BSCSE,PHY 2105,Physics,Q
+BSCSE,PHY 2105,Physics,R
+BSCSE,PHY 2105,Physics,S
+BSCSE,PHY 2105,Physics,T
+BSCSE,PHY 2105,Physics,U
+BSCSE,PMG 4101,Project Management,A
+BSCSE,PMG 4101,Project Management,B
+BSCSE,PMG 4101,Project Management,C
+BSCSE,PSY 2101,Psychology,A
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",A
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",B
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",C
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",D
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",E
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",F
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",G
+BSCSE,SOC 2101,"Society, Environment and Engineering Ethics",H

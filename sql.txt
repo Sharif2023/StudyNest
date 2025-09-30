@@ -198,3 +198,33 @@ CREATE TABLE IF NOT EXISTS conversations (
       KEY idx_user (user_id),
       CONSTRAINT fk_read_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- 1. Groups table
+CREATE TABLE groups (
+  id INT(10) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  section_name VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 2. Group members
+CREATE TABLE group_members (
+  id INT(10) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  group_id INT(10) UNSIGNED NOT NULL,
+  user_id INT(10) UNSIGNED NOT NULL,
+  status ENUM('pending','accepted','rejected') DEFAULT 'pending',
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_gm_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  CONSTRAINT fk_gm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 3. Group messages
+CREATE TABLE group_messages (
+  id INT(10) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  group_id INT(10) UNSIGNED NOT NULL,
+  user_id INT(10) UNSIGNED NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_msg_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  CONSTRAINT fk_msg_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

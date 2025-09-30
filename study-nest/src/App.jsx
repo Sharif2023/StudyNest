@@ -15,9 +15,10 @@ import TodoList from "./Pages/TodoList";
 import AIFileCheck from "./Pages/AIFileCheck";
 import AIUsageChecker from "./Pages/AIUsageChecker";
 import HumanizeWriting from "./Pages/HumanizeWriting";
-import AdminDashboard from './Pages/AdminDashboard.jsx';
-import Messages from "./Pages/Messages";
-import GroupChats from "./Pages/GroupChats";
+import AdminDashboard from './pages/AdminDashboard.jsx';
+import Messages from "./pages/Messages";
+import Groups from "./Pages/Groups";
+import GroupChat from "./Pages/GroupChat";
 
 
 function App() {
@@ -43,7 +44,8 @@ function App() {
         <Route path="/humanize" element={<HumanizeWriting />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/messages" element={<Messages />} />
-        <Route path="/group-chats" element={<GroupChats />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/group/:id" element={<GroupChat />} />
       </Routes>
     </BrowserRouter>
   );
