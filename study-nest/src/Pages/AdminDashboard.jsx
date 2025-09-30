@@ -28,6 +28,42 @@ async function apiPost(action, key, body = {}) {
   return res.json();
 }
 
+function useDebounce(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debounced;
+}
+function DebouncedSearchBar({ initial = "", onDebouncedChange, placeholder }) {
+  const [text, setText] = React.useState(initial);
+
+  // Push value up only after the user stops typing
+  React.useEffect(() => {
+    const t = setTimeout(() => onDebouncedChange(text), 300);
+    return () => clearTimeout(t);
+  }, [text, onDebouncedChange]);
+
+  return (
+    <div className="relative w-full max-w-xs">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">🔍</span>
+      <input
+        type="search"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="w-full rounded-lg border border-zinc-300 pl-9 pr-3 py-2
+                   text-sm text-zinc-900 placeholder-zinc-400
+                   focus:outline-none focus:ring-2 focus:ring-cyan-400/50
+                   shadow-sm transition"
+      />
+    </div>
+  );
+}
+
+
 /** ---------- THEME HELPERS ---------- */
 const Badge = ({ children, tone = "neutral" }) => {
   const tones = {
@@ -53,6 +89,13 @@ export default function AdminDashboard() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  const [groupSearch, setGroupSearch] = useState("");
+  const [requestSearch, setRequestSearch] = useState("");
+  const debouncedGroupSearch = useDebounce(groupSearch, 300);
+  const debouncedRequestSearch = useDebounce(requestSearch, 300);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
 
   /** -------- Fetchers -------- */
   async function loadStats() {
@@ -107,11 +150,129 @@ export default function AdminDashboard() {
     if (r.ok) setContent(prev => prev.filter(c => !(c.id === row.id && c.type === row.type)));
   };
 
+  const deleteGroup = async (id) => {
+    if (!window.confirm("Delete this group? All members and messages will be removed.")) return;
+    const r = await apiPost("delete_group", ADMIN_LINK_KEY, { id });
+    if (r.ok) {
+      setGroups(prev => prev.filter(g => g.id !== id));
+      alert("Group deleted");
+    }
+  };
+
+  const deleteMember = async (memberId, groupId) => {
+    if (!window.confirm("Remove this member from the group?")) return;
+    const r = await apiPost("delete_member", ADMIN_LINK_KEY, { id: memberId });
+    if (r.ok) {
+      setMembers(prev => ({
+        ...prev,
+        [groupId]: (prev[groupId] || []).filter(m => m.id !== memberId)
+      }));
+      alert("Member removed");
+    }
+  };
+
+  const deleteAllGroups = async () => {
+    if (!window.confirm("⚠️ Are you sure? This will delete ALL groups, members, and messages!")) return;
+    const r = await apiPost("delete_all_groups", ADMIN_LINK_KEY, {});
+    if (r.ok) {
+      setGroups([]);
+      setMembers({});
+      alert("All groups deleted");
+    }
+  };
+
+  const deleteAllRequests = async () => {
+    if (!window.confirm("⚠️ Are you sure? This will delete ALL pending join requests!")) return;
+    const r = await apiPost("delete_all_requests", ADMIN_LINK_KEY, {});
+    if (r.ok) {
+      setRequests([]);
+      alert("All pending requests deleted");
+    }
+  };
+
+  /** -------------groupchat ------------------ */
+  const [groups, setGroups] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [members, setMembers] = useState({}); // { groupId: [members] }
+
+  async function loadGroups() {
+    setErr(""); setLoading(true);
+    try {
+      const r = await apiGet("list_groups", ADMIN_LINK_KEY);
+      if (!r.ok) throw new Error(r.error || "Failed to load groups");
+      setGroups(r.groups || []);
+    } catch (e) { setErr(e.message); }
+    finally { setLoading(false); }
+  }
+
+  async function loadRequests() {
+    setErr(""); setLoading(true);
+    try {
+      const r = await apiGet("list_requests", ADMIN_LINK_KEY);
+      if (!r.ok) throw new Error(r.error || "Failed to load requests");
+      setRequests(r.requests || []);
+    } catch (e) { setErr(e.message); }
+    finally { setLoading(false); }
+  }
+
+  const approveRequest = async (id, status) => {
+    const r = await apiPost("approve_member", ADMIN_LINK_KEY, { id, status });
+    if (r.ok) {
+      setRequests(prev => prev.filter(req => req.id !== id));
+    }
+  };
+
+  const loadMembers = async (groupId) => {
+    const r = await apiGet("list_members", ADMIN_LINK_KEY, { group_id: groupId });
+    if (r.ok) {
+      setMembers(prev => ({ ...prev, [groupId]: r.members }));
+    }
+  };
+
+  const uploadCSV = async (file) => {
+    const formData = new FormData();
+    formData.append("csv", file);
+    const res = await fetch(`${API_BASE}?action=upload_csv&k=${ADMIN_LINK_KEY}`, {
+      method: "POST",
+      body: formData,
+    });
+    const j = await res.json();
+    if (j.ok) {
+      alert(`✅ ${j.created} groups created from CSV`);
+      loadGroups();
+    } else {
+      alert("❌ Upload failed: " + (j.error || "unknown"));
+    }
+  };
+
+  const SearchBar = ({ value, onChange, placeholder }) => (
+    <div className="relative w-full max-w-xs">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+        🔍
+      </span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-zinc-300 pl-9 pr-3 py-2 
+                 text-sm text-zinc-900 placeholder-zinc-400
+                 focus:outline-none focus:ring-2 focus:ring-cyan-400/50
+                 shadow-sm transition"
+      />
+    </div>
+  );
+
+
   /** -------- Boot + tab switching -------- */
   useEffect(() => {
     if (activeTab === "analytics") loadStats();
     if (activeTab === "users") loadUsers(searchQuery);
     if (activeTab === "content") loadContent(searchQuery);
+    if (activeTab === "groups") {
+      loadGroups();
+      loadRequests();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, ADMIN_LINK_KEY]);
 
@@ -268,9 +429,242 @@ export default function AdminDashboard() {
             </table>
           </div>
         );
+      case "groups":
+        return (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-zinc-900">Groups Management</h2>
+
+            {/* Upload CSV */}
+            <div className="bg-white p-4 rounded-2xl shadow mb-6">
+              <h3 className="font-semibold mb-2">Upload Class Routine CSV</h3>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => {
+                  if (e.target.files.length > 0) {
+                    uploadCSV(e.target.files[0]);
+                    e.target.value = "";
+                  }
+                }}
+                className="block w-full text-sm text-zinc-700 file:mr-3 file:py-2 file:px-4 
+                     file:rounded-lg file:border-0 file:text-sm 
+                     file:font-semibold file:bg-emerald-50 file:text-emerald-700 
+                     hover:file:bg-emerald-100"
+              />
+            </div>
+
+            {/* Pending requests */}
+            <div className="bg-white p-4 rounded-2xl shadow">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold">Pending Join Requests</h3>
+                <div className="flex items-center gap-3">
+                  <DebouncedSearchBar
+                    initial={requestSearch}
+                    onDebouncedChange={setRequestSearch}
+                    placeholder="Search requests…"
+                  />
+                  <button
+                    onClick={deleteAllRequests}
+                    className="min-w-[180px] px-4 py-2 text-sm font-medium rounded-lg 
+                 bg-gradient-to-r from-amber-600 to-yellow-600 text-white 
+                 hover:from-amber-500 hover:to-yellow-500 
+                 focus:outline-none focus:ring-2 focus:ring-amber-400/50
+                 shadow-sm transition flex items-center justify-center gap-1"
+                  >
+                    🗑️ Delete All Requests
+                  </button>
+                </div>
+              </div>
+
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left">
+                    <th className="px-2 py-1">User</th>
+                    <th className="px-2 py-1">ID</th>
+                    <th className="px-2 py-1">Group</th>
+                    <th className="px-2 py-1">Proof</th>
+                    <th className="px-2 py-1">Status</th>
+                    <th className="px-2 py-1">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map((r) => (
+                    <tr key={r.id}>
+                      <td className="px-2 py-1">{r.username}</td>
+                      <td className="px-2 py-1">{r.student_id}</td>
+                      <td className="px-2 py-1">{r.section_name}</td>
+                      <td className="px-2 py-1">
+                        {r.proof_url ? (
+                          <button
+                            onClick={() => setPreviewUrl(r.proof_url)}
+                            className="text-blue-500 hover:underline"
+                          >
+                            Preview
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-2 py-1">{r.status}</td>
+                      <td className="px-2 py-1 space-x-2">
+                        <button
+                          onClick={() => approveRequest(r.id, "accepted")}
+                          className="text-green-600 hover:underline"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => approveRequest(r.id, "rejected")}
+                          className="text-red-600 hover:underline"
+                        >
+                          Reject
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {previewUrl && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-auto relative">
+                    <button
+                      onClick={() => setPreviewUrl(null)}
+                      className="absolute top-2 right-2 text-red-600 text-lg font-bold"
+                    >
+                      ✕
+                    </button>
+
+                    {previewUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      <img
+                        src={previewUrl}
+                        alt="Routine Proof"
+                        className="max-w-full max-h-[85vh] object-contain"
+                      />
+                    ) : previewUrl.match(/\.pdf$/i) ? (
+                      <iframe
+                        src={previewUrl}
+                        title="PDF Preview"
+                        className="w-full h-[85vh]"
+                      />
+                    ) : (
+                      <div className="p-6 text-center text-gray-600">
+                        <p>Preview not available for this file type.</p>
+                        <a
+                          href={previewUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Download Instead
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+
+            {/* Groups List with Members */}
+            <div className="bg-white p-4 rounded-2xl shadow">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">All Groups</h3>
+                <div className="flex items-center gap-3">
+                  <DebouncedSearchBar
+                    initial={groupSearch}
+                    onDebouncedChange={setGroupSearch}
+                    placeholder="Search groups…"
+                  />
+                  <button
+                    onClick={deleteAllGroups}
+                    className="min-w-[180px] px-4 py-2 text-sm font-medium rounded-lg 
+                 bg-gradient-to-r from-rose-600 to-red-600 text-white 
+                 hover:from-rose-500 hover:to-red-500 
+                 focus:outline-none focus:ring-2 focus:ring-rose-400/50
+                 shadow-sm transition flex items-center justify-center gap-1"
+                  >
+                    🗑️ Delete All Groups
+                  </button>
+                </div>
+              </div>
+
+              <ul className="space-y-3">
+                {groups
+                  .filter((g) =>
+                    g.section_name.toLowerCase().includes(groupSearch.toLowerCase())
+                  )
+                  .map((g) => (
+                    <li key={g.id} className="border rounded-lg p-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{g.section_name}</span>
+                          <span className="ml-2 text-xs text-zinc-500">{g.created_at}</span>
+                        </div>
+                        <div className="space-x-3">
+                          <button
+                            onClick={() => loadMembers(g.id)}
+                            className="text-sm text-blue-600 hover:underline"
+                          >
+                            View Members
+                          </button>
+                          <button
+                            onClick={() => deleteGroup(g.id)}
+                            className="text-sm text-red-600 hover:underline"
+                          >
+                            Delete Group
+                          </button>
+                        </div>
+                      </div>
+
+                      {members[g.id] && (
+                        <table className="mt-2 w-full text-sm border-t">
+                          <thead>
+                            <tr className="text-left text-xs text-zinc-500">
+                              <th className="px-2 py-1">Name</th>
+                              <th className="px-2 py-1">Email</th>
+                              <th className="px-2 py-1">Joined</th>
+                              <th className="px-2 py-1">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {members[g.id].map((m) => (
+                              <tr key={m.id}>
+                                <td className="px-2 py-1">{m.username}</td>
+                                <td className="px-2 py-1">{m.email}</td>
+                                <td className="px-2 py-1 text-xs">{m.joined_at}</td>
+                                <td className="px-2 py-1">
+                                  <button
+                                    onClick={() => deleteMember(m.id, g.id)}
+                                    className="text-xs text-red-600 hover:underline"
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {members[g.id].length === 0 && (
+                              <tr>
+                                <td colSpan="4" className="px-2 py-2 text-zinc-500">
+                                  No members yet.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+                    </li>
+                  ))}
+                {groups.length === 0 && <li>No groups yet.</li>}
+              </ul>
+
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
+
   };
 
   return (
@@ -294,10 +688,48 @@ export default function AdminDashboard() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap gap-2 text-sm">
-          <button onClick={() => setActiveTab("analytics")} className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "analytics" ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"}`}>Analytics</button>
-          <button onClick={() => setActiveTab("users")} className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "users" ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"}`}>Users</button>
-          <button onClick={() => setActiveTab("content")} className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "content" ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"}`}>Content</button>
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "analytics"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+              }`}
+          >
+            Analytics
+          </button>
+
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "users"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+              }`}
+          >
+            Users
+          </button>
+
+          <button
+            onClick={() => setActiveTab("content")}
+            className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "content"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+              }`}
+          >
+            Content
+          </button>
+
+          {/* 🔹 NEW TAB BUTTON */}
+          <button
+            onClick={() => setActiveTab("groups")}
+            className={`rounded-xl px-3 py-1.5 font-semibold ${activeTab === "groups"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+              }`}
+          >
+            Groups
+          </button>
         </div>
+
 
         {err && (<div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{err}</div>)}
         {loading && (<div className="mb-4 rounded-lg bg-zinc-50 border border-zinc-200 text-zinc-700 px-4 py-3 text-sm">Loading…</div>)}
