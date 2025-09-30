@@ -152,8 +152,9 @@ switch ($action) {
         if ($_SERVER['REQUEST_METHOD'] !== "POST") {
             j(["ok" => false, "error" => "invalid_method"]);
         }
+
         $data = json_decode(file_get_contents("php://input"), true);
-        $group_id = intval($data['group_id'] ?? 0);
+        $group_id = intval($data['group_id'] ?? ($_POST['group_id'] ?? 0));
 
         if (!$group_id || !$user_id) {
             j(["ok" => false, "error" => "missing_group_or_user"]);
@@ -247,6 +248,27 @@ switch ($action) {
 
         j(["ok" => true, "message" => "Join request cancelled"]);
     }
+
+    /* ---------- Get group members ---------- */
+    case "members": {
+        $group_id = intval($_GET['group_id'] ?? 0);
+        if (!$group_id) {
+            j(["ok" => false, "error" => "missing_group_id"]);
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.username, u.email, gm.status, gm.joined_at
+            FROM group_members gm
+            JOIN users u ON gm.user_id = u.id
+            WHERE gm.group_id = ? AND gm.status = 'accepted'
+            ORDER BY u.username ASC
+        ");
+        $stmt->execute([$group_id]);
+        $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        j(["ok" => true, "members" => $members]);
+    }
+
 
     /* ---------- Default ---------- */
     default:
