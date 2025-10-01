@@ -1,3 +1,6 @@
 to run AI_checker run this command:
 cd study-nest
 php -S localhost:8000 -t .
+
+
+npm install lucide-react

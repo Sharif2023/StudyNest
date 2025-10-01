@@ -337,26 +337,22 @@ export function StudyRoom() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid gap-4 lg:grid-cols-3">
         {/* Video grid */}
         <section className="lg:col-span-2">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={`grid gap-3`} style={{
+            gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`
+          }}>
             {/* Local */}
             <VideoTile label="You" muted={!mic} off={!cam}>
-              {/* Keep this <video> muted to avoid echo; mic toggle controls audio track, not element audio */}
               <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
             </VideoTile>
             {streams.map(s => (
               <VideoTile key={s.id} label={s.name} muted={false} off={!s.stream}>
                 {s.stream ? (
                   <video
-                    autoPlay
-                    playsInline
+                    autoPlay playsInline
                     className="h-full w-full object-cover"
                     ref={el => { if (el && !el.srcObject) el.srcObject = s.stream; }}
                   />
-                ) : (
-                  <div className="grid h-full place-items-center text-zinc-400">
-                    <UserIcon className="h-12 w-12" />
-                  </div>
-                )}
+                ) : <UserIcon className="h-12 w-12 text-zinc-500" />}
               </VideoTile>
             ))}
           </div>
@@ -373,7 +369,13 @@ export function StudyRoom() {
               <ScreenIcon />
             </ToggleButton>
             <button
-              onClick={() => setHand(s => !s)}
+              onClick={() => {
+                setHand(s => {
+                  rtc.toggleHand(!s);
+                  return !s;
+                });
+              }}
+              
               className={"rounded-xl px-3 py-2 text-sm font-semibold " + (hand ? "bg-amber-500 text-black" : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800")}
             >
               ✋ Raise hand
