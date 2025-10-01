@@ -20,9 +20,9 @@ export function useWebRTC(roomId, displayName) {
     ws: null,
     me: null,                      // my clientId from server
     peers: new Map(),              // peerId -> { pc, stream, dc, name, hand }
-    streamsCb: () => {},
-    participantsCb: () => {},
-    chatCb: () => {},
+    streamsCb: () => { },
+    participantsCb: () => { },
+    chatCb: () => { },
     localStream: null
   };
 
@@ -38,21 +38,19 @@ export function useWebRTC(roomId, displayName) {
     const list = [];
     // Always include self if stream available
     if (state.localStream) {
-      list.push({ id: state.me || 'me', stream: state.localStream, name: displayName });
+      list.push({ id: state.me || 'me', stream: state.localStream, name: displayName, self: true });
     }
     for (const [id, p] of state.peers.entries()) {
-      list.push({ id, stream: p.stream || null, name: p.name || 'Student' });
+      list.push({ id, stream: p.stream || null, name: p.name || 'Student', self: false });
     }
     state.streamsCb(list);
   }
 
   function emitParticipants() {
     const list = [];
-    if (state.me) {
-      list.push({ id: state.me, name: displayName, hand: false }); // self
-    }
+    if (state.me) list.push({ id: state.me, name: displayName, hand: false, self: true });
     for (const [id, p] of state.peers.entries()) {
-      list.push({ id, name: p.name || 'Student', hand: !!p.hand });
+      list.push({ id, name: p.name || 'Student', hand: !!p.hand, self: false });
     }
     state.participantsCb(list);
   }
@@ -94,7 +92,7 @@ export function useWebRTC(roomId, displayName) {
 
       if (m.type === 'peer-left') {
         const p = state.peers.get(m.id);
-        if (p?.pc) try { p.pc.close(); } catch {}
+        if (p?.pc) try { p.pc.close(); } catch { }
         state.peers.delete(m.id);
         emitParticipants(); emitStreams();
         return;
@@ -126,7 +124,7 @@ export function useWebRTC(roomId, displayName) {
       if (m.type === 'ice') {
         const peer = state.peers.get(m.from);
         if (!peer?.pc) return;
-        try { await peer.pc.addIceCandidate(m.candidate); } catch {}
+        try { await peer.pc.addIceCandidate(m.candidate); } catch { }
         return;
       }
     };
@@ -182,7 +180,7 @@ export function useWebRTC(roomId, displayName) {
 
     pc.onconnectionstatechange = () => {
       if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        try { pc.close(); } catch {}
+        try { pc.close(); } catch { }
         state.peers.delete(peerId);
         emitParticipants(); emitStreams();
       }
@@ -209,7 +207,7 @@ export function useWebRTC(roomId, displayName) {
 
     dc.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.type === 'chat') emitChat(m);
+      if (m.type === 'chat') emitChat({ ...m, self: false });
     };
   }
 
@@ -225,22 +223,42 @@ export function useWebRTC(roomId, displayName) {
           credentials: 'include',
           body: JSON.stringify({ id: roomId, display_name: displayName || 'Student' })
         });
-      } catch {}
+      } catch { }
+      // auto leave on close/refresh
+      if (!window.__studynestLeaveHook) {
+        window.addEventListener('beforeunload', () => {
+          try {
+            navigator.sendBeacon(
+              'http://localhost/StudyNest/study-nest/src/api/meetings.php/leave',
+              new Blob([JSON.stringify({ id: roomId })], { type: 'application/json' })
+            );
+          } catch { }
+        });
+        window.__studynestLeaveHook = true;
+      }
     },
 
     disconnect() {
       state.ws?.close();
-      state.peers.forEach(p => { try { p.pc.close(); } catch {} });
+      state.peers.forEach(p => { try { p.pc.close(); } catch { } });
       state.peers.clear();
       emitStreams(); emitParticipants();
+      try {
+        fetch('http://localhost/StudyNest/study-nest/src/api/meetings.php/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: roomId })
+        });
+      } catch { }
     },
 
-    sendChat(payload) { // {text, author, ts}
-      const msg = JSON.stringify({ type: 'chat', ...payload });
+    sendChat(payload) { // {type:'chat', text, author, ts, self:true}
+      const msg = JSON.stringify({ type: 'chat', ...payload, self: undefined });
       for (const [, p] of state.peers.entries()) {
-        try { p.dc?.readyState === 'open' && p.dc.send(msg); } catch {}
+        try { p.dc?.readyState === 'open' && p.dc.send(msg); } catch { }
       }
-      emitChat(payload);
+      emitChat({ ...payload, self: true });
     },
 
     async getLocalStream() { return await getLocal('cam'); },
@@ -275,6 +293,7 @@ export function useWebRTC(roomId, displayName) {
         state.localStream = cam;
         emitStreams();
       });
+      return share;
     },
 
     subscribeStreams,

@@ -276,7 +276,12 @@ function mapMeetingToCard(m) {
     // number on the right line ("👀 X watching")
     viewers: typeof m.participants === "number" ? m.participants : 0,
     // for the progress bar when live
-    startedAt: Date.parse(m.starts_at || m.created_at || Date.now()),
+    startedAt: m.status === "live"
+      ? Date.parse(m.starts_at || m.created_at || Date.now())
+      : undefined,
+    startAt: m.status === "scheduled" && m.starts_at
+      ? Date.parse(m.starts_at)
+      : undefined,
   };
 }
 function StudyRoom({ anonymous }) {
@@ -389,18 +394,19 @@ export default function Home() {
     })();
   }, []);
   const featured = useMemo(() => {
-    const live = (rooms || []).filter(r => r.status === "live");
-    const scheduled = (rooms || [])
-      .filter(r => r.status === "scheduled")
-      .sort((a, b) => new Date(a.starts_at || a.created_at) - new Date(b.starts_at || b.created_at));
-
-    const pick = [...live.slice(0, 2)];
-    if (pick.length < 2) pick.push(...scheduled.slice(0, 2 - pick.length));
-    return pick;
+    return (rooms || [])
+      .filter(r => r.status === "live")
+      .map(mapMeetingToCard)
+      .slice(0, 2);
   }, [rooms]);
 
 
-  const upcoming = mockCourses.filter((c) => c.status === "upcoming");
+  const upcoming = useMemo(() => {
+    return (rooms || [])
+      .filter(r => r.status === "scheduled")
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+      .map(mapMeetingToCard);
+  }, [rooms]);
 
   return (
     <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
@@ -457,8 +463,11 @@ export default function Home() {
                 </h3>
                 <div className="space-y-3">
                   {upcoming.map((c) => (
-                    <CourseCard key={c.id} c={c} />
+                    <CourseCard key={c.id} c={c} joinTo={`/rooms/${c.id}`} />
                   ))}
+                  {upcoming.length === 0 && (
+                    <div className="text-sm text-slate-400">No upcoming sessions.</div>
+                  )}
                 </div>
               </Card>
 

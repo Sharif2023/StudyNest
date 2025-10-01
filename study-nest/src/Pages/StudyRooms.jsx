@@ -250,13 +250,7 @@ export function StudyRoom() {
     rtc.onChat((m) => {
       setChat(prev => [
         ...prev,
-        {
-          id: uid(),
-          author: m.author,
-          text: m.text,
-          ts: m.ts,
-          self: m.author === "You",
-        },
+        { id: uid(), author: m.author, text: m.text, ts: m.ts, self: !!m.self }
       ]);
     });
     rtc.connect();
@@ -281,8 +275,14 @@ export function StudyRoom() {
 
   function send() {
     if (!msg.trim()) return;
-    const payload = { text: msg.trim(), author: anon ? "Anonymous" : "You", ts: new Date().toISOString() };
-    rtc.sendChat(payload);
+    const payload = {
+      type: "chat",
+      text: msg.trim(),
+      author: anon ? "Anonymous" : displayName,
+      ts: new Date().toISOString(),
+      self: true
+    };
+    rtc.sendChat(payload);        // local echo handled inside
     setMsg("");
   }
 
@@ -340,17 +340,20 @@ export function StudyRoom() {
           <div className={`grid gap-3`} style={{
             gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`
           }}>
-            {/* Local */}
-            <VideoTile label="You" muted={!mic} off={!cam}>
-              <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-            </VideoTile>
             {streams.map(s => (
-              <VideoTile key={s.id} label={s.name} muted={false} off={!s.stream}>
+              <VideoTile
+                key={s.id}
+                label={s.self ? "You" : (s.name || "Student")}
+                muted={s.self ? !mic : false}
+                off={!s.stream}
+              >
                 {s.stream ? (
                   <video
-                    autoPlay playsInline
+                    autoPlay
+                    playsInline
+                    muted={s.self}            // avoid feedback loop on your tile
                     className="h-full w-full object-cover"
-                    ref={el => { if (el && !el.srcObject) el.srcObject = s.stream; }}
+                    ref={el => { if (el && el.srcObject !== s.stream) el.srcObject = s.stream; }}
                   />
                 ) : <UserIcon className="h-12 w-12 text-zinc-500" />}
               </VideoTile>
@@ -375,7 +378,7 @@ export function StudyRoom() {
                   return !s;
                 });
               }}
-              
+
               className={"rounded-xl px-3 py-2 text-sm font-semibold " + (hand ? "bg-amber-500 text-black" : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800")}
             >
               ✋ Raise hand
@@ -424,12 +427,16 @@ export function StudyRoom() {
           <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
             <h3 className="text-sm font-semibold text-zinc-100">Participants</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              <li className="flex items-center gap-2">
-                <Dot /> You {hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
-              </li>
               {participants.map(p => (
                 <li key={p.id} className="flex items-center gap-2">
-                  <Dot /> {p.name} {p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+                  <Dot />
+                  {p.self ? "You" : (p.name || "Student")}
+                  {p.self && hand && (
+                    <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>
+                  )}
+                  {!p.self && p.hand && (
+                    <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>
+                  )}
                 </li>
               ))}
             </ul>
