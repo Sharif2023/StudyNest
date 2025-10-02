@@ -8,7 +8,8 @@
  *  GET  /meetings.php?id=ROOM_ID       -> single meeting + participants
  *  POST /meetings.php                  -> create {title?, course?, starts_at?, display_name?}
  *  POST /meetings.php/join             -> join {id, display_name?}
- *  POST /meetings.php/end              -> end {id} (creator-only)  => sets status='ended' (kept in DB)
+ *  POST /meetings.php/leave            -> leave {id}
+ *  POST /meetings.php/end              -> end {id} (creator-only)
  */
 
 require_once __DIR__ . '/db.php'; // must set $pdo (PDO)
@@ -47,7 +48,6 @@ function uid_short($bytes = 6)
 {
   return substr(bin2hex(random_bytes($bytes)), 0, $bytes * 2);
 }
-/** Accepts "YYYY-MM-DD HH:MM" or "YYYY-MM-DDTHH:MM" */
 function normalize_datetime_local($s)
 {
   if (!$s) return null;
@@ -61,17 +61,16 @@ function normalize_datetime_local($s)
   }
 }
 
-/** Ensure schema exists (idempotent) + add snapshot columns if missing */
+/** Ensure schema exists (idempotent) */
 function ensure_schema(PDO $pdo)
 {
-  // meetings
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS meetings (
       id              VARCHAR(16)  PRIMARY KEY,
       title           VARCHAR(255) NOT NULL,
-      course          VARCHAR(64)  NULL,            -- stores course_code (e.g., CSE220)
-      course_title    VARCHAR(255) NULL,            -- snapshot so UI doesn't need joins
-      course_thumbnail VARCHAR(1024) NULL,          -- snapshot image url
+      course          VARCHAR(64)  NULL,
+      course_title    VARCHAR(255) NULL,
+      course_thumbnail VARCHAR(1024) NULL,
       created_by      INT UNSIGNED NULL,
       created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       status          ENUM('live','ended','scheduled') NOT NULL DEFAULT 'live',
@@ -84,34 +83,25 @@ function ensure_schema(PDO $pdo)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
 
-  // backwards-safe adds (MySQL 8 supports IF NOT EXISTS; ignore errors otherwise)
-  try {
-    $pdo->exec("ALTER TABLE meetings ADD COLUMN IF NOT EXISTS course_title VARCHAR(255) NULL");
-  } catch (Throwable $e) {
-  }
-  try {
-    $pdo->exec("ALTER TABLE meetings ADD COLUMN IF NOT EXISTS course_thumbnail VARCHAR(1024) NULL");
-  } catch (Throwable $e) {
-  }
-
   // meeting_participants
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS meeting_participants (
       id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
       meeting_id   VARCHAR(16) NOT NULL,
       user_id      INT UNSIGNED NULL,
+      session_id   VARCHAR(64) NULL,
       display_name VARCHAR(100) NULL,
       joined_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       left_at      TIMESTAMP NULL DEFAULT NULL,
       CONSTRAINT fk_mp_meeting FOREIGN KEY (meeting_id)
         REFERENCES meetings(id) ON DELETE CASCADE,
       INDEX idx_meeting (meeting_id),
-      INDEX idx_user (user_id)
+      INDEX idx_user (user_id),
+      INDEX idx_session (session_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
 }
 
-/** Look up course snapshot by code from courses table (optional) */
 function fetch_course_snapshot(PDO $pdo, $course_code)
 {
   if (!$course_code) return [null, null];
@@ -135,16 +125,15 @@ try {
       $room = $st->fetch(PDO::FETCH_ASSOC);
       if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
 
-      // backfill course snapshot from courses table if missing
       if (!$room['course_title'] || !$room['course_thumbnail']) {
         [$ctitle, $cthumb] = fetch_course_snapshot($pdo, $room['course']);
         $room['course_title']     = $room['course_title']     ?: $ctitle;
         $room['course_thumbnail'] = $room['course_thumbnail'] ?: $cthumb;
       }
 
-      $p = $pdo->prepare("SELECT display_name, user_id, joined_at, left_at
+      $p = $pdo->prepare("SELECT display_name, user_id, joined_at
                           FROM meeting_participants
-                          WHERE meeting_id = ?
+                          WHERE meeting_id = ? AND left_at IS NULL
                           ORDER BY id ASC");
       $p->execute([$room['id']]);
       $room['participants_list'] = $p->fetchAll(PDO::FETCH_ASSOC);
@@ -152,7 +141,6 @@ try {
       json_out(['ok' => true, 'room' => $room]);
     }
 
-    // list only live + scheduled; ended meetings are hidden from lobby/home
     $st = $pdo->query("
       SELECT id, title, course, course_title, course_thumbnail,
              created_by, created_at, status, starts_at, participants
@@ -164,7 +152,6 @@ try {
     ");
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-    // backfill snapshots if any row missed them (older rows)
     foreach ($rows as &$r) {
       if (!$r['course_title'] || !$r['course_thumbnail']) {
         [$ctitle, $cthumb] = fetch_course_snapshot($pdo, $r['course']);
@@ -179,28 +166,27 @@ try {
 
   /* ------------------------- POST create ------------------------- */
   if ($method === 'POST' && basename($path) === 'meetings.php') {
-    $u      = user_id(); // can be null (guest)
+    $u      = user_id();
     $b      = body_json();
     $title  = trim((string)($b['title'] ?? 'Quick Study Room'));
-    $course = trim((string)($b['course'] ?? '')); // course_code like "CSE220"
+    $course = trim((string)($b['course'] ?? ''));
     $name   = trim((string)($b['display_name'] ?? ''));
     $starts = normalize_datetime_local($b['starts_at'] ?? null);
     $status = $starts ? 'scheduled' : 'live';
     if ($title === '') $title = 'Quick Study Room';
 
-    // take snapshot of course title & thumbnail for UI cards
     [$course_title, $course_thumb] = fetch_course_snapshot($pdo, $course);
 
-    $id = uid_short(6); // 12 hex (e.g., "4ca7b81ab8d6")
+    $id = uid_short(6);
     $ins = $pdo->prepare("
       INSERT INTO meetings (id, title, course, course_title, course_thumbnail, created_by, status, starts_at, participants)
       VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, 1)
     ");
     $ins->execute([$id, $title, $course, $course_title, $course_thumb, $u, $status, $starts]);
 
-    // add creator as first participant (optional display name)
-    $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name) VALUES (?, ?, NULLIF(?, ''))");
-    $pp->execute([$id, $u, $name]);
+    $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name, session_id)
+                         VALUES (?, ?, NULLIF(?, ''), ?)");
+    $pp->execute([$id, $u, $name, session_id()]);
 
     json_out(['ok' => true, 'id' => $id, 'status' => $status]);
   }
@@ -219,11 +205,21 @@ try {
     if ($room['status'] === 'ended') json_out(['ok' => false, 'error' => 'already_ended'], 409);
 
     $u = user_id();
-    $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name) VALUES (?, ?, NULLIF(?, ''))");
-    $pp->execute([$id, $u, $name]);
+    $sess = session_id();
 
-    $upd = $pdo->prepare("UPDATE meetings SET participants = participants + 1 WHERE id=?");
-    $upd->execute([$id]);
+    $q = $pdo->prepare("SELECT 1 FROM meeting_participants
+                        WHERE meeting_id=? AND left_at IS NULL
+                        AND ((user_id IS NOT NULL AND user_id=?) OR (user_id IS NULL AND session_id=?))
+                        LIMIT 1");
+    $q->execute([$id, $u, $sess]);
+    if (!$q->fetchColumn()) {
+      $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name, session_id)
+                           VALUES (?, ?, NULLIF(?,''), ?)");
+      $pp->execute([$id, $u, $name, $sess]);
+
+      $upd = $pdo->prepare("UPDATE meetings SET participants=participants+1 WHERE id=?");
+      $upd->execute([$id]);
+    }
 
     json_out(['ok' => true]);
   }
@@ -234,24 +230,30 @@ try {
     $id = $b['id'] ?? null;
     if (!$id) json_out(['ok' => false, 'error' => 'missing_id'], 400);
 
-    // mark last open participant row as left
     $u = user_id();
+    $sess = session_id();
+
     if ($u) {
       $p = $pdo->prepare("UPDATE meeting_participants
-                      SET left_at = NOW()
-                      WHERE meeting_id = ? AND user_id = ? AND left_at IS NULL
-                      ORDER BY id DESC LIMIT 1");
+                          SET left_at=NOW()
+                          WHERE meeting_id=? AND user_id=? AND left_at IS NULL
+                          ORDER BY id DESC LIMIT 1");
       $p->execute([$id, $u]);
+    } else {
+      $p = $pdo->prepare("UPDATE meeting_participants
+                          SET left_at=NOW()
+                          WHERE meeting_id=? AND session_id=? AND left_at IS NULL
+                          ORDER BY id DESC LIMIT 1");
+      $p->execute([$id, $sess]);
     }
 
-    // decrement, but not below 0/1
-    $pdo->prepare("UPDATE meetings SET participants = GREATEST(participants - 1, 0) WHERE id = ?")
-      ->execute([$id]);
+    $pdo->prepare("UPDATE meetings SET participants=GREATEST(participants-1,0) WHERE id=?")
+        ->execute([$id]);
 
     json_out(['ok' => true]);
   }
 
-  /* ------------------------- POST end (creator only) ------------------------- */
+  /* ------------------------- POST end ------------------------- */
   if ($method === 'POST' && preg_match('~/meetings\.php/end$~', $path)) {
     $b  = body_json();
     $id = $b['id'] ?? null;
@@ -262,12 +264,11 @@ try {
     $room = $st->fetch(PDO::FETCH_ASSOC);
     if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
 
-    // Only creator can end (if created_by IS NULL, allow anyone in dev)
     $uid = user_id();
     if ($room['created_by'] !== null && (int)$room['created_by'] !== (int)$uid) {
       json_out(['ok' => false, 'error' => 'forbidden_not_creator'], 403);
     }
-    if ($room['status'] === 'ended') json_out(['ok' => true]); // already ended
+    if ($room['status'] === 'ended') json_out(['ok' => true]);
 
     $up = $pdo->prepare("UPDATE meetings SET status='ended', ends_at=NOW() WHERE id=?");
     $up->execute([$id]);

@@ -225,14 +225,7 @@ export function StudyRoom() {
         }
       } catch (e) {
         console.warn("getUserMedia failed", e);
-        // Conservative fallbacks
-        if (e.name === "NotReadableError" || e.name === "NotAllowedError") {
-          setCam(false);
-          setMic(true);
-        } else {
-          setCam(false);
-          setMic(false);
-        }
+        setCam(false);
       }
     })();
 
@@ -293,14 +286,28 @@ export function StudyRoom() {
   }
 
   async function toggleShare() {
-    if (!sharing) {
-      await rtc.startShare();
-      setSharing(true);
-    } else {
-      // Your useWebRTC likely stops share on track ‘ended’; if not, add rtc.stopShare()
-      setSharing(false);
+    try {
+      if (!sharing) {
+        await rtc.startShare();
+        setSharing(true);
+      } else {
+        await rtc.stopShare(); // IMPORTANT: remove screen sender & renegotiate
+        setSharing(false);
+      }
+    } catch (e) {
+      if (String(e?.message || "").includes("share-cancelled")) {
+        // user pressed "Cancel" in the picker — ignore
+        return;
+      }
+      console.warn("share toggle failed", e);
     }
   }
+
+  useEffect(() => {
+    // rtc will call this when screen track ends (browser-level stop)
+    rtc.onShareEnded?.(() => setSharing(false));
+  }, [rtc]);
+
 
   return (
     <main className="min-h-screen bg-zinc-950">
@@ -340,22 +347,36 @@ export function StudyRoom() {
           <div className={`grid gap-3`} style={{
             gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`
           }}>
-            {streams.map(s => (
+            {streams.map((s) => (
               <VideoTile
                 key={s.id}
-                label={s.self ? "You" : (s.name || "Student")}
-                muted={s.self ? !mic : false}
+                label={s.self ? (s.type === "screen" ? "You (screen)" : "You") : s.name || "Student"}
+                muted={s.self && s.type !== "screen" ? !mic : false}
                 off={!s.stream}
+                isScreen={s.type === "screen"}
               >
                 {s.stream ? (
                   <video
                     autoPlay
                     playsInline
-                    muted={s.self}            // avoid feedback loop on your tile
+                    muted={s.self}
                     className="h-full w-full object-cover"
-                    ref={el => { if (el && el.srcObject !== s.stream) el.srcObject = s.stream; }}
+                    ref={(el) => {
+                      if (el && el.srcObject !== s.stream) {
+                        el.srcObject = s.stream;
+                        const p = el.play();
+                        if (p && typeof p.catch === "function") p.catch(() => { });
+                      }
+                    }}
+                    onLoadedMetadata={(e) => {
+                      const el = e.currentTarget;
+                      const p = el.play();
+                      if (p && typeof p.catch === "function") p.catch(() => { });
+                    }}
                   />
-                ) : <UserIcon className="h-12 w-12 text-zinc-500" />}
+                ) : (
+                  <UserIcon className="h-12 w-12 text-zinc-500" />
+                )}
               </VideoTile>
             ))}
           </div>
