@@ -5,14 +5,14 @@ const wss = new WebSocketServer({ port: 3001 });
 const rooms = new Map(); // roomId -> Map(clientId -> {ws, name})
 
 function send(ws, obj) {
-  try { ws.readyState === 1 && ws.send(JSON.stringify(obj)); } catch { }
+  try { ws.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {}
 }
 
 function broadcast(roomId, obj, exceptId = null) {
   const room = rooms.get(roomId);
   if (!room) return;
   for (const [cid, c] of room.entries()) {
-    if (cid === exceptId) continue;
+    if (exceptId && cid === exceptId) continue;
     send(c.ws, obj);
   }
 }
@@ -32,7 +32,7 @@ wss.on("connection", (ws) => {
       const room = rooms.get(roomId);
       room.set(clientId, { ws, name });
 
-      // tell the joiner about themselves and existing peers
+      // tell the joiner about themselves + current peers
       send(ws, {
         type: "joined",
         clientId,
@@ -46,6 +46,7 @@ wss.on("connection", (ws) => {
 
     if (!roomId) return;
 
+    // forward signaling
     if (m.type === "offer" || m.type === "answer" || m.type === "ice") {
       const to = String(m.to);
       const room = rooms.get(roomId);
@@ -54,9 +55,9 @@ wss.on("connection", (ws) => {
       return;
     }
 
+    // reliable chat broadcast (everybody including sender’s peers)
     if (m.type === "chat") {
-      // forward to everyone (sender will ignore because they already echoed locally)
-      broadcast(roomId, { ...m, from: clientId /* no exceptId */ });
+      broadcast(roomId, { ...m, from: clientId });
       return;
     }
 

@@ -8,12 +8,12 @@ const STUN = [
 const WS_URL = "ws://localhost:3001";
 
 /**
- * Mesh P2P for Study Rooms
- * - Pre-creates transceivers to lock SDP m-line order
- * - Cam optional (gracefully degrades if NotReadableError)
- * - Screen share via replaceTrack (no renegotiation churn)
- * - Glare-safe negotiation
- * - DataChannel chat with WS fallback
+ * Mesh P2P for Study Rooms (stable)
+ * - Deterministic initiator (lexicographic clientId) to avoid dueling offers
+ * - Perfect negotiation (polite/unpolite) to avoid glare
+ * - Fixed m-line order: [audio, camVideo, screenVideo]
+ * - Screen share via replaceTrack (no add/remove churn)
+ * - Robust DataChannel (P2P + WS broadcast fallback)
  */
 export function useWebRTC(roomId, displayName) {
   const state = {
@@ -25,11 +25,11 @@ export function useWebRTC(roomId, displayName) {
     localScreenStream: null,
     camError: false,
 
-    streamsCb: () => { },
-    participantsCb: () => { },
-    chatCb: () => { },
+    streamsCb: () => {},
+    participantsCb: () => {},
+    chatCb: () => {},
 
-    // negotiation guards
+    // perfect-negotiation flags
     makingOffer: false,
     ignoreOffer: false,
   };
@@ -100,7 +100,6 @@ export function useWebRTC(roomId, displayName) {
       arr.push({ id: state.me, name: displayName || "You", hand: false, self: true });
     }
     for (const [pid, p] of state.peers) {
-      // dedupe + stable
       arr.push({ id: pid, name: p.name || "Student", hand: !!p.hand, self: false });
     }
     state.participantsCb(arr);
@@ -135,9 +134,10 @@ export function useWebRTC(roomId, displayName) {
 
         emitParticipants(); emitStreams();
 
-        // create peer connections as initiator
+        // Deterministic initiator: only the lexicographically smaller id initiates
         for (const [pid] of state.peers) {
-          await createPeer(pid, true);
+          const iAmInitiator = state.me < pid;
+          await createPeer(pid, iAmInitiator);
         }
         return;
       }
@@ -147,7 +147,9 @@ export function useWebRTC(roomId, displayName) {
           state.peers.set(m.id, mkPeerShell(m.name));
         }
         emitParticipants(); emitStreams();
-        await createPeer(m.id, true);
+
+        const iAmInitiator = state.me < m.id;
+        await createPeer(m.id, iAmInitiator);
         return;
       }
 
@@ -164,7 +166,7 @@ export function useWebRTC(roomId, displayName) {
       }
 
       if (m.type === "chat") {
-        // From WS → show as remote
+        // WS broadcast path (fallback & multi-peer)
         emitChat({ author: m.author, text: m.text, ts: m.ts, self: false });
         return;
       }
@@ -173,12 +175,12 @@ export function useWebRTC(roomId, displayName) {
       if (m.type === "offer") {
         const peer = await createPeer(m.from, false);
         const pc = peer.pc;
-
         const offer = new RTCSessionDescription(m.sdp);
 
-        const polite = state.me && m.to === state.me ? true : true; // we’ll be polite by default
-        const isStable = pc.signalingState === "stable" || pc.signalingState === "have-local-offer";
+        // polite: true if THEIR id is greater than mine => they were initiator
+        const polite = m.from > state.me;
 
+        const isStable = pc.signalingState === "stable" || pc.signalingState === "have-local-offer";
         state.ignoreOffer = !polite && (state.makingOffer || !isStable);
         if (state.ignoreOffer) return;
 
@@ -201,7 +203,7 @@ export function useWebRTC(roomId, displayName) {
       if (m.type === "ice") {
         const peer = state.peers.get(m.from);
         if (!peer?.pc) return;
-        try { await peer.pc.addIceCandidate(m.candidate); } catch { }
+        try { await peer.pc.addIceCandidate(m.candidate); } catch {}
         return;
       }
     };
@@ -224,7 +226,7 @@ export function useWebRTC(roomId, displayName) {
         });
         emitStreams();
       } catch (e) {
-        // Don’t keep retrying — join without cam/mic
+        // join without local media
         state.camError = true;
         state.localCamStream = null;
         console.warn("ensureLocalCam: NotReadable/denied → joining without local media", e);
@@ -236,16 +238,14 @@ export function useWebRTC(roomId, displayName) {
 
   async function ensureLocalScreen() {
     try {
-      // Keep it simple; most browsers don’t allow audio here reliably
-      const share = await navigator.mediaDevices.getDisplayMedia({ video: true /*, audio: false*/ });
-      state.localScreenStream = share;
+      const share = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const vTrack = share.getVideoTracks()[0];
+      state.localScreenStream = new MediaStream([vTrack]);
 
-      // reset when user stops from the browser UI
-      const vt = share.getVideoTracks()[0];
-      if (vt) vt.addEventListener("ended", () => stopScreenInternal());
-
+      // stop callback if user presses "Stop sharing"
+      vTrack.addEventListener("ended", () => stopScreenInternal());
       emitStreams();
-      return share;
+      return vTrack;
     } catch (err) {
       console.warn("Screen share denied/cancelled", err);
       return null;
@@ -254,19 +254,12 @@ export function useWebRTC(roomId, displayName) {
 
   async function stopScreenInternal() {
     if (state.localScreenStream) {
-      try { state.localScreenStream.getTracks().forEach(t => t.stop()); } catch { }
+      try { state.localScreenStream.getTracks().forEach(t => t.stop()); } catch {}
       state.localScreenStream = null;
     }
-
     for (const [, p] of state.peers) {
       if (p.senders.screen) {
-        try {
-          // Instead of removing: replace with a dummy/disabled track
-          const silence = new MediaStreamTrackGenerator("video").track;
-          p.senders.screen.replaceTrack(silence);
-        } catch (err) {
-          console.warn("Failed to null out screen sender", err);
-        }
+        try { await p.senders.screen.replaceTrack(null); } catch {}
       }
     }
     emitStreams();
@@ -284,14 +277,17 @@ export function useWebRTC(roomId, displayName) {
 
       // transceivers for stable m-line order
       tx: { audio: null, video: null, screen: null },
+
+      // flag: am I initiator against this peer?
+      initiator: false,
     };
   }
 
   function cleanupPeer(peerId) {
     const p = state.peers.get(peerId);
     if (!p) return;
-    try { p.dc?.close?.(); } catch { }
-    try { p.pc?.close?.(); } catch { }
+    try { p.dc?.close?.(); } catch {}
+    try { p.pc?.close?.(); } catch {}
     state.peers.delete(peerId);
   }
 
@@ -299,14 +295,14 @@ export function useWebRTC(roomId, displayName) {
     let p = state.peers.get(peerId);
     if (!p) { p = mkPeerShell("Student"); state.peers.set(peerId, p); }
     if (p.pc) return p;
+    p.initiator = !!isInitiator;
 
     const pc = new RTCPeerConnection({ iceServers: STUN });
 
     // ------ lock m-line order with transceivers up-front ------
-    // 1) main cam/mic
-    p.tx.video = pc.addTransceiver("video", { direction: "sendrecv" });
-    p.tx.audio = pc.addTransceiver("audio", { direction: "sendrecv" });
-    // 2) dedicated "screen" video m-line (sendrecv lets remote show/hide too)
+    // Fixed order for EVERYONE: [audio, cam, screen]
+    p.tx.audio  = pc.addTransceiver("audio", { direction: "sendrecv" });
+    p.tx.video  = pc.addTransceiver("video", { direction: "sendrecv" });
     p.tx.screen = pc.addTransceiver("video", { direction: "sendrecv" });
 
     // Attach local media (if available)
@@ -320,30 +316,26 @@ export function useWebRTC(roomId, displayName) {
 
     // ---- remote tracks ----
     pc.ontrack = (e) => {
-      const stream = e.streams[0];
       const track = e.track;
+      const stream = e.streams[0];
 
-      const label = (track.label || "").toLowerCase();
-      const settings = typeof track.getSettings === "function" ? track.getSettings() : {};
-      const isScreen = track.kind === "video" && (
-        label.includes("screen") || label.includes("window") || settings.displaySurface
-      );
-
-      if (track.kind === "video" && isScreen) {
-        p.tracks.screen = stream;
-      } else if (track.kind === "video") {
-        p.tracks.cam = stream;
+      if (track.kind === "audio") {
+        if (p.tracks.cam) p.tracks.cam.addTrack(track);
+        else p.tracks.cam = new MediaStream([track]);
+      } else {
+        const label = (track.label || "").toLowerCase();
+        const isScreen = label.includes("screen") || label.includes("window") || (track.getSettings?.().displaySurface);
+        if (isScreen) p.tracks.screen = stream;
+        else p.tracks.cam = stream;
       }
-      state.peers.set(peerId, p);
       emitStreams();
     };
 
-    // ---- data channel ----
+    // ---- data channel (both sides) ----
     if (isInitiator) {
-      wireDC(peerId, pc.createDataChannel("chat"));
-    } else {
-      pc.ondatachannel = (ev) => wireDC(peerId, ev.channel);
+      wireDC(peerId, pc.createDataChannel("chat", { ordered: true }));
     }
+    pc.ondatachannel = (ev) => wireDC(peerId, ev.channel);
 
     // ---- ICE / conn state ----
     pc.onicecandidate = (ev) => { if (ev.candidate) sendWS({ type: "ice", to: peerId, candidate: ev.candidate }); };
@@ -354,8 +346,10 @@ export function useWebRTC(roomId, displayName) {
       }
     };
 
-    // ---- negotiation (glare-safe) ----
+    // ---- negotiation (perfect negotiation) ----
     pc.onnegotiationneeded = async () => {
+      // only the deterministic initiator should create offers
+      if (!p.initiator) return;
       try {
         state.makingOffer = true;
         const offer = await pc.createOffer();
@@ -371,13 +365,16 @@ export function useWebRTC(roomId, displayName) {
     p.pc = pc;
     state.peers.set(peerId, p);
 
-    // initial handshake
+    // initial handshake (only the initiator sends the first offer)
     if (isInitiator) {
-      state.makingOffer = true;
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      sendWS({ type: "offer", to: peerId, sdp: pc.localDescription });
-      state.makingOffer = false;
+      try {
+        state.makingOffer = true;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendWS({ type: "offer", to: peerId, sdp: pc.localDescription });
+      } finally {
+        state.makingOffer = false;
+      }
     }
 
     emitParticipants(); emitStreams();
@@ -412,7 +409,7 @@ export function useWebRTC(roomId, displayName) {
     async connect() {
       ensureWS();
 
-      // optional presence hit
+      // presence (best-effort)
       try {
         await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/join", {
           method: "POST",
@@ -420,7 +417,7 @@ export function useWebRTC(roomId, displayName) {
           credentials: "include",
           body: JSON.stringify({ id: roomId, display_name: displayName || "Student" }),
         });
-      } catch { }
+      } catch {}
 
       if (!window.__studynestLeaveHook) {
         window.addEventListener("beforeunload", () => {
@@ -429,17 +426,17 @@ export function useWebRTC(roomId, displayName) {
               "http://localhost/StudyNest/study-nest/src/api/meetings.php/leave",
               new Blob([JSON.stringify({ id: roomId })], { type: "application/json" })
             );
-          } catch { }
+          } catch {}
         });
         window.__studynestLeaveHook = true;
       }
     },
 
     disconnect() {
-      try { state.ws?.close(); } catch { }
+      try { state.ws?.close(); } catch {}
       for (const [pid] of state.peers) cleanupPeer(pid);
-      try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch { }
-      try { state.localScreenStream?.getTracks().forEach(t => t.stop()); } catch { }
+      try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch {}
+      try { state.localScreenStream?.getTracks().forEach(t => t.stop()); } catch {}
       state.localCamStream = null;
       state.localScreenStream = null;
       state.camError = false;
@@ -452,7 +449,7 @@ export function useWebRTC(roomId, displayName) {
           credentials: "include",
           body: JSON.stringify({ id: roomId }),
         });
-      } catch { }
+      } catch {}
     },
 
     async getLocalStream() {
@@ -465,41 +462,45 @@ export function useWebRTC(roomId, displayName) {
     setMic(on) { state.localCamStream?.getAudioTracks().forEach(t => (t.enabled = !!on)); },
     setCam(on) { state.localCamStream?.getVideoTracks().forEach(t => (t.enabled = !!on)); },
 
-    // Chat: P2P + WS broadcast for reliability
+    // Chat: P2P + WS broadcast fallback (guaranteed 2-way)
     sendChat(payload) {
       const msg = { type: "chat", ...payload, self: undefined };
+
+      // P2P path
       for (const [, p] of state.peers) {
         if (p.dcOpen) {
-          try { p.dc.send(JSON.stringify(msg)); } catch { }
+          try { p.dc.send(JSON.stringify(msg)); } catch {}
         } else {
           p.dcQueue?.push?.(JSON.stringify(msg));
         }
       }
-      sendWS(msg);                      // ensure remote delivery
-      emitChat({ ...payload, self: true }); // local echo
+
+      // WS broadcast path (ensures delivery if DC not open yet / after reload)
+      sendWS(msg);
+
+      // Local echo
+      emitChat({ ...payload, self: true });
     },
 
-    // Screen share via replaceTrack (no add/remove m-line churn)
+    // Screen share via replaceTrack
     async startShare() {
-      const share = await ensureLocalScreen();
-      if (!share) throw new Error("share-cancelled");
-      const vTrack = share.getVideoTracks()[0];
-      if (!vTrack) throw new Error("no-screen-video-track");
+      const vTrack = await ensureLocalScreen();
+      if (!vTrack) throw new Error("share-cancelled");
 
       for (const [, p] of state.peers) {
-        if (!p.pc) continue;
-        try {
-          await p.tx.screen.sender.replaceTrack(vTrack);
-          p.senders.screen = p.tx.screen.sender;
-        } catch (err) {
-          console.warn("replaceTrack(screen) failed for peer", err);
+        if (p.tx?.screen?.sender) {
+          try {
+            await p.tx.screen.sender.replaceTrack(vTrack);
+            p.senders.screen = p.tx.screen.sender;
+          } catch (err) {
+            console.warn("replaceTrack(screen) failed", err);
+          }
         }
       }
       emitStreams();
-      return share;
     },
 
-    async stopShare() { stopScreenInternal(); },
+    async stopShare() { await stopScreenInternal(); },
 
     subscribeStreams,
     subscribeParticipants,
