@@ -376,8 +376,53 @@ export default function Home() {
   const [anonymous, setAnonymous] = useState(false);
   const [navOpen, setNavOpen] = useState(false); // collapsed by default
   const SIDEBAR_W = navOpen ? 240 : 72;
-
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false); // Track if chatbot is open
+  const [messages, setMessages] = useState([]); // Store chat messages
+  const [inputMessage, setInputMessage] = useState(''); // Store input message
   const [rooms, setRooms] = useState([]);
+
+  // Toggle chatbot visibility
+  const toggleChatbot = () => {
+    setIsChatbotOpen((prev) => !prev);
+  };
+
+  const sendMessage = async () => {
+  if (inputMessage.trim()) {
+    // Add user message to chat history
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: 'user', message: inputMessage },
+    ]);
+
+    // Send message to the backend (chatbot.php)
+    try {
+      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/chatbot.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: inputMessage }),
+      });
+
+      const data = await response.json();
+
+      if (data.response) {
+        // Add bot response to chat history
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: 'bot', message: data.response },
+        ]);
+      } else {
+        console.error("No response from the bot:", data);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+
+    // Clear the input field
+    setInputMessage('');
+  }
+};
 
   useEffect(() => {
     (async () => {
@@ -656,6 +701,106 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Chatbot Floating Button */}
+      <div
+        onClick={toggleChatbot}
+        style={{
+          position: 'fixed',
+          bottom: '16px',
+          right: '16px',
+          zIndex: '9999',
+          width: '60px',
+          height: '60px',
+          backgroundColor: '#007bff',
+          color: '#ffffff',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+          cursor: 'pointer',
+        }}
+      >
+        <span>💬</span>
+      </div>
+
+      {/* Chatbot Modal */}
+      {isChatbotOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '80px',
+            right: '16px',
+            zIndex: '9999',
+            width: '350px',
+            maxWidth: '90%',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            borderRadius: '12px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: '#333',
+            }}
+          >
+            <span style={{ fontSize: '18px', fontWeight: '600' }}>Ask me Buddy!</span>
+            <button
+              onClick={toggleChatbot}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#888',
+                fontSize: '20px',
+                cursor: 'pointer',
+              }}
+            >
+              X
+            </button>
+          </div>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                style={{
+                  textAlign: msg.sender === 'user' ? 'right' : 'left',
+                  padding: '8px',
+                  marginBottom: '8px',
+                  backgroundColor: msg.sender === 'user' ? '#007bff' : '#f1f1f1',
+                  color: msg.sender === 'user' ? '#ffffff' : '#333',
+                  borderRadius: '12px',
+                  maxWidth: '70%',
+                  marginLeft: msg.sender === 'user' ? 'auto' : '0',
+                }}
+              >
+                {msg.message}
+              </div>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              color: '#333',
+            }}
+          />
+        </div>
+      )}
 
       {/* Footer */}
       <Footer sidebarWidth={SIDEBAR_W} />
