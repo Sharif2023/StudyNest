@@ -48,6 +48,12 @@ export default function Header({ sidebarWidth = 72 }) {
     try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
   });
 
+  // notifications UI state
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifRef = useRef(null);
+
   // Sync with localStorage + same-tab update events
   useEffect(() => {
     const onStorage = (e) => {
@@ -89,19 +95,37 @@ export default function Header({ sidebarWidth = 72 }) {
     })();
   }, []);
 
-  // Build avatar URL against backend origin + cache-buster to avoid stale cached image
-  const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
-  const profile_pic = rawPic ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}` : null;
+  // notifications polling
+  useEffect(() => {
+    let stop = false;
+    let timer = null;
+    async function poll() {
+      const sid = profile?.student_id || auth?.student_id;
+      if (!sid) return;
+      try {
+        const url = `${API_BASE}/notifications.php?action=list&student_id=${encodeURIComponent(sid)}&limit=30`;
+        const res = await fetch(url, { credentials: "include" });
+        const j = await res.json().catch(() => null);
+        if (!stop && j && j.ok) {
+          setNotifications(j.notifications || []);
+          setUnreadCount(j.unread || 0);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    poll();
+    timer = setInterval(poll, 12000);
+    return () => { stop = true; if (timer) clearInterval(timer); };
+  }, [profile?.student_id, auth?.student_id]);
 
-  const email = profile?.email || auth?.email || "";
-  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
-
-  // Close dropdown on outside click/ESC
+  // Close dropdowns on outside click/ESC
   useEffect(() => {
     function onDocClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
     }
-    function onKey(e) { if (e.key === "Escape") setProfileOpen(false); }
+    function onKey(e) { if (e.key === "Escape") { setProfileOpen(false); setNotifOpen(false); } }
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -110,6 +134,22 @@ export default function Header({ sidebarWidth = 72 }) {
     };
   }, []);
 
+  async function markAllRead() {
+    const sid = profile?.student_id || auth?.student_id;
+    if (!sid) return;
+    try {
+      await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ student_id: sid, mark_all: true })
+      });
+      // optimistic update
+      setNotifications((prev) => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+      setUnreadCount(0);
+    } catch {}
+  }
+
   const navigate = useNavigate();
   const handleLogout = () => {
     localStorage.removeItem("studynest.auth");
@@ -117,6 +157,13 @@ export default function Header({ sidebarWidth = 72 }) {
     fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
     navigate("/login");
   };
+
+  // Build avatar URL against backend origin + cache-buster to avoid stale cached image
+  const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
+  const profile_pic = rawPic ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}` : null;
+
+  const email = profile?.email || auth?.email || "";
+  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
 
   return (
     <div
@@ -157,11 +204,48 @@ export default function Header({ sidebarWidth = 72 }) {
           </button>
 
           {/* Notifications */}
-          <button className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition" aria-label="Notifications">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              className="relative text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+              aria-label="Notifications"
+              onClick={() => { const next = !notifOpen; setNotifOpen(next); if (next) markAllRead(); }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] leading-[18px] text-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/60">
+                  <div className="text-slate-200 text-sm font-medium">Notifications</div>
+                  <button onClick={markAllRead} className="text-xs text-cyan-300 hover:text-cyan-200">Mark all read</button>
+                </div>
+                <ul className="max-h-80 overflow-auto divide-y divide-slate-700/60">
+                  {notifications.length === 0 && (
+                    <li className="px-3 py-4 text-slate-400 text-sm">No notifications yet</li>
+                  )}
+                  {notifications.map((n) => (
+                    <li key={n.id} className={`px-3 py-2 text-sm ${n.read_at ? 'text-slate-300' : 'text-white'}`}>
+                      <div className="flex items-start gap-2">
+                        <div className={`mt-1 h-2 w-2 rounded-full ${n.read_at ? 'bg-slate-600' : 'bg-cyan-400'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{n.title}</div>
+                          {n.body && <div className="text-slate-400 truncate">{n.body}</div>}
+                          <div className="text-[10px] text-slate-500">{new Date(n.created_at).toLocaleString()}</div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>

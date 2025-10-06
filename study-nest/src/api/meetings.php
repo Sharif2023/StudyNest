@@ -73,6 +73,24 @@ function ensure_schema(PDO $pdo){
       INDEX idx_user (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
+
+  // notifications (shared)
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS notifications (
+      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NULL,
+      student_id VARCHAR(32) NULL,
+      type VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      body TEXT NULL,
+      link VARCHAR(1024) NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      read_at DATETIME NULL,
+      INDEX idx_user (user_id),
+      INDEX idx_student (student_id),
+      INDEX idx_read (read_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ");
 }
 
 /** Look up course snapshot by code from courses table (optional) */
@@ -82,6 +100,14 @@ function fetch_course_snapshot(PDO $pdo, $course_code){
   $st->execute([$course_code]);
   $row = $st->fetch(PDO::FETCH_ASSOC);
   return $row ? [$row['course_title'] ?? null, $row['course_thumbnail'] ?? null] : [null,null];
+}
+
+function user_student_id(PDO $pdo, $uid){
+  if (!$uid) return null;
+  $st = $pdo->prepare("SELECT student_id FROM users WHERE id=? LIMIT 1");
+  $st->execute([$uid]);
+  $sid = $st->fetchColumn();
+  return $sid ? (string)$sid : null;
 }
 
 try {
@@ -165,6 +191,15 @@ try {
     $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name) VALUES (?, ?, NULLIF(?, ''))");
     $pp->execute([$id, $u, $name]);
 
+    // notify creator of activity
+    try {
+      $sid = user_student_id($pdo, $u);
+      if ($sid) {
+        $nt = $pdo->prepare("INSERT INTO notifications (student_id, type, title, body, link) VALUES (?,?,?,?,?)");
+        $nt->execute([$sid, 'meeting_created', 'Meeting created', $title, null]);
+      }
+    } catch (Throwable $e) {}
+
     json_out(['ok'=>true,'id'=>$id,'status'=>$status]);
   }
 
@@ -188,6 +223,15 @@ try {
     $upd = $pdo->prepare("UPDATE meetings SET participants = participants + 1 WHERE id=?");
     $upd->execute([$id]);
 
+    // notify joiner of activity
+    try {
+      $sid = user_student_id($pdo, $u);
+      if ($sid) {
+        $nt = $pdo->prepare("INSERT INTO notifications (student_id, type, title, body, link) VALUES (?,?,?,?,?)");
+        $nt->execute([$sid, 'meeting_joined', 'Joined a meeting', $id, null]);
+      }
+    } catch (Throwable $e) {}
+
     json_out(['ok'=>true]);
   }
 
@@ -197,7 +241,7 @@ try {
     $id = $b['id'] ?? null;
     if (!$id) json_out(['ok'=>false,'error'=>'missing_id'],400);
 
-    $st = $pdo->prepare("SELECT id, created_by, status FROM meetings WHERE id=? LIMIT 1");
+    $st = $pdo->prepare("SELECT id, created_by, status, title FROM meetings WHERE id=? LIMIT 1");
     $st->execute([$id]);
     $room = $st->fetch(PDO::FETCH_ASSOC);
     if (!$room) json_out(['ok'=>false,'error'=>'not_found'],404);
@@ -211,6 +255,15 @@ try {
 
     $up = $pdo->prepare("UPDATE meetings SET status='ended', ends_at=NOW() WHERE id=?");
     $up->execute([$id]);
+
+    // notify ender of activity
+    try {
+      $sid = user_student_id($pdo, $uid);
+      if ($sid) {
+        $nt = $pdo->prepare("INSERT INTO notifications (student_id, type, title, body, link) VALUES (?,?,?,?,?)");
+        $nt->execute([$sid, 'meeting_ended', 'Meeting ended', $room['title'] ?? $id, null]);
+      }
+    } catch (Throwable $e) {}
 
     json_out(['ok'=>true]);
   }

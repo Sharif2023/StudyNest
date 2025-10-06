@@ -87,6 +87,24 @@ function ensure_schema(PDO $pdo)
       CONSTRAINT fk_read_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   ");
+
+    // notifications (shared)
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS notifications (
+      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NULL,
+      student_id VARCHAR(32) NULL,
+      type VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      body TEXT NULL,
+      link VARCHAR(1024) NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      read_at DATETIME NULL,
+      INDEX idx_user (user_id),
+      INDEX idx_student (student_id),
+      INDEX idx_read (read_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  ");
 }
 
 // Normalize pair so (a<b) to keep only one conversation row per pair.
@@ -307,7 +325,7 @@ try {
             // 2) Membership check
             $st = $pdo->prepare("
     SELECT 1 FROM conversations
-    WHERE id=? AND (a_user_id=? OR b_user_id=?)
+    WHERE id=? AND (a_user_id=? or b_user_id=?)
     LIMIT 1
   ");
             $st->execute([$cid, $uid, $uid]);
@@ -381,6 +399,19 @@ try {
     ON DUPLICATE KEY UPDATE last_read_message_id = GREATEST(last_read_message_id, VALUES(last_read_message_id))
   ");
             $up->execute([$cid, $uid, $id]);
+
+            // 8) Create self activity notification (best-effort)
+            try {
+                $stSid = $pdo->prepare("SELECT student_id FROM users WHERE id=? LIMIT 1");
+                $stSid->execute([$uid]);
+                $sid = $stSid->fetchColumn();
+                if ($sid) {
+                    $nt = $pdo->prepare("INSERT INTO notifications (student_id, type, title, body, link) VALUES (?,?,?,?,?)");
+                    $bodyText = $msg['body'] ?? '';
+                    if ($bodyText === '' && $attachmentUrl) $bodyText = 'Sent an attachment';
+                    $nt->execute([$sid, 'message_sent', 'Message sent', $bodyText, null]);
+                }
+            } catch (Throwable $e) { }
 
             json_ok(['message' => $msg]);
         }
