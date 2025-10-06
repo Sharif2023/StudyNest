@@ -282,6 +282,19 @@ export function StudyRoom() {
     }
   }
 
+  function toggleFullScreen(id) {
+    const videoElement = document.getElementById(id);
+    if (videoElement.requestFullscreen) {
+      videoElement.requestFullscreen();
+    } else if (videoElement.mozRequestFullScreen) { // Firefox
+      videoElement.mozRequestFullScreen();
+    } else if (videoElement.webkitRequestFullscreen) { // Chrome, Safari and Opera
+      videoElement.webkitRequestFullscreen();
+    } else if (videoElement.msRequestFullscreen) { // IE/Edge
+      videoElement.msRequestFullscreen();
+    }
+  }
+
   useEffect(() => {
     rtc.onShareEnded?.(() => setSharing(false));
   }, [rtc]);
@@ -333,10 +346,14 @@ export function StudyRoom() {
               streams.map((s) => (
                 <div
                   key={s.id}
-                  className="relative aspect-video overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-700 shadow-lg transition-all duration-300"
+                  className={`relative overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-700 shadow-lg transition-all duration-300 ${s.type === "screen"
+                    ? "col-span-2 row-span-2 aspect-video" // FIXED: Make screen shares larger
+                    : "aspect-video"
+                    }`}
                 >
                   {s.stream ? (
                     <video
+                      id={`video-${s.id}`}
                       autoPlay
                       playsInline
                       muted={s.self}
@@ -345,7 +362,7 @@ export function StudyRoom() {
                         if (el && el.srcObject !== s.stream) {
                           el.srcObject = s.stream;
                           const p = el.play();
-                          if (p && typeof p.catch === "function") p.catch(() => {});
+                          if (p && typeof p.catch === "function") p.catch(() => { });
                         }
                       }}
                     />
@@ -353,7 +370,11 @@ export function StudyRoom() {
                     <div className="h-full w-full grid place-items-center text-zinc-500 bg-zinc-800/60">
                       <div className="text-center">
                         <UserIcon className="h-12 w-12 mx-auto" />
-                        <div className="mt-2 text-xs font-medium text-zinc-300">Joining…</div>
+                        <div className="mt-2 text-xs font-medium text-zinc-300">
+                          {/* FIXED: Better connection state display */}
+                          {s.self ? "You" : (participants.find(p => !p.self && p.id === s.id.split('::')[0])?.name || "Student")}
+                          {!s.stream && " - Connecting..."}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -365,6 +386,17 @@ export function StudyRoom() {
                     {s.self && s.type !== "screen" && !mic && (
                       <span className="rounded bg-white/20 px-1">muted</span>
                     )}
+
+                    {/* FIXED: Working fullscreen button */}
+                    <button
+                      className="text-white hover:bg-white/20 rounded p-1 transition-colors"
+                      onClick={() => toggleFullScreen(`video-${s.id}`)}
+                      title="Toggle fullscreen"
+                    >
+                      <svg className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))
@@ -372,7 +404,7 @@ export function StudyRoom() {
           </div>
 
           {/* Controls */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
             <ToggleButton on={mic} onClick={() => setMic((s) => !s)} label={mic ? "Mute" : "Unmute"}>
               {mic ? <MicIcon /> : <MicOffIcon />}
             </ToggleButton>
@@ -390,13 +422,13 @@ export function StudyRoom() {
                 });
               }}
               className={
-                "rounded-xl px-3 py-2 text-sm font-semibold " +
+                "rounded-xl px-4 py-2 text-sm font-semibold transition-colors " +
                 (hand
-                  ? "bg-amber-500 text-black"
+                  ? "bg-amber-500 text-black hover:bg-amber-600"
                   : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800")
               }
             >
-              ✋ Raise hand
+              ✋ {hand ? "Lower hand" : "Raise hand"}
             </button>
           </div>
         </section>
@@ -445,13 +477,18 @@ export function StudyRoom() {
             </div>
           </div>
 
+          {/* Participants List */}
           <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
-            <h3 className="text-sm font-semibold text-zinc-100">Participants</h3>
+            <h3 className="text-sm font-semibold text-zinc-100">Participants ({participants.length})</h3>
             <ul className="mt-3 space-y-2 text-sm text-zinc-300">
               {participants.map((p) => (
                 <li key={p.id} className="flex items-center gap-2">
-                  <Dot />
+                  <span className={`inline-block h-2 w-2 rounded-full ${p.state === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`} />
                   {p.self ? "You" : p.name || "Student"}
+                  {p.state === 'joining' && !p.self && (
+                    <span className="text-xs text-amber-400">(joining...)</span>
+                  )}
                   {p.self && hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
                   {!p.self && p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
                 </li>
