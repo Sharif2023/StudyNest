@@ -5,3 +5,8 @@
 /study-nest/src/api/proofs/*
 
 /node_modules/*
+
+composer.json
+composer.lock
+
+vendor/*
