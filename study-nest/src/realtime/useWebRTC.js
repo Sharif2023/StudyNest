@@ -2,18 +2,27 @@
 
 const STUN = [
   { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun.cloudflare.com:3478" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  {
+    urls: "turn:relay1.expressturn.com:3478",
+    username: "efree",
+    credential: "turnpassword",
+  },
 ];
 
+// If you test across devices, consider using your LAN IP here (e.g. ws://192.168.1.10:3001)
 const WS_URL = "ws://localhost:3001";
 
 /**
  * Mesh P2P for Study Rooms (stable)
  * - Deterministic initiator (lexicographic clientId) to avoid dueling offers
  * - Perfect negotiation (polite/unpolite) to avoid glare
- * - Fixed m-line order: [audio, camVideo, screenVideo]
+ * - Fixed m-line order via pre-added transceivers: [audio, camVideo, screenVideo]
+ * - Always attach local tracks BEFORE sending any offer
  * - Screen share via replaceTrack (no add/remove churn)
  * - Robust DataChannel (P2P + WS broadcast fallback)
+ * - Verbose logs for ICE/track debugging
  */
 export function useWebRTC(roomId, displayName) {
   const state = {
@@ -51,15 +60,15 @@ export function useWebRTC(roomId, displayName) {
   function emitStreams() {
     const list = [];
 
-    if (state.localCamStream) {
-      list.push({
-        id: (state.me || "me") + "::cam",
-        stream: state.localCamStream,
-        name: displayName || "You",
-        self: true,
-        type: "cam",
-      });
-    }
+    // local cam (show a placeholder card even if null)
+    list.push({
+      id: (state.me || "me") + "::cam",
+      stream: state.localCamStream || null,
+      name: displayName || "You",
+      self: true,
+      type: "cam",
+    });
+
     if (state.localScreenStream) {
       list.push({
         id: (state.me || "me") + "::screen",
@@ -70,16 +79,15 @@ export function useWebRTC(roomId, displayName) {
       });
     }
 
+    // peers (always push a cam entry so the UI opens a card immediately)
     for (const [pid, p] of state.peers) {
-      if (p.tracks.cam) {
-        list.push({
-          id: pid + "::cam",
-          stream: p.tracks.cam,
-          name: p.name || "Student",
-          self: false,
-          type: "cam",
-        });
-      }
+      list.push({
+        id: pid + "::cam",
+        stream: p.tracks.cam || null,
+        name: p.name || "Student",
+        self: false,
+        type: "cam",
+      });
       if (p.tracks.screen) {
         list.push({
           id: pid + "::screen",
@@ -126,7 +134,7 @@ export function useWebRTC(roomId, displayName) {
       if (m.type === "joined") {
         state.me = m.clientId;
 
-        // add placeholders for existing peers
+        // placeholders for existing peers
         (m.participants || []).forEach(p => {
           if (p.id === state.me) return;
           if (!state.peers.has(p.id)) state.peers.set(p.id, mkPeerShell(p.name));
@@ -166,7 +174,6 @@ export function useWebRTC(roomId, displayName) {
       }
 
       if (m.type === "chat") {
-        // WS broadcast path (fallback & multi-peer)
         emitChat({ author: m.author, text: m.text, ts: m.ts, self: false });
         return;
       }
@@ -184,6 +191,7 @@ export function useWebRTC(roomId, displayName) {
         state.ignoreOffer = !polite && (state.makingOffer || !isStable);
         if (state.ignoreOffer) return;
 
+        console.log("📩 offer from", m.from, "polite:", polite);
         await pc.setRemoteDescription(offer);
         const ans = await pc.createAnswer();
         await pc.setLocalDescription(ans);
@@ -196,6 +204,7 @@ export function useWebRTC(roomId, displayName) {
         if (!peer?.pc) return;
         const pc = peer.pc;
         if (pc.signalingState !== "have-local-offer") return;
+        console.log("📩 answer from", m.from);
         await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
         return;
       }
@@ -203,7 +212,11 @@ export function useWebRTC(roomId, displayName) {
       if (m.type === "ice") {
         const peer = state.peers.get(m.from);
         if (!peer?.pc) return;
-        try { await peer.pc.addIceCandidate(m.candidate); } catch {}
+        try {
+          await peer.pc.addIceCandidate(m.candidate);
+        } catch (err) {
+          console.warn("addIceCandidate failed", err);
+        }
         return;
       }
     };
@@ -224,6 +237,7 @@ export function useWebRTC(roomId, displayName) {
           video: { width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         });
+        console.log("🎥 local stream ready:", state.localCamStream.getTracks().map(t => t.kind));
         emitStreams();
       } catch (e) {
         // join without local media
@@ -241,8 +255,6 @@ export function useWebRTC(roomId, displayName) {
       const share = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const vTrack = share.getVideoTracks()[0];
       state.localScreenStream = new MediaStream([vTrack]);
-
-      // stop callback if user presses "Stop sharing"
       vTrack.addEventListener("ended", () => stopScreenInternal());
       emitStreams();
       return vTrack;
@@ -274,10 +286,8 @@ export function useWebRTC(roomId, displayName) {
       dc: null, dcOpen: false, dcQueue: [],
       tracks: { cam: null, screen: null },
       senders: { cam: null, screen: null },
-
       // transceivers for stable m-line order
       tx: { audio: null, video: null, screen: null },
-
       // flag: am I initiator against this peer?
       initiator: false,
     };
@@ -299,35 +309,60 @@ export function useWebRTC(roomId, displayName) {
 
     const pc = new RTCPeerConnection({ iceServers: STUN });
 
+    console.log("🟢 creating peer", peerId, "initiator:", isInitiator);
+
+    // Helpful logs
+    pc.oniceconnectionstatechange = () => console.log(peerId, "ICE", pc.iceConnectionState);
+    pc.onconnectionstatechange = () => console.log(peerId, "PC", pc.connectionState);
+
     // ------ lock m-line order with transceivers up-front ------
     // Fixed order for EVERYONE: [audio, cam, screen]
     p.tx.audio  = pc.addTransceiver("audio", { direction: "sendrecv" });
     p.tx.video  = pc.addTransceiver("video", { direction: "sendrecv" });
     p.tx.screen = pc.addTransceiver("video", { direction: "sendrecv" });
 
-    // Attach local media (if available)
-    const cam = state.localCamStream || (state.camError ? null : await ensureLocalCam());
+    // Attach local tracks BEFORE any offer can be created
+    const cam = await ensureLocalCam(); // ensures tracks exist
     if (cam) {
       const v = cam.getVideoTracks()[0] || null;
       const a = cam.getAudioTracks()[0] || null;
-      if (v) { await p.tx.video.sender.replaceTrack(v); p.senders.cam = p.tx.video.sender; }
-      if (a) { await p.tx.audio.sender.replaceTrack(a); }
+      if (a) {
+        try { await p.tx.audio.sender.replaceTrack(a); } catch (err) { console.warn("attach audio failed", err); }
+      }
+      if (v) {
+        try { await p.tx.video.sender.replaceTrack(v); p.senders.cam = p.tx.video.sender; } catch (err) { console.warn("attach video failed", err); }
+      }
     }
 
     // ---- remote tracks ----
     pc.ontrack = (e) => {
       const track = e.track;
-      const stream = e.streams[0];
+      // ⬇️ IMPORTANT: event.streams may be empty with transceivers+replaceTrack
+      let stream = (e.streams && e.streams[0]) || null;
+      if (!stream) stream = new MediaStream([track]); // guarantee a stream
+
+      console.log("📡 track from", peerId, track.kind, track.label, "streams[]:", e.streams?.length || 0);
+
+      const label = (track.label || "").toLowerCase();
+      const isScreen =
+        track.kind === "video" && (
+          label.includes("screen") ||
+          label.includes("window") ||
+          (track.getSettings?.().displaySurface)
+        );
 
       if (track.kind === "audio") {
-        if (p.tracks.cam) p.tracks.cam.addTrack(track);
-        else p.tracks.cam = new MediaStream([track]);
+        // merge audio into whichever video stream we already have
+        if (p.tracks.cam)       p.tracks.cam.addTrack(track);
+        else if (p.tracks.screen) p.tracks.screen.addTrack(track);
+        else                    p.tracks.cam = stream;   // audio-first case
       } else {
-        const label = (track.label || "").toLowerCase();
-        const isScreen = label.includes("screen") || label.includes("window") || (track.getSettings?.().displaySurface);
         if (isScreen) p.tracks.screen = stream;
-        else p.tracks.cam = stream;
+        else          p.tracks.cam = stream;
       }
+
+      // in case the track starts muted, refresh when it becomes live
+      track.onunmute = () => emitStreams();
       emitStreams();
     };
 
@@ -339,18 +374,13 @@ export function useWebRTC(roomId, displayName) {
 
     // ---- ICE / conn state ----
     pc.onicecandidate = (ev) => { if (ev.candidate) sendWS({ type: "ice", to: peerId, candidate: ev.candidate }); };
-    pc.onconnectionstatechange = () => {
-      if (["disconnected", "failed", "closed"].includes(pc.connectionState)) {
-        cleanupPeer(peerId);
-        emitParticipants(); emitStreams();
-      }
-    };
 
     // ---- negotiation (perfect negotiation) ----
     pc.onnegotiationneeded = async () => {
-      // only the deterministic initiator should create offers
+      // only deterministic initiator should create offers
       if (!p.initiator) return;
       try {
+        await ensureLocalCam();
         state.makingOffer = true;
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -368,10 +398,13 @@ export function useWebRTC(roomId, displayName) {
     // initial handshake (only the initiator sends the first offer)
     if (isInitiator) {
       try {
+        await ensureLocalCam();
         state.makingOffer = true;
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         sendWS({ type: "offer", to: peerId, sdp: pc.localDescription });
+      } catch (err) {
+        console.warn("initial offer failed", err);
       } finally {
         state.makingOffer = false;
       }
@@ -407,6 +440,8 @@ export function useWebRTC(roomId, displayName) {
   /* ---------------- public API ---------------- */
   return {
     async connect() {
+      // We still let the page call getLocalStream() for local preview,
+      // but even if it doesn't, we’ll ensure tracks before any offer above.
       ensureWS();
 
       // presence (best-effort)
@@ -447,7 +482,7 @@ export function useWebRTC(roomId, displayName) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ id: roomId }),
+          body: JSON.stringify({ id: roomId } ),
         });
       } catch {}
     },
@@ -484,8 +519,8 @@ export function useWebRTC(roomId, displayName) {
 
     // Screen share via replaceTrack
     async startShare() {
-      const vTrack = await ensureLocalScreen();
-      if (!vTrack) throw new Error("share-cancelled");
+      const vTrack = await ensureLocalScreen(); // Get the screen share track
+      if (!vTrack) throw new Error("Screen share cancelled");
 
       for (const [, p] of state.peers) {
         if (p.tx?.screen?.sender) {
@@ -495,8 +530,11 @@ export function useWebRTC(roomId, displayName) {
           } catch (err) {
             console.warn("replaceTrack(screen) failed", err);
           }
+        } else {
+          console.warn("Sender not available for peer:", p);
         }
       }
+
       emitStreams();
     },
 
