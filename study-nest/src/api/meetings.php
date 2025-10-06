@@ -282,7 +282,7 @@ try {
     if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
     $uid = user_id();
     if ($room['created_by'] !== null && (int)$room['created_by'] !== (int)$uid)
-      json_out(['ok' => false, 'error' => 'forbidden_not_creator'], 403);
+      json_out(['ok' => false, 'error' => 'You Are Not Host'], 403);
     if ($room['status'] === 'ended') json_out(['ok' => true]);
     $pdo->prepare("UPDATE meetings SET status='ended', ends_at=NOW() WHERE id=?")->execute([$id]);
     json_out(['ok' => true]);

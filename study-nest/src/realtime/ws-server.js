@@ -1,7 +1,7 @@
 // ws-server.js
 import { WebSocketServer } from "ws";
 
-const wss = new WebSocketServer({ port: 3001 });
+const wss = new WebSocketServer({ port: 5173 });
 const rooms = new Map(); // roomId -> Map(clientId -> {ws, name})
 
 function send(ws, obj) {
@@ -77,4 +77,4 @@ wss.on("connection", (ws) => {
   });
 });
 
-console.log("WS signaling on ws://localhost:3001");
+console.log("WS signaling on ws://localhost:5173");

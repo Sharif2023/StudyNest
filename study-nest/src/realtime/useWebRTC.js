@@ -11,8 +11,8 @@ const STUN = [
   },
 ];
 
-// If you test across devices, consider using your LAN IP here (e.g. ws://192.168.1.10:3001)
-const WS_URL = "ws://localhost:3001";
+// If you test across devices, consider using your LAN IP here (e.g. ws://192.168.1.10:5173)
+const WS_URL = "ws://localhost:5173";
 
 /**
  * Mesh P2P for Study Rooms (stable)

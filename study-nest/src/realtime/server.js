@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
-const PORT = 3001;
+const PORT = 5173;
 const wss = new WebSocket.Server({ port: PORT });
 
 /**
