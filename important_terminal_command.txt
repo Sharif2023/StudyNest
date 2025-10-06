@@ -19,3 +19,9 @@ npm start
 # Press Ctrl+Shift+P → Python: Select Interpreter → choose: .venv\Scripts\python.exe
 # pip install -r flask flask-cors nltk
 # python src/Python/sampar.py
+
+
+
+#for chatbot
+composer install
+
