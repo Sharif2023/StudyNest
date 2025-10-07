@@ -377,6 +377,19 @@ export function useWebRTC(roomId, displayName) {
       }
     }
 
+    if (state.localScreenStream) {
+      const screenTrack = state.localScreenStream.getVideoTracks()[0];
+      if (screenTrack) {
+        try {
+          await p.tx.screen.sender.replaceTrack(screenTrack);
+          p.senders.screen = p.tx.screen.sender;
+          console.log("📺 attached existing screen track for", peerId);
+        } catch (err) {
+          console.warn("attach existing screen failed", err);
+        }
+      }
+    }
+
     pc.ontrack = (e) => {
       const track = e.track;
       const stream = (e.streams && e.streams[0]) || new MediaStream([track]);
