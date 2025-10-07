@@ -129,7 +129,10 @@ function RoomCard({ room }) {
       <h3 className="mt-3 truncate text-lg font-semibold text-zinc-900" title={title}>
         {title}
       </h3>
-      <p className="mt-1 text-sm text-zinc-500 font-medium">
+      <p className="mt-1 text-sm text-zinc-500">
+        Topic will be discussed: <span className="font-medium text-zinc-700">{room.title}</span>
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
         {room.course || "—"} • {timeAgo(room.created_at)}
       </p>
 

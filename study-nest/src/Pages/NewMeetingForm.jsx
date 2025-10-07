@@ -7,7 +7,7 @@ import Footer from "../Components/Footer";
 
 const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
 const COLLAPSED_W = 72;
-const EXPANDED_W  = 248;
+const EXPANDED_W = 248;
 
 export default function NewMeetingForm() {
   /* ===== LeftNav / layout state (same pattern as StudyRooms) ===== */
@@ -52,6 +52,23 @@ export default function NewMeetingForm() {
       }
     })();
     return () => { cancel = true; };
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+        const j = await r.json();
+        if (j.ok && j.name) setName(j.name);
+        else {
+          const local = JSON.parse(localStorage.getItem("studynest.profile") || "null");
+          if (local?.name) setName(local.name);
+        }
+      } catch {
+        const local = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+        if (local?.name) setName(local.name);
+      }
+    })();
   }, []);
 
   async function pickProgram(p) {
@@ -104,7 +121,7 @@ export default function NewMeetingForm() {
         );
         const j = await r.json();
         if (j.ok) setCourses(j.courses || []);
-      } catch {}
+      } catch { }
     }, 250);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [q, step, department]);
@@ -195,8 +212,8 @@ export default function NewMeetingForm() {
                         (done
                           ? "bg-indigo-600 text-white"
                           : active
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-800 text-gray-400")
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-800 text-gray-400")
                       }
                     >
                       {s.id}
@@ -335,11 +352,6 @@ export default function NewMeetingForm() {
                   <Card>
                     <HeaderRow title="Room Details" />
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="sm:col-span-2">
-                        <Label>Your name</Label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Tanvir Ahmed" />
-                      </div>
-
                       <div className="sm:col-span-2">
                         <Label>The topic will be discussed</Label>
                         <Input
