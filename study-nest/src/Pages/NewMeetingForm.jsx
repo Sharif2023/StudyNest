@@ -152,7 +152,7 @@ export default function NewMeetingForm() {
   ];
 
   return (
-    <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
+    <div className="min-h-screen text-gray-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
       {/* Left sidebar (fixed) */}
       <LeftNav
         navOpen={navOpen}
@@ -170,12 +170,12 @@ export default function NewMeetingForm() {
           {/* Title row */}
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-100">Create a Study Room</h1>
-              <p className="text-sm text-slate-400 mt-1">Pick a course, add details, and invite peers.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-black">Create a Study Room</h1>
+              <p className="text-sm text-gray-400 mt-1">Pick a course, add details, and invite peers.</p>
             </div>
             <Link
               to="/rooms"
-              className="hidden sm:inline-block rounded-xl border border-slate-700 bg-cyan-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
+              className="hidden sm:inline-block rounded-xl border border-gray-700 bg-cyan-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
             >
               Back to rooms
             </Link>
@@ -193,15 +193,15 @@ export default function NewMeetingForm() {
                       className={
                         "h-8 w-8 rounded-full grid place-items-center text-xs font-bold " +
                         (done
-                          ? "bg-emerald-600 text-white"
+                          ? "bg-indigo-600 text-white"
                           : active
-                          ? "bg-cyan-600 text-white"
-                          : "bg-slate-800 text-slate-400")
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-800 text-gray-400")
                       }
                     >
                       {s.id}
                     </div>
-                    <span className={"ml-2 mr-4 text-sm " + (active ? "text-slate-100 font-semibold" : "text-slate-400")}>
+                    <span className={"ml-2 mr-4 text-sm " + (active ? "text-blue-700 font-semibold" : "text-gray-400")}>
                       {s.label}
                     </span>
                     {i < steps.length - 1 && <span className="h-px w-12 bg-slate-700/60 hidden sm:block" />}
@@ -232,10 +232,10 @@ export default function NewMeetingForm() {
                           <button
                             key={p}
                             onClick={() => pickProgram(p)}
-                            className="rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-3 text-left hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                            className="rounded-xl bg-gray-900/70 border border-gray-700 px-3 py-3 text-left hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           >
-                            <div className="text-base font-semibold text-slate-100">{p}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">Browse departments →</div>
+                            <div className="text-base font-semibold text-gray-100">{p}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">Browse departments →</div>
                           </button>
                         ))}
                       </div>
@@ -259,10 +259,10 @@ export default function NewMeetingForm() {
                           <button
                             key={d}
                             onClick={() => pickDept(d)}
-                            className="rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-3 text-left hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                            className="rounded-xl bg-gray-900/70 border border-gray-700 px-3 py-3 text-left hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           >
-                            <div className="text-base font-semibold text-slate-100">{d}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">View courses →</div>
+                            <div className="text-base font-semibold text-gray-100">{d}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">View courses →</div>
                           </button>
                         ))}
                       </div>
@@ -284,7 +284,7 @@ export default function NewMeetingForm() {
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Search by code or title…"
-                        className="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                        className="w-full rounded-xl bg-gray-900/70 border border-gray-700 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                       />
                       <div className="mt-3 max-h-[420px] overflow-y-auto space-y-2 pr-1">
                         {loading && <Loader text="Loading courses..." />}
@@ -299,8 +299,8 @@ export default function NewMeetingForm() {
                                 className={
                                   "w-full text-left rounded-xl border px-3 py-2 transition " +
                                   (selected
-                                    ? "border-cyan-400 bg-cyan-500/10"
-                                    : "border-slate-700 bg-slate-900/70 hover:bg-slate-900")
+                                    ? "border-cyan-400 bg-blue-500/10"
+                                    : "border-gray-700 bg-gray-900/70 hover:bg-slate-900")
                                 }
                               >
                                 <div className="flex items-center gap-3">
@@ -312,10 +312,10 @@ export default function NewMeetingForm() {
                                     </div>
                                   )}
                                   <div className="min-w-0">
-                                    <div className="font-semibold text-slate-100 truncate">
+                                    <div className="font-semibold text-gray-100 truncate">
                                       {c.course_code} — {c.course_title}
                                     </div>
-                                    <div className="text-xs text-slate-400">
+                                    <div className="text-xs text-gray-400">
                                       {c.department} • {c.program}
                                     </div>
                                   </div>
@@ -324,7 +324,7 @@ export default function NewMeetingForm() {
                             );
                           })}
                         {!loading && courses.length === 0 && (
-                          <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-4 text-center text-sm text-slate-400">
+                          <div className="rounded-xl border border-gray-700 bg-slate-900/50 px-3 py-4 text-center text-sm text-gray-400">
                             No courses found.
                           </div>
                         )}
@@ -357,7 +357,7 @@ export default function NewMeetingForm() {
                               type="radio"
                               checked={scheduleType === "instant"}
                               onChange={() => setScheduleType("instant")}
-                              className="h-4 w-4 rounded border-slate-700 text-cyan-500 bg-slate-900"
+                              className="h-4 w-4 rounded border-gray-700 text-blue-500 bg-slate-900"
                             />
                             Instant
                           </label>
@@ -366,7 +366,7 @@ export default function NewMeetingForm() {
                               type="radio"
                               checked={scheduleType === "scheduled"}
                               onChange={() => setScheduleType("scheduled")}
-                              className="h-4 w-4 rounded border-slate-700 text-cyan-500 bg-slate-900"
+                              className="h-4 w-4 rounded border-gray-700 text-blue-500 bg-slate-900"
                             />
                             Schedule
                           </label>
@@ -381,10 +381,10 @@ export default function NewMeetingForm() {
                           onChange={(e) => setStartsAt(e.target.value)}
                           disabled={scheduleType !== "scheduled"}
                           className={
-                            "w-full rounded-xl px-3 py-2 text-sm bg-slate-900/70 border " +
+                            "w-full rounded-xl px-3 py-2 text-sm bg-gray-900/70 border " +
                             (scheduleType === "scheduled"
-                              ? "border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
-                              : "border-slate-800 text-slate-500 opacity-60")
+                              ? "border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                              : "border-gray-700 text-slate-500 opacity-60")
                           }
                         />
                       </div>
@@ -392,7 +392,7 @@ export default function NewMeetingForm() {
                       <div className="sm:col-span-2 flex items-center justify-between pt-1">
                         <Link
                           to="/rooms"
-                          className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
+                          className="rounded-xl border border-gray-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
                         >
                           Cancel
                         </Link>
@@ -402,8 +402,8 @@ export default function NewMeetingForm() {
                           className={
                             "rounded-xl px-4 py-2 text-sm font-semibold transition " +
                             (canSubmit && !loading
-                              ? "bg-cyan-600 hover:bg-cyan-500 text-white"
-                              : "bg-slate-800 text-slate-400 cursor-not-allowed")
+                              ? "bg-blue-600 hover:bg-blue-500 text-white"
+                              : "bg-slate-800 text-gray-400 cursor-not-allowed")
                           }
                         >
                           {loading ? "Creating…" : "Start Room"}
@@ -422,8 +422,8 @@ export default function NewMeetingForm() {
                 <div className="p-4">
                   <Row label="Program" value={program || "—"} />
                   <Row label="Department" value={department || "—"} />
-                  <div className="mt-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                    <div className="text-slate-400 text-xs mb-1">Course</div>
+                  <div className="mt-3 rounded-xl border border-gray-700 bg-slate-900/60 p-3">
+                    <div className="text-gray-400 text-xs mb-1">Course</div>
                     {course ? (
                       <div className="flex items-center gap-3">
                         {course.course_thumbnail ? (
@@ -434,16 +434,16 @@ export default function NewMeetingForm() {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="font-semibold text-slate-100 truncate">
+                          <div className="font-semibold text-gray-100 truncate">
                             {course.course_code} — {course.course_title}
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-gray-400">
                             {course.department} • {course.program}
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-sm text-slate-400">Nothing selected</div>
+                      <div className="text-sm text-gray-400">Nothing selected</div>
                     )}
                   </div>
                 </div>
@@ -451,8 +451,8 @@ export default function NewMeetingForm() {
 
               <Card>
                 <div className="p-4">
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase">Tips</h3>
-                  <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                  <h3 className="text-sm font-semibold text-gray-300 uppercase">Tips</h3>
+                  <ul className="mt-2 space-y-2 text-sm text-gray-300">
                     <li>• Use a clear, descriptive title.</li>
                     <li>• Schedule sessions at least 2 hours ahead.</li>
                     <li>• Share the room link with classmates.</li>
@@ -472,7 +472,7 @@ export default function NewMeetingForm() {
 /* ---------- small UI helpers ---------- */
 function Card({ children }) {
   return (
-    <div className="bg-slate-950/60 backdrop-blur rounded-2xl border border-slate-800 shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_10px_20px_-10px_rgba(0,0,0,0.6)]">
+    <div className="bg-gray-950/60 backdrop-blur rounded-2xl border border-gray-700 shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_10px_20px_-10px_rgba(0,0,0,0.6)]">
       {children}
     </div>
   );
@@ -480,10 +480,10 @@ function Card({ children }) {
 
 function HeaderRow({ title, right, sub }) {
   return (
-    <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="p-4 border-b border-gray-700 flex items-center justify-between">
       <div>
-        <h2 className="text-sm font-semibold text-slate-300 uppercase">{title}</h2>
-        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+        <h2 className="text-sm font-semibold text-gray-300 uppercase">{title}</h2>
+        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
       {right}
     </div>
@@ -494,7 +494,7 @@ function BackBtn({ onClick }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-900"
+      className="rounded-lg border border-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-slate-900"
     >
       ← Back
     </button>
@@ -503,7 +503,7 @@ function BackBtn({ onClick }) {
 
 function Loader({ text = "Loading…" }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-300">
+    <div className="rounded-xl border border-gray-700 bg-slate-900/50 px-3 py-2 text-sm text-gray-300">
       <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent mr-2 align-[-2px]" />
       {text}
     </div>
@@ -511,7 +511,7 @@ function Loader({ text = "Loading…" }) {
 }
 
 function Label({ children }) {
-  return <label className="block text-xs text-slate-400 mb-1">{children}</label>;
+  return <label className="block text-xs text-gray-400 mb-1">{children}</label>;
 }
 
 function Input(props) {
@@ -519,7 +519,7 @@ function Input(props) {
     <input
       {...props}
       className={
-        "w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 " +
+        "w-full rounded-xl bg-gray-900/70 border border-gray-700 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 " +
         (props.className || "")
       }
     />
@@ -529,8 +529,8 @@ function Input(props) {
 function Row({ label, value }) {
   return (
     <div className="text-sm mt-2 first:mt-0">
-      <div className="text-slate-400">{label}</div>
-      <div className="font-medium text-slate-100">{value}</div>
+      <div className="text-gray-400">{label}</div>
+      <div className="font-medium text-gray-100">{value}</div>
     </div>
   );
 }
