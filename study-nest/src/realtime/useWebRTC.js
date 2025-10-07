@@ -97,20 +97,20 @@ export function useWebRTC(roomId, displayName) {
   function emitParticipants() {
     const arr = [];
     if (state.me) {
-      arr.push({ 
-        id: state.me, 
-        name: displayName || "You", 
-        hand: false, 
+      arr.push({
+        id: state.me,
+        name: displayName || "You",
+        hand: false,
         self: true,
         // FIXED: Add proper state tracking for host
         state: 'connected'
       });
     }
     for (const [pid, p] of state.peers) {
-      arr.push({ 
-        id: pid, 
-        name: p.name || "Student", 
-        hand: !!p.hand, 
+      arr.push({
+        id: pid,
+        name: p.name || "Student",
+        hand: !!p.hand,
         self: false,
         state: p.pc && p.pc.connectionState === 'connected' ? 'connected' : 'joining'
       });
@@ -144,7 +144,7 @@ export function useWebRTC(roomId, displayName) {
           if (!state.peers.has(p.id)) state.peers.set(p.id, mkPeerShell(p.name));
         });
 
-        emitParticipants(); 
+        emitParticipants();
         emitStreams();
 
         for (const [pid] of state.peers) {
@@ -158,7 +158,7 @@ export function useWebRTC(roomId, displayName) {
         if (!state.peers.has(m.id)) {
           state.peers.set(m.id, mkPeerShell(m.name));
         }
-        emitParticipants(); 
+        emitParticipants();
         emitStreams();
 
         const iAmInitiator = state.me < m.id;
@@ -168,7 +168,7 @@ export function useWebRTC(roomId, displayName) {
 
       if (m.type === "peer-left") {
         cleanupPeer(m.id);
-        emitParticipants(); 
+        emitParticipants();
         emitStreams();
         return;
       }
@@ -239,10 +239,10 @@ export function useWebRTC(roomId, displayName) {
       try {
         state.localCamStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: { 
-            echoCancellation: true, 
-            noiseSuppression: true, 
-            autoGainControl: true 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
           },
         });
         console.log("🎥 local stream ready:", state.localCamStream.getTracks().map(t => t.kind));
@@ -259,19 +259,24 @@ export function useWebRTC(roomId, displayName) {
 
   async function ensureLocalScreen() {
     try {
-      const share = await navigator.mediaDevices.getDisplayMedia({ 
-        video: true,
-        audio: true // FIXED: Include audio for screen share
+      const share = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30 } },
+        audio: true
       });
+
+      // Help downstream renderers detect "screen"
+      const v = share.getVideoTracks()[0];
+      try { v.contentHint = "text"; } catch { }
+
       state.localScreenStream = share;
-      
-      // FIXED: Handle screen share ended properly
+
+      // End handler (user clicks "Stop sharing")
       share.getTracks().forEach(track => {
         track.addEventListener("ended", () => {
           stopScreenInternal();
         });
       });
-      
+
       emitStreams();
       return share;
     } catch (err) {
@@ -282,17 +287,17 @@ export function useWebRTC(roomId, displayName) {
 
   async function stopScreenInternal() {
     if (state.localScreenStream) {
-      try { 
-        state.localScreenStream.getTracks().forEach(t => t.stop()); 
+      try {
+        state.localScreenStream.getTracks().forEach(t => t.stop());
       } catch { }
       state.localScreenStream = null;
     }
-    
+
     // FIXED: Properly stop screen sharing for all peers
     for (const [, p] of state.peers) {
       if (p.senders.screen) {
-        try { 
-          await p.senders.screen.replaceTrack(null); 
+        try {
+          await p.senders.screen.replaceTrack(null);
         } catch { }
       }
     }
@@ -305,8 +310,8 @@ export function useWebRTC(roomId, displayName) {
       name,
       hand: false,
       pc: null,
-      dc: null, 
-      dcOpen: false, 
+      dc: null,
+      dcOpen: false,
       dcQueue: [],
       tracks: { cam: null, screen: null },
       senders: { cam: null, screen: null },
@@ -352,67 +357,57 @@ export function useWebRTC(roomId, displayName) {
     if (cam) {
       const v = cam.getVideoTracks()[0] || null;
       const a = cam.getAudioTracks()[0] || null;
-      
+
       // FIXED: Properly handle audio tracks
       if (a) {
-        try { 
-          await p.tx.audio.sender.replaceTrack(a); 
+        try {
+          await p.tx.audio.sender.replaceTrack(a);
           a.enabled = true; // Ensure audio is enabled
-        } catch (err) { 
-          console.warn("attach audio failed", err); 
+        } catch (err) {
+          console.warn("attach audio failed", err);
         }
       }
       if (v) {
-        try { 
-          await p.tx.video.sender.replaceTrack(v); 
-          p.senders.cam = p.tx.video.sender; 
-        } catch (err) { 
-          console.warn("attach video failed", err); 
+        try {
+          await p.tx.video.sender.replaceTrack(v);
+          p.senders.cam = p.tx.video.sender;
+        } catch (err) {
+          console.warn("attach video failed", err);
         }
       }
     }
 
-    // FIXED: Improved track handling
     pc.ontrack = (e) => {
       const track = e.track;
-      let stream = (e.streams && e.streams[0]) || new MediaStream([track]);
-
-      console.log("📡 track from", peerId, track.kind, track.label, "mid:", e.transceiver.mid);
-
+      const stream = (e.streams && e.streams[0]) || new MediaStream([track]);
       const label = (track.label || "").toLowerCase();
-      const isScreen = track.kind === "video" && (
-        label.includes("screen") ||
-        label.includes("window") ||
-        (track.getSettings?.().displaySurface)
-      );
+      const settings = (track.getSettings && track.getSettings()) || {};
+
+      // Robust screen detection
+      const isScreen =
+        track.kind === "video" && (
+          label.includes("screen") ||
+          label.includes("window") ||
+          settings.displaySurface === "monitor" ||
+          settings.displaySurface === "window" ||
+          settings.displaySurface === "application"
+        );
 
       if (isScreen) {
         p.tracks.screen = stream;
       } else if (track.kind === "video") {
         p.tracks.cam = stream;
       } else if (track.kind === "audio") {
-        // FIXED: Better audio track handling
-        if (p.tracks.cam) {
-          p.tracks.cam.addTrack(track);
-        } else if (p.tracks.screen) {
-          p.tracks.screen.addTrack(track);
-        } else {
-          p.tracks.cam = stream;
-        }
+        // merge audio into whichever stream exists, prefer screen first for clarity
+        if (p.tracks.screen) p.tracks.screen.addTrack(track);
+        else if (p.tracks.cam) p.tracks.cam.addTrack(track);
+        else p.tracks.cam = stream;
       }
 
-      track.onunmute = () => {
-        console.log("🔊 track unmuted", track.kind, peerId);
-        emitStreams();
-      };
-      
+      track.onunmute = () => emitStreams();
       track.onended = () => {
-        console.log("🔚 track ended", track.kind, peerId);
-        if (isScreen) {
-          p.tracks.screen = null;
-        } else if (track.kind === "video") {
-          p.tracks.cam = null;
-        }
+        if (isScreen) p.tracks.screen = null;
+        else if (track.kind === "video") p.tracks.cam = null;
         emitStreams();
       };
 
@@ -426,9 +421,9 @@ export function useWebRTC(roomId, displayName) {
     pc.ondatachannel = (ev) => wireDC(peerId, ev.channel);
 
     // ICE
-    pc.onicecandidate = (ev) => { 
+    pc.onicecandidate = (ev) => {
       if (ev.candidate) {
-        sendWS({ type: "ice", to: peerId, candidate: ev.candidate }); 
+        sendWS({ type: "ice", to: peerId, candidate: ev.candidate });
       }
     };
 
@@ -466,7 +461,7 @@ export function useWebRTC(roomId, displayName) {
       }
     }
 
-    emitParticipants(); 
+    emitParticipants();
     emitStreams();
     return p;
   }
@@ -548,7 +543,7 @@ export function useWebRTC(roomId, displayName) {
     toggleHand(up) { sendWS({ type: "hand", up: !!up }); },
 
     // FIXED: Proper mic control
-    setMic(on) { 
+    setMic(on) {
       if (state.localCamStream) {
         state.localCamStream.getAudioTracks().forEach(t => {
           t.enabled = !!on;
@@ -556,8 +551,8 @@ export function useWebRTC(roomId, displayName) {
         });
       }
     },
-    
-    setCam(on) { 
+
+    setCam(on) {
       if (state.localCamStream) {
         state.localCamStream.getVideoTracks().forEach(t => {
           t.enabled = !!on;
@@ -589,6 +584,13 @@ export function useWebRTC(roomId, displayName) {
       const audioTrack = screenStream.getAudioTracks()[0];
 
       for (const [, p] of state.peers) {
+        // If the transceiver/sender doesn’t exist yet (rare timing), create one
+        if (!p.tx?.screen?.sender) {
+          p.tx = p.tx || {};
+          p.tx.screen = p.pc.addTransceiver("video", { direction: "sendrecv" });
+        }
+      }
+      for (const [, p] of state.peers) {
         if (p.tx?.screen?.sender) {
           try {
             // FIXED: Replace track for screen sharing
@@ -603,15 +605,15 @@ export function useWebRTC(roomId, displayName) {
       emitStreams();
     },
 
-    async stopShare() { 
-      await stopScreenInternal(); 
+    async stopShare() {
+      await stopScreenInternal();
     },
 
     subscribeStreams,
     subscribeParticipants,
     onChat,
 
-    onShareEnded(cb) { 
+    onShareEnded(cb) {
       // FIXED: Proper share ended callback
       if (cb && state.localScreenStream) {
         state.localScreenStream.getTracks().forEach(track => {

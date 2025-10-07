@@ -157,6 +157,187 @@ function EmptyRooms() {
   );
 }
 
+function RoomVideoWall({ streams, participants, mic, toggleFullTile }) {
+  // Separate screens & cams; create placeholders for those with no video
+  const { screens, cams, placeholders } = useMemo(() => {
+    const s = [];
+    const c = [];
+    const withVideo = new Set();
+
+    for (const item of streams) {
+      if (item.type === "screen") {
+        s.push(item);
+        withVideo.add(item.id.split("::")[0]);
+      } else if (item.type === "cam") {
+        c.push(item);
+        withVideo.add(item.id.split("::")[0]);
+      }
+    }
+
+    // participant cards for those connected but not sending any video
+    const ph = participants
+      .filter(p => !withVideo.has(p.id))
+      .map(p => ({
+        id: p.id + "::placeholder",
+        name: p.self ? "You" : (p.name || "Student"),
+        self: !!p.self,
+        state: p.state,
+        hand: !!p.hand,
+        type: "placeholder",
+      }));
+
+    // Stable order (self first for screens, then by name)
+    s.sort((a, b) => (a.self === b.self ? (a.name || "").localeCompare(b.name || "") : a.self ? -1 : 1));
+    c.sort((a, b) => (a.self === b.self ? (a.name || "").localeCompare(b.name || "") : a.self ? -1 : 1));
+
+    return { screens: s, cams: c, placeholders: ph };
+  }, [streams, participants]);
+
+  const hasScreens = screens.length > 0;
+
+  return (
+    <div className="space-y-6">
+      {hasScreens && (
+        <ScreenWall screens={screens} toggleFullTile={toggleFullTile} />
+      )}
+
+      <PeopleWall
+        cams={cams}
+        placeholders={placeholders}
+        mic={mic}
+        toggleFullTile={toggleFullTile}
+      />
+
+      {!hasScreens && cams.length === 0 && placeholders.length === 0 && (
+        <div className="aspect-video rounded-2xl bg-zinc-900/80 grid place-items-center text-zinc-500">
+          Waiting for participants…
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScreenWall({ screens, toggleFullTile }) {
+  // Responsive columns: 1 → 2 → 3 screens
+  const colClass =
+    screens.length === 1 ? "grid-cols-1" :
+      screens.length === 2 ? "grid-cols-1 md:grid-cols-2" :
+        "grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
+
+  return (
+    <div className={`grid ${colClass} gap-4 sm:gap-6`}>
+      {screens.map((s) => (
+        <div
+          key={s.id}
+          id={`tile-${s.id}`}
+          className="relative overflow-hidden rounded-2xl bg-black ring-1 ring-zinc-700 shadow-lg aspect-video"
+        >
+          {s.stream ? (
+            <video
+              id={`video-${s.id}`}
+              autoPlay
+              playsInline
+              muted={s.self}
+              className="h-full w-full object-contain bg-black"
+              ref={(el) => {
+                if (el && el.srcObject !== s.stream) {
+                  el.srcObject = s.stream;
+                  const p = el.play(); if (p?.catch) p.catch(() => { });
+                }
+              }}
+            />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-zinc-400 bg-zinc-900/60">Connecting…</div>
+          )}
+
+          <TileFooter
+            title={s.self ? "You (screen)" : (s.name || "Student")}
+            onFullscreen={() => toggleFullTile(`tile-${s.id}`)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PeopleWall({ cams, placeholders, mic, toggleFullTile }) {
+  const tiles = [...cams, ...placeholders];
+
+  if (tiles.length === 0) return null;
+
+  return (
+    <div
+      className="grid gap-4 sm:gap-6"
+      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(240px, 1fr))` }}
+    >
+      {tiles.map((t) => {
+        const isPlaceholder = t.type === "placeholder";
+        return (
+          <div
+            key={t.id}
+            id={`tile-${t.id}`}
+            className="relative overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-700 shadow-lg aspect-video"
+          >
+            {isPlaceholder ? (
+              <div className="h-full w-full grid place-items-center text-zinc-300 bg-zinc-800/60">
+                <div className="text-center">
+                  <UserIcon className="h-12 w-12 mx-auto" />
+                  <div className="mt-2 text-xs font-medium text-zinc-300">
+                    {t.name} {t.state !== 'connected' && <span className="text-amber-400">(joining…)</span>}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <video
+                id={`video-${t.id}`}
+                autoPlay
+                playsInline
+                muted={t.self}
+                className="h-full w-full object-cover"
+                ref={(el) => {
+                  if (el && el.srcObject !== t.stream) {
+                    el.srcObject = t.stream;
+                    const p = el.play(); if (p?.catch) p.catch(() => { });
+                  }
+                }}
+              />
+            )}
+
+            <TileFooter
+              title={
+                t.self ? (t.type === "screen" ? "You (screen)" : "You")
+                  : (t.name || "Student")
+              }
+              mutedBadge={t.self && t.type !== "screen" ? !mic : false}
+              handUp={t.hand}
+              onFullscreen={() => toggleFullTile(`tile-${t.id}`)}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TileFooter({ title, mutedBadge = false, handUp = false, onFullscreen }) {
+  return (
+    <div className="absolute left-2 bottom-2 flex items-center gap-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white">
+      <span className="font-semibold">{title}</span>
+      {mutedBadge && <span className="rounded bg-white/20 px-1">muted</span>}
+      {handUp && <span className="rounded bg-amber-400 text-black px-1">✋</span>}
+      <button
+        className="ml-1 text-white hover:bg-white/20 rounded p-1 transition-colors"
+        onClick={onFullscreen}
+        title="Toggle fullscreen"
+      >
+        <svg className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 /* ====================== Study Room ====================== */
 export function StudyRoom() {
   const { roomId } = useParams();
@@ -169,7 +350,6 @@ export function StudyRoom() {
   const [anon, setAnon] = useState(false);
   const [msg, setMsg] = useState("");
   const [chat, setChat] = useState([]);
-  const localVideoRef = useRef(null);
   const [streams, setStreams] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [sharing, setSharing] = useState(false);
@@ -201,23 +381,15 @@ export function StudyRoom() {
   useEffect(() => { rtc.setCam?.(cam); }, [cam, rtc]);
 
   useEffect(() => {
-    let stream;
-    let cancelled = false;
     (async () => {
       try {
-        stream = await rtc.getLocalStream();
-        if (!cancelled && localVideoRef.current && !localVideoRef.current.srcObject) {
-          localVideoRef.current.srcObject = stream;
-        }
+        await rtc.getLocalStream();
       } catch (e) {
         console.warn("getUserMedia failed", e);
         setCam(false);
       }
     })();
-    return () => {
-      cancelled = true;
-      stream?.getTracks().forEach((t) => t.stop());
-    };
+    return () => {/* rtc.disconnect handles stopping tracks */ }
   }, [rtc]);
 
   useEffect(() => {
@@ -271,6 +443,7 @@ export function StudyRoom() {
     try {
       if (!sharing) {
         await rtc.startShare();
+        rtc.onShareEnded?.(() => setSharing(false));
         setSharing(true);
       } else {
         await rtc.stopShare();
@@ -282,16 +455,27 @@ export function StudyRoom() {
     }
   }
 
-  function toggleFullScreen(id) {
-    const videoElement = document.getElementById(id);
-    if (videoElement.requestFullscreen) {
-      videoElement.requestFullscreen();
-    } else if (videoElement.mozRequestFullScreen) { // Firefox
-      videoElement.mozRequestFullScreen();
-    } else if (videoElement.webkitRequestFullscreen) { // Chrome, Safari and Opera
-      videoElement.webkitRequestFullscreen();
-    } else if (videoElement.msRequestFullscreen) { // IE/Edge
-      videoElement.msRequestFullscreen();
+  function toggleFullTile(tileId) {
+    const el = document.getElementById(tileId);
+    if (!el) return;
+    const d = document;
+
+    const enter = () =>
+    (el.requestFullscreen?.() ||
+      el.webkitRequestFullscreen?.() ||
+      el.mozRequestFullScreen?.() ||
+      el.msRequestFullscreen?.());
+
+    const exit = () =>
+    (d.exitFullscreen?.() ||
+      d.webkitExitFullscreen?.() ||
+      d.mozCancelFullScreen?.() ||
+      d.msExitFullscreen?.());
+
+    if (d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement) {
+      exit();
+    } else {
+      enter();
     }
   }
 
@@ -333,77 +517,16 @@ export function StudyRoom() {
       {/* Layout: video grid + sidebar */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid gap-4 lg:grid-cols-3">
         {/* Video grid */}
+        {/* Video area (Screens on top, People below) */}
         <section className="lg:col-span-2">
-          <div
-            className="grid gap-4 sm:gap-6"
-            style={{ gridTemplateColumns: `repeat(auto-fit, minmax(260px, 1fr))` }}
-          >
-            {streams.length === 0 ? (
-              <div className="aspect-video rounded-2xl bg-zinc-900/80 grid place-items-center text-zinc-500">
-                Waiting for participants…
-              </div>
-            ) : (
-              streams.map((s) => (
-                <div
-                  key={s.id}
-                  className={`relative overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-700 shadow-lg transition-all duration-300 ${s.type === "screen"
-                    ? "col-span-2 row-span-2 aspect-video" // FIXED: Make screen shares larger
-                    : "aspect-video"
-                    }`}
-                >
-                  {s.stream ? (
-                    <video
-                      id={`video-${s.id}`}
-                      autoPlay
-                      playsInline
-                      muted={s.self}
-                      className="h-full w-full object-cover"
-                      ref={(el) => {
-                        if (el && el.srcObject !== s.stream) {
-                          el.srcObject = s.stream;
-                          const p = el.play();
-                          if (p && typeof p.catch === "function") p.catch(() => { });
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full w-full grid place-items-center text-zinc-500 bg-zinc-800/60">
-                      <div className="text-center">
-                        <UserIcon className="h-12 w-12 mx-auto" />
-                        <div className="mt-2 text-xs font-medium text-zinc-300">
-                          {/* FIXED: Better connection state display */}
-                          {s.self ? "You" : (participants.find(p => !p.self && p.id === s.id.split('::')[0])?.name || "Student")}
-                          {!s.stream && " - Connecting..."}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+          <RoomVideoWall
+            streams={streams}
+            participants={participants}
+            mic={mic}
+            toggleFullTile={toggleFullTile}
+          />
 
-                  <div className="absolute left-2 bottom-2 flex items-center gap-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white">
-                    <span className="font-semibold">
-                      {s.self ? (s.type === "screen" ? "You (screen)" : "You") : s.name || "Student"}
-                    </span>
-                    {s.self && s.type !== "screen" && !mic && (
-                      <span className="rounded bg-white/20 px-1">muted</span>
-                    )}
-
-                    {/* FIXED: Working fullscreen button */}
-                    <button
-                      className="text-white hover:bg-white/20 rounded p-1 transition-colors"
-                      onClick={() => toggleFullScreen(`video-${s.id}`)}
-                      title="Toggle fullscreen"
-                    >
-                      <svg className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Controls */}
+          {/* Controls (unchanged) */}
           <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
             <ToggleButton on={mic} onClick={() => setMic((s) => !s)} label={mic ? "Mute" : "Unmute"}>
               {mic ? <MicIcon /> : <MicOffIcon />}
