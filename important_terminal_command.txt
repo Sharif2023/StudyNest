@@ -25,3 +25,31 @@ npm start
 #for chatbot
 composer install
 
+#in C:\xampp\htdocs\StudyNest\study-nest\src\api\uploads
+create a .htaccess file and 
+paste the code
+
+
+# Allow direct access to uploaded files
+Options -Indexes
+
+# Set correct MIME types for common file formats
+<IfModule mod_mime.c>
+  AddType application/pdf .pdf
+  AddType image/jpeg .jpg .jpeg
+  AddType image/png .png
+  AddType image/webp .webp
+  AddType image/gif .gif
+  AddType application/msword .doc
+  AddType application/vnd.openxmlformats-officedocument.wordprocessingml.document .docx
+  AddType application/vnd.ms-powerpoint .ppt
+  AddType application/vnd.openxmlformats-officedocument.presentationml.presentation .pptx
+  AddType text/plain .txt
+  AddType application/zip .zip
+  AddType application/x-rar-compressed .rar
+</IfModule>
+
+# Security: block PHP execution here
+<FilesMatch "\.php$">
+  Deny from all
+</FilesMatch>
