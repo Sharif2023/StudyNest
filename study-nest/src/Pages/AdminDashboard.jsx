@@ -673,7 +673,7 @@ export default function AdminDashboard() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-white font-bold">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#001D35] text-[#001D35] font-bold">
                 <img src="src/assets/logo.png" alt="Study-Nest-Logo" className="h-7 w-7" />
               </span>
               <span className="font-semibold tracking-tight text-white">StudyNest</span>
