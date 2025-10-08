@@ -123,10 +123,10 @@ export default function LeftNav({
         <div className="flex items-center gap-2 px-3 py-3 border-b border-slate-800">
           <Link
             to="/home"
-            className="h-8 w-8 rounded-xl bg-gradient-to-br from-white to-white grid place-content-center shadow-sm"
+            className="h-8 w-8 rounded-xl bg-gradient-to-br from-[##001D35] to-[##001D35] grid place-content-center shadow-sm"
             title="Study Nest"
           >
-            <img src={logoUrl} alt="Study Nest" className="h-5 w-5 object-contain" />
+            <img src={logoUrl} alt="Study Nest" className="h-8 w-8 object-contain" />
           </Link>
           {navOpen && <span className="font-semibold hidden xl:block text-white">Study Nest</span>}
           <button
