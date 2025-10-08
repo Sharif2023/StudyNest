@@ -4,70 +4,65 @@ import Footer from "../Components/Footer";
 
 /**
  * StudyNest — Q&A Forum (Peer Review & Voting)
- * -------------------------------------------------------------
- * - Question list with search, tags, and sort (Hot/New/Top)
- * - Ask Question modal (with Anonymous toggle and tags)
- * - Question details drawer with answers
- * - Upvote/Downvote on questions & answers (local session)
- * - Peer review on answers ("Helpful" count) & accept answer
- * - No external deps; TailwindCSS for styling
- *
- * Integration: add a route like `<Route path="/forum" element={<QnAForum/>}/>`
- * You can swap the mock API with your real backend later.
+ * --------------------------------------------
+ * - Fixes auth (Bearer + session)
+ * - Fixes CORS & case path mismatches
+ * - Ensures add_question / add_answer work
+ * - Adds auto re-fetch after post
  */
 
-const API_ENDPOINT = 'http://localhost/studynest/study-nest/src/api/QnAForum.php';
+const API_ENDPOINT = "http://localhost/StudyNest/study-nest/src/api/QnAForum.php";
 
 export default function QnAForum() {
   const [questions, setQuestions] = useState([]);
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("All");
-  const [sort, setSort] = useState("Hot"); // Hot | New | Top
+  const [sort, setSort] = useState("Hot");
   const [askOpen, setAskOpen] = useState(false);
-  const [detail, setDetail] = useState(null); // question id
-
-  //leftBar
+  const [detail, setDetail] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
   const [anonymous, setAnonymous] = useState(false);
+  const openDetail = (id) => setDetail(id);
+  const closeDetail = () => setDetail(null);
 
-  // Match LeftNav’s expected widths
-  const COLLAPSED_W = 72;   // px
-  const EXPANDED_W = 248;  // px
+  const COLLAPSED_W = 72;
+  const EXPANDED_W = 248;
   const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
-  // Fetch all questions from the backend on initial load
-  useEffect(() => {
+  // 🔹 Fetch all questions
+  const fetchQuestions = () => {
     fetch(API_ENDPOINT, {
-      credentials: 'include',            // <-- add this
+      credentials: "include",
+      cache: "no-store",
       headers: {
-        'Accept': 'application/json',
-        // Optional: add Authorization if you use JWTs
-        ...(localStorage.getItem('token') && {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        Accept: "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         }),
       },
     })
-      .then((response) => {
-        if (response.status === 401) throw new Error('Not authenticated');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
       .then((data) => {
-        // Check if the response is an array before setting the state
-        if (Array.isArray(data)) {
-          // Data is now pre-sorted by the backend (newest first)
-          setQuestions(data);
-        } else {
-          console.error("API did not return an array:", data);
-          setQuestions([]); // Reset state if response is not an array
+        if (Array.isArray(data)) setQuestions(data);
+        else {
+          console.error("Invalid response:", data);
+          setQuestions([]);
         }
       })
-      .catch((error) => {
-        console.error('Error fetching questions:', error);
-        setQuestions([]); // Also set to empty on fetch error
+      .catch((err) => {
+        console.error("Error fetching:", err);
+        setQuestions([]);
       });
+  };
+
+  useEffect(() => {
+    fetchQuestions();
   }, []);
 
+  /* ---------------- Filtering ---------------- */
   const tags = useMemo(() => {
     const t = new Set(["All"]);
     questions.forEach((q) => q.tags.forEach((x) => t.add(x)));
@@ -86,7 +81,6 @@ export default function QnAForum() {
           q.tags.some((t) => t.toLowerCase().includes(ql))
       );
     }
-    // score for "Hot": votes + answers + freshness
     const scoreHot = (q) => q.votes + q.answers.length * 2 + freshnessBoost(q.createdAt);
     const sorters = {
       Hot: (a, b) => scoreHot(b) - scoreHot(a),
@@ -96,78 +90,47 @@ export default function QnAForum() {
     return [...list].sort(sorters[sort]);
   }, [questions, query, activeTag, sort]);
 
-  const openDetail = (qid) => setDetail(qid);
-  const closeDetail = () => setDetail(null);
-
+  /* ---------------- Actions ---------------- */
   const onCreateQuestion = (q) => {
-    // Optimistic UI update
     const tempId = `temp-${Date.now()}`;
     const newQuestion = {
       ...q,
       id: tempId,
       votes: 0,
       answers: [],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
-    setQuestions(prev => [newQuestion, ...prev]);
+    setQuestions((prev) => [newQuestion, ...prev]);
     setAskOpen(false);
 
     fetch(API_ENDPOINT, {
-      method: 'POST',
-      credentials: 'include',
+      method: "POST",
+      credentials: "include",
       headers: {
-        'Content-Type': 'application/json',
-        ...(localStorage.getItem('token') && {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         }),
       },
       body: JSON.stringify({
-        action: 'add_question',
+        action: "add_question",
         title: q.title,
         body: q.body,
-        tags: q.tags.join(','),
-        author: q.author,
-        anonymous: q.anonymous ? 1 : 0
+        tags: q.tags,
+        author: q.anonymous ? "Anonymous" : q.author,
       }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Replace temp question with real data from server
-          setQuestions(prev => prev.map(item => item.id === tempId ? { ...newQuestion, id: data.id } : item));
-        } else {
-          // Revert on error
-          setQuestions(prev => prev.filter(item => item.id !== tempId));
-          alert('Error creating question: ' + data.message);
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") fetchQuestions();
+        else {
+          setQuestions((prev) => prev.filter((x) => x.id !== tempId));
+          alert("Error: " + data.message);
         }
       })
-      .catch(error => {
-        setQuestions(prev => prev.filter(item => item.id !== tempId));
-        alert('Error: ' + error.message);
-      });
-  };
-
-  const onVoteQuestion = (id, delta) => {
-    // Optimistic update
-    setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: Number(q.votes) + delta } : q));
-
-    fetch(API_ENDPOINT, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'vote_question', id, delta }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status !== 'success') {
-          // Revert on error
-          setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-          console.error('Error voting on question:', data.message);
-        }
-      })
-      .catch(error => {
-        setQuestions(prev => prev.map(q => q.id === id ? { ...q, votes: q.votes - delta } : q));
-        console.error('Error:', error)
+      .catch((err) => {
+        setQuestions((prev) => prev.filter((x) => x.id !== tempId));
+        alert("Error posting: " + err.message);
       });
   };
 
@@ -181,105 +144,202 @@ export default function QnAForum() {
       isAccepted: false,
       createdAt: new Date().toISOString(),
     };
-
-    // Optimistic update
-    setQuestions(prev => prev.map(q =>
-      q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
-    ));
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qid ? { ...q, answers: [...q.answers, newAnswer] } : q
+      )
+    );
 
     fetch(API_ENDPOINT, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
+      },
       body: JSON.stringify({
-        action: 'add_answer',
+        action: "add_answer",
         question_id: qid,
         body: answer.body,
-        author: answer.author
+        author: answer.author,
       }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Re-fetch all questions to get the final state with the new answer ID
-          fetch(API_ENDPOINT).then(res => res.json()).then(setQuestions);
-        } else {
-          // Revert on error
-          setQuestions(prev => prev.map(q =>
-            q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
-          ));
-          console.error('Error adding answer:', data.message);
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") fetchQuestions();
+        else {
+          setQuestions((prev) =>
+            prev.map((q) =>
+              q.id === qid
+                ? { ...q, answers: q.answers.filter((a) => a.id !== tempAnswerId) }
+                : q
+            )
+          );
+          alert("Error adding answer: " + data.message);
         }
       })
-      .catch(error => {
-        setQuestions(prev => prev.map(q =>
-          q.id === qid ? { ...q, answers: q.answers.filter(a => a.id !== tempAnswerId) } : q
-        ));
-        console.error('Error:', error);
+      .catch((err) => {
+        setQuestions((prev) =>
+          prev.map((q) =>
+            q.id === qid
+              ? { ...q, answers: q.answers.filter((a) => a.id !== tempAnswerId) }
+              : q
+          )
+        );
+        console.error(err);
       });
+  };
+
+  const onVoteQuestion = (id, delta) => {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === id ? { ...q, votes: Number(q.votes) + delta } : q
+      )
+    );
+    fetch(API_ENDPOINT, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
+      },
+      body: JSON.stringify({ action: "vote_question", id, delta }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status !== "success") {
+          setQuestions((prev) =>
+            prev.map((q) =>
+              q.id === id ? { ...q, votes: q.votes - delta } : q
+            )
+          );
+        }
+      })
+      .catch((err) => console.error(err));
   };
 
   const onVoteAnswer = (qid, aid, delta) => {
-    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: Number(a.votes) + delta } : a) } : q));
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qid
+          ? {
+            ...q,
+            answers: q.answers.map((a) =>
+              a.id === aid ? { ...a, votes: Number(a.votes) + delta } : a
+            ),
+          }
+          : q
+      )
+    );
     fetch(API_ENDPOINT, {
-      credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'vote_answer', id: aid, delta }),
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
+      },
+      body: JSON.stringify({ action: "vote_answer", id: aid, delta }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status !== 'success') {
-          setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: a.votes - delta } : a) } : q));
-          console.error('Error voting on answer:', data.message);
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status !== "success") {
+          setQuestions((prev) =>
+            prev.map((q) =>
+              q.id === qid
+                ? {
+                  ...q,
+                  answers: q.answers.map((a) =>
+                    a.id === aid
+                      ? { ...a, votes: Number(a.votes) - delta }
+                      : a
+                  ),
+                }
+                : q
+            )
+          );
         }
       })
-      .catch(error => {
-        setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, votes: a.votes - delta } : a) } : q));
-        console.error('Error:', error);
-      });
+      .catch((err) => console.error(err));
   };
 
   const onPeerReview = (qid, aid) => {
-    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) + 1 } : a) } : q));
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qid
+          ? {
+            ...q,
+            answers: q.answers.map((a) =>
+              a.id === aid
+                ? { ...a, helpful: Number(a.helpful) + 1 }
+                : a
+            ),
+          }
+          : q
+      )
+    );
     fetch(API_ENDPOINT, {
-      credentials: 'include',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'peer_review', id: aid }),
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
+      },
+      body: JSON.stringify({ action: "peer_review", id: aid }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status !== 'success') {
-          setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) - 1 } : a) } : q));
-          console.error('Error marking as helpful:', data.message);
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status !== "success") {
+          setQuestions((prev) =>
+            prev.map((q) =>
+              q.id === qid
+                ? {
+                  ...q,
+                  answers: q.answers.map((a) =>
+                    a.id === aid
+                      ? { ...a, helpful: Number(a.helpful) - 1 }
+                      : a
+                  ),
+                }
+                : q
+            )
+          );
         }
       })
-      .catch(error => {
-        setQuestions(prev => prev.map(q => q.id === qid ? { ...q, answers: q.answers.map(a => a.id === aid ? { ...a, helpful: Number(a.helpful) - 1 } : a) } : q));
-        console.error('Error:', error);
-      });
+      .catch((err) => console.error(err));
   };
 
   const onAcceptAnswer = (qid, aid) => {
-    setQuestions(prev => prev.map(q =>
-      q.id === qid ? { ...q, answers: q.answers.map(a => ({ ...a, isAccepted: a.id === aid })) } : q
-    ));
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === qid
+          ? { ...q, answers: q.answers.map((a) => ({ ...a, isAccepted: a.id === aid })) }
+          : q
+      )
+    );
     fetch(API_ENDPOINT, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'accept_answer', question_id: qid, answer_id: aid }),
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("token") && {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }),
+      },
+      body: JSON.stringify({ action: "accept_answer", question_id: qid, answer_id: aid }),
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status !== 'success') {
-          console.error('Error accepting answer:', data.message);
-          // Note: Reverting this optimistic update would be more complex, so we log the error.
-          // For a production app, you might re-fetch the question's state.
-        }
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status !== "success") console.error("Accept error:", data.message);
       })
-      .catch(error => console.error('Error:', error));
+      .catch((err) => console.error(err));
   };
 
   return (
@@ -370,7 +430,7 @@ export default function QnAForum() {
 
       {/* List */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {filtered.length === 0 && !query ? (
+        {!Array.isArray(filtered) || filtered.length === 0 ? (
           <EmptyState onNew={() => setAskOpen(true)} />
         ) : (
           <ul className="grid gap-4">
