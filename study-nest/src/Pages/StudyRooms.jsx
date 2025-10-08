@@ -371,7 +371,28 @@ export function StudyRoom() {
     })();
   }, [roomId]);
 
-  const isCreator = room?.created_by != null;
+  useEffect(() => {
+    if (room && room.status === "live") {
+      // Save to localStorage so homepage can detect it
+      localStorage.setItem("activeRoom", JSON.stringify(room));
+    }
+
+    // Optional cleanup
+    return () => {
+      const endedRoom = localStorage.getItem("endedRoom");
+      if (!endedRoom && room && room.status === "live") {
+        // If the user just navigated away (not ended)
+        localStorage.setItem("activeRoom", JSON.stringify(room));
+      }
+    };
+  }, [room]);
+
+  const currentUser =
+    JSON.parse(localStorage.getItem("studynest.auth") || "null")?.id ||
+    JSON.parse(localStorage.getItem("studynest.profile") || "null")?.id;
+
+  const isCreator = room?.created_by === currentUser;
+
   const roomTitle = state?.title || room?.title || `Room • ${roomId}`;
 
   const displayName =
@@ -408,18 +429,33 @@ export function StudyRoom() {
     return () => rtc.disconnect();
   }, [rtc]);
 
+  useEffect(() => {
+    localStorage.removeItem("endedRoom");
+  }, []);
+
+
   async function endMeeting() {
     try {
       setEnding(true);
-      const res = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/end", {
+      const res = await fetch(`http://localhost/StudyNest/study-nest/src/api/meetings.php/end`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: roomId }),
       });
+
       const j = await res.json();
-      if (j.ok) navigate("/rooms", { replace: true });
-      else alert(j.error || "Failed to end meeting");
+      if (j.ok) {
+        localStorage.setItem("endedRoom", "true");
+        localStorage.removeItem("activeRoom");
+        alert("Meeting ended successfully");
+        navigate("/home", { replace: true });
+      } else {
+        console.warn("Failed to end meeting:", j);
+        alert("Could not end the meeting. Try again.");
+      }
+    } catch (err) {
+      console.error("End meeting failed", err);
     } finally {
       setEnding(false);
     }
@@ -492,9 +528,20 @@ export function StudyRoom() {
       <div className="sticky top-0 z-20 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between text-zinc-200">
           <div className="flex items-center gap-3">
-            <Link to="/rooms" className="rounded-md p-2 hover:bg-zinc-800" aria-label="Back">
+            <button
+              onClick={() => {
+                if (room && room.status === "live") {
+                  localStorage.setItem("activeRoom", JSON.stringify(room));
+                }
+                // Go home and tell it which room to embed
+                navigate(`/home?room=${roomId}`);
+              }}
+
+              className="rounded-md p-2 hover:bg-zinc-800"
+              aria-label="Back"
+            >
               <ArrowLeft className="h-5 w-5" />
-            </Link>
+            </button>
             <h1 className="text-sm font-semibold truncate max-w-[60vw]">{roomTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -510,9 +557,31 @@ export function StudyRoom() {
                 {ending ? "Ending…" : "End meeting"}
               </button>
             )}
-            <Link to="/home" className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
+            <button
+              onClick={async () => {
+                try {
+                  // Notify backend
+                  await fetch(`http://localhost/StudyNest/study-nest/src/api/meetings.php/leave`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ id: roomId }),
+                  });
+
+                  // Remove local activeRoom so homepage is blank again
+                  localStorage.removeItem("activeRoom");
+
+                  // Navigate back home
+                  navigate("/home", { replace: true });
+                } catch (err) {
+                  console.error("Leave failed", err);
+                  navigate("/home", { replace: true });
+                }
+              }}
+              className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+            >
               Leave
-            </Link>
+            </button>
           </div>
         </div>
       </div>

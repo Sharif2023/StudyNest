@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
-/** ---------- THEME HELPERS (updated to slate + cyan/blue) ---------- */
+/** ---------- THEME HELPERS ---------- */
 const Badge = ({ children, tone = "neutral" }) => {
   const tones = {
     neutral: "bg-slate-800/60 border border-slate-700 text-slate-200",
@@ -284,7 +284,7 @@ function mapMeetingToCard(m) {
       : undefined,
   };
 }
-function StudyRoom({ anonymous }) {
+function StudyRoom({ anonymous, activeRoom }) {
   const [muted, setMuted] = useState(true);
   const videoRef = useRef(null);
   useEffect(() => {
@@ -292,12 +292,25 @@ function StudyRoom({ anonymous }) {
   }, [muted]);
 
   const [liveRooms, setLiveRooms] = useState([]);
+
   useEffect(() => {
+    const stored = localStorage.getItem("activeRoom");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.status === "live") {
+          setLiveRooms([parsed]);
+          return;
+        }
+      } catch { }
+    }
+
+    // fallback to API fetch if no active room found
     (async () => {
       try {
         const r = await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php", { credentials: "include" });
         const j = await r.json();
-        if (j.ok) setLiveRooms((j.rooms || []).filter(r => r.status === 'live'));
+        if (j.ok) setLiveRooms((j.rooms || []).filter(r => r.status === "live"));
       } catch (e) { }
     })();
   }, []);
@@ -314,7 +327,7 @@ function StudyRoom({ anonymous }) {
           muted
         >
           <source
-            src="https://cdn.coverr.co/videos/coverr-students-studying-1782/1080p.mp4"
+            src={activeRoom?.stream_url || "https://cdn.coverr.co/videos/coverr-students-studying-1782/1080p.mp4"}
             type="video/mp4"
           />
         </video>
@@ -326,21 +339,36 @@ function StudyRoom({ anonymous }) {
         </div>
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="soft" size="md">
-              ▶ Play
+            <Button variant="soft" size="md" onClick={() => setMuted(m => !m)}>
+              {muted ? "🔇" : "🔊"}
             </Button>
-            <Button onClick={() => setMuted((m) => !m)} variant="soft" size="md">
-              {muted ? "Unmute" : "Mute"}
-            </Button>
-            <Button variant="soft" size="md">
-              👥 142
-            </Button>
+            <Button variant="soft" size="md">🎥</Button>
+            <Button variant="soft" size="md">🖥️</Button>
+            <Button variant="soft" size="md">✋</Button>
           </div>
+
           <div className="flex items-center gap-2">
-            <Button size="md">🤝 Peer Match</Button>
-            <Button variant="soft" size="md">
-              💬 Ask AI
-            </Button>
+            {activeRoom ? (
+              <>
+                <Link to={`/rooms/${activeRoom.id}`}>
+                  <Button size="md">Expand</Button>
+                </Link>
+                <Button
+                  variant="soft"
+                  size="md"
+                  onClick={() => {
+                    localStorage.removeItem("activeRoom");
+                    window.location.reload(); // Refresh homepage to blank MiniTV
+                  }}
+                >
+                  Leave
+                </Button>
+              </>
+            ) : liveRooms[0] ? (
+              <Link to={`/rooms/${liveRooms[0].id}`}>
+                <Button size="md">Join</Button>
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
@@ -380,6 +408,50 @@ export default function Home() {
   const [messages, setMessages] = useState([]); // Store chat messages
   const [inputMessage, setInputMessage] = useState(''); // Store input message
   const [rooms, setRooms] = useState([]);
+  const [activeRoom, setActiveRoom] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("activeRoom")) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("activeRoom");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.status === "live") {
+          setActiveRoom(parsed);
+        }
+      } catch (err) {
+        console.warn("Invalid activeRoom in localStorage", err);
+      }
+    }
+  }, []);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const roomParam = params.get("room");
+
+    if (roomParam) {
+      // fetch details or use localStorage to fill in active room info
+      const stored = localStorage.getItem("activeRoom");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.id === roomParam) setActiveRoom(parsed);
+        } catch { }
+      } else {
+        // fallback: fetch from API if needed
+        fetch(`http://localhost/StudyNest/study-nest/src/api/meetings.php?id=${roomParam}`)
+          .then(r => r.json())
+          .then(j => j.ok && setActiveRoom(j.room));
+      }
+    }
+  }, [location.search]);
 
   // Toggle chatbot visibility
   const toggleChatbot = () => {
@@ -387,42 +459,42 @@ export default function Home() {
   };
 
   const sendMessage = async () => {
-  if (inputMessage.trim()) {
-    // Add user message to chat history
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { sender: 'user', message: inputMessage },
-    ]);
+    if (inputMessage.trim()) {
+      // Add user message to chat history
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: 'user', message: inputMessage },
+      ]);
 
-    // Send message to the backend (chatbot.php)
-    try {
-      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/chatbot.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: inputMessage }),
-      });
+      // Send message to the backend (chatbot.php)
+      try {
+        const response = await fetch('http://localhost/StudyNest/study-nest/src/api/chatbot.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: inputMessage }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.response) {
-        // Add bot response to chat history
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: 'bot', message: data.response },
-        ]);
-      } else {
-        console.error("No response from the bot:", data);
+        if (data.response) {
+          // Add bot response to chat history
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: 'bot', message: data.response },
+          ]);
+        } else {
+          console.error("No response from the bot:", data);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
 
-    // Clear the input field
-    setInputMessage('');
-  }
-};
+      // Clear the input field
+      setInputMessage('');
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -438,6 +510,32 @@ export default function Home() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("activeRoom");
+    if (stored) {
+      try {
+        setActiveRoom(JSON.parse(stored));
+      } catch { }
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (activeRoom?.id) {
+        fetch(`http://localhost/StudyNest/study-nest/src/api/meetings.php?id=${activeRoom.id}`)
+          .then(r => r.json())
+          .then(j => {
+            if (!j.ok || j.room.status !== "live") {
+              localStorage.removeItem("activeRoom");
+              setActiveRoom(null);
+            }
+          });
+      }
+    }, 10000);
+    return () => clearInterval(t);
+  }, [activeRoom]);
+
   const featured = useMemo(() => {
     return (rooms || [])
       .filter(r => r.status === "live")
@@ -624,7 +722,18 @@ export default function Home() {
             {/* Right column */}
             <div className="order-1 xl:order-2 xl:col-span-7 space-y-6">
               <div className="xl:sticky xl:top-[84px]">
-                <StudyRoom anonymous={anonymous} />
+                {activeRoom && activeRoom.status === "live" ? (
+                  <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
+                    <iframe
+                      src={`http://localhost:5173/rooms/${activeRoom.id}`}
+                      title="Live Study Room"
+                      className="absolute inset-0 w-full h-full rounded-2xl"
+                      allow="camera; microphone; display-capture"
+                    ></iframe>
+                  </div>
+                ) : (
+                  <StudyRoom anonymous={anonymous} activeRoom={activeRoom} />
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
