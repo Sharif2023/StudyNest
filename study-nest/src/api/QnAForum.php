@@ -78,7 +78,23 @@ $create_answers_table = "CREATE TABLE IF NOT EXISTS answers (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 )";
 
-if (!$conn->query($create_questions_table) || !$conn->query($create_answers_table)) {
+// Ensure shared notifications table exists (used across endpoints)
+$create_notifications_table = "CREATE TABLE IF NOT EXISTS notifications (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NULL,
+  student_id VARCHAR(32) NULL,
+  type VARCHAR(64) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  body TEXT NULL,
+  link VARCHAR(1024) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at DATETIME NULL,
+  INDEX idx_user (user_id),
+  INDEX idx_student (student_id),
+  INDEX idx_read (read_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+if (!$conn->query($create_questions_table) || !$conn->query($create_answers_table) || !$conn->query($create_notifications_table)) {
   send_response("error", "Error creating tables: " . $conn->error);
 }
 
@@ -185,7 +201,42 @@ if ($method === 'POST') {
       $stmt = $conn->prepare("INSERT INTO answers (question_id, body, user_id, author) VALUES (?, ?, ?, ?)");
       $stmt->bind_param("isis", $data['question_id'], $data['body'], $logged_in_user_id, $author);
       $ok = $stmt->execute();
-      $ok ? send_response("success", "Answer added.") : send_response("error", "Failed to add answer: " . $stmt->error);
+
+      if ($ok) {
+        // Best-effort notification to the question owner
+        $qid = (int)$data['question_id'];
+        $qstmt = $conn->prepare("SELECT q.user_id, q.title, u.student_id FROM questions q LEFT JOIN users u ON q.user_id = u.id WHERE q.id = ?");
+        if ($qstmt) {
+          $qstmt->bind_param("i", $qid);
+          if ($qstmt->execute()) {
+            $res = $qstmt->get_result();
+            if ($res && ($row = $res->fetch_assoc())) {
+              $notify_user_id = $row['user_id'] !== null ? (int)$row['user_id'] : null;
+              $notify_student_id = $row['student_id'] !== null ? (string)$row['student_id'] : null;
+              $question_title = (string)$row['title'];
+
+              $type = 'qna_answer';
+              $ntitle = 'New answer to your question';
+              $nbody = $question_title;
+              $nlink = '/qna';
+
+              $nstmt = $conn->prepare("INSERT INTO notifications (user_id, student_id, type, title, body, link) VALUES (?, ?, ?, ?, ?, ?)");
+              if ($nstmt) {
+                // types: i s s s s s
+                $nstmt->bind_param("isssss", $notify_user_id, $notify_student_id, $type, $ntitle, $nbody, $nlink);
+                // Fire and forget; ignore result
+                @$nstmt->execute();
+                @$nstmt->close();
+              }
+            }
+          }
+          @$qstmt->close();
+        }
+
+        send_response("success", "Answer added.");
+      } else {
+        send_response("error", "Failed to add answer: " . $stmt->error);
+      }
       break;
     }
 
