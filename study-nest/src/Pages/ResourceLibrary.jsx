@@ -278,63 +278,194 @@ function Select({ label, value, onChange, options }) {
 }
 
 function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
-  const latestIsFile = item.src_type === "file";
-  const isImage = item.mime?.startsWith("image/");
-  const isPdf = item.mime?.includes("pdf");
+  const isFile = item.src_type === "file";
+  const url = item.url || "";
+  const isPdf = url.toLowerCase().endsWith(".pdf");
+  const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
   return (
-    <article className="group flex flex-col h-full rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition-transform transform hover:scale-105 hover:shadow-xl">
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-50">
-        {latestIsFile && isImage ? (
-          <img src={item.url} alt={item.title} className="h-full w-full object-cover rounded-lg shadow-md" />
-        ) : (
-          <div className="grid h-full place-items-center text-zinc-500">
+    <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition">
+      {/* ---------- File / Preview thumbnail ---------- */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-zinc-50 grid place-items-center">
+        {isFile && isImage ? (
+          <img
+            src={url}
+            alt={item.title}
+            className="h-full w-full object-contain rounded-t-2xl"
+          />
+        ) : isFile && isPdf ? (
+          <iframe
+            src={url}
+            title={item.title}
+            className="h-full w-full border-none"
+          />
+        ) : isFile ? (
+          <div className="flex flex-col items-center text-zinc-400">
             <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs">{latestIsFile ? (isPdf ? "PDF" : item.mime?.split("/")[1] || "File") : "External link"}</span>
+            <span className="mt-1 text-xs font-medium">File</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center text-zinc-400">
+            <FileIcon className="h-10 w-10" />
+            <span className="mt-1 text-xs font-medium">External link</span>
           </div>
         )}
-        <button onClick={onPreview} className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex">
-          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">{latestIsFile ? "Preview" : "Open"}</span>
+
+        {/* Hover overlay */}
+        <button
+          onClick={onPreview}
+          className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
+        >
+          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">
+            {isFile ? "Preview" : "Open"}
+          </span>
         </button>
       </div>
 
-      <div className="mt-4 px-4 min-w-0 flex-1">
-        <h3 className="truncate text-lg font-semibold text-zinc-900" title={item.title}>{item.title}</h3>
-        <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{item.description}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
+      {/* ---------- Info ---------- */}
+      <div className="flex-1 p-4">
+        {/* Title + file icon */}
+        <div className="flex items-center gap-2">
+          <span
+            className="truncate text-lg font-semibold text-zinc-900"
+            title={item.title}
+          >
+            {item.title}
+          </span>
+          {isFile && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 text-zinc-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+            </svg>
+          )}
+        </div>
+
+        {/* Description */}
+        {item.description && (
+          <p className="mt-1 line-clamp-2 text-sm text-zinc-600">
+            {item.description}
+          </p>
+        )}
+
+        {/* File link (for non-previewable types) */}
+        {isFile && !isPdf && !isImage && (
+          <div className="mt-2">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V3m0 9l-3-3m3 3l3-3"
+                />
+              </svg>
+              View / Download File
+            </a>
+          </div>
+        )}
+
+        {/* External link */}
+        {item.src_type === "link" && url && (
+          <div className="mt-2">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+            >
+              🌐 Visit Link
+            </a>
+          </div>
+        )}
+
+        {/* Tags + info line */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
+            {item.kind}
+          </span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
+            {item.course}
+          </span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
+            {item.semester}
+          </span>
           <span>•</span>
           <span>by {item.author}</span>
         </div>
-      </div>
 
-      {/* Tags */}
-      <div className="mt-3 px-5 flex flex-wrap gap-2">
-        {(item.tags || '').split(',').map(t => t.trim()).filter(Boolean).map((t) => (
-          <span key={t} className="rounded-full border border-zinc-300 px-3 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 transition">{`#${t}`}</span>
-        ))}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-3 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs">
-          <button onClick={() => onVote(item.id, +1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▲ {item.votes}</button>
-          <button onClick={() => onVote(item.id, -1)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">▼</button>
-          <button onClick={() => onBookmark(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">🔖 {item.bookmarks ? "Saved" : "Save"}</button>
+        {/* Tags list */}
+        <div className="mt-2 flex flex-wrap gap-1">
+          {(item.tags || "")
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .map((t) => (
+              <span
+                key={t}
+                className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200"
+              >
+                #{t}
+              </span>
+            ))}
         </div>
-        <div className="space-x-2 text-xs">
-          <button onClick={() => onFlag(item.id)} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Report</button>
-          {item.src_type === "file" ? (
-            <a href={item.url} download={item.name} className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Download</a>
-          ) : (
-            <a href={item.url} target="_blank" rel="noreferrer" className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 transition duration-150">Open link</a>
-          )}
+      </div>
+
+      {/* ---------- Actions ---------- */}
+      <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 text-xs">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onVote(item.id, +1)}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+          >
+            ▲ {item.votes}
+          </button>
+          <button
+            onClick={() => onVote(item.id, -1)}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+          >
+            ▼
+          </button>
+          <button
+            onClick={() => onBookmark(item.id)}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+          >
+            🔖 {item.bookmarks ? "Saved" : "Save"}
+          </button>
+        </div>
+        <div className="space-x-2">
+          <button
+            onClick={() => onFlag(item.id)}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+          >
+            Report
+          </button>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={item.name}
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+          >
+            Download
+          </a>
         </div>
       </div>
     </article>
-
   );
 }
 
@@ -363,17 +494,40 @@ function CreateModal({ onClose, onCreate }) {
 
   const disabled = (useLink ? !link.trim() : !file) || !title.trim() || !course.trim() || !semester.trim();
 
-  const submit = () => onCreate({
-    src_type: useLink ? "link" : "file",
-    url: useLink ? link.trim() : "file_not_implemented",
-    title: title.trim(),
-    kind,
-    course: course.trim(),
-    semester: semester.trim(),
-    tags: tags.trim(),
-    description: description.trim(),
-    author: anonymous ? "Anonymous" : "",
-  });
+  const submit = async () => {
+    const form = new FormData();
+    form.append("src_type", useLink ? "link" : "file");
+    form.append("title", title.trim());
+    form.append("kind", kind);
+    form.append("course", course.trim());
+    form.append("semester", semester.trim());
+    form.append("tags", tags.trim());
+    form.append("description", description.trim());
+    form.append("author", anonymous ? "Anonymous" : "");
+    if (useLink) {
+      form.append("url", link.trim());
+    } else if (file) {
+      form.append("file", file);
+    }
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        alert("✅ Resource added successfully!");
+        window.location.reload();
+      } else {
+        alert("❌ " + (json.message || "Upload failed"));
+      }
+    } catch (err) {
+      alert("❌ " + err.message);
+    }
+  };
+
 
   return (
     <div className="fixed inset-0 z-40 bg-black/50 p-4" onClick={onClose}>
