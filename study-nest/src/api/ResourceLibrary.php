@@ -1,117 +1,144 @@
 <?php
-// Set headers for CORS to allow cross-origin requests
-header('Content-Type: application/json');
+// ResourceLibrary.php
+header("Access-Control-Allow-Origin: http://localhost:5173"); // <-- adjust if your React app runs elsewhere
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json");
 
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
-// Your database credentials
-$servername = "localhost";
-$username = "root";
-$password = ""; // Change this to your database password
-$dbname = "studynest";
-
-// Establish database connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Connection failed: " . $conn->connect_error]);
-    exit();
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
 }
 
-// SQL to create the table if it doesn't exist
-$sql = "CREATE TABLE IF NOT EXISTS resources (
-    id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    kind VARCHAR(50) NOT NULL,
-    course VARCHAR(50) NOT NULL,
-    semester VARCHAR(50) NOT NULL,
-    tags TEXT,
-    description TEXT,
-    author VARCHAR(100) NOT NULL,
-    votes INT(11) DEFAULT 0,
-    bookmarks INT(11) DEFAULT 0,
-    flagged TINYINT(1) DEFAULT 0,
-    src_type VARCHAR(20) NOT NULL,
-    url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)";
+session_start();
 
-if (!$conn->query($sql)) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Error creating table: " . $conn->error]);
-    exit();
+// --- DB connection ---
+$host = "localhost";
+$db_name = "studynest";
+$user = "root";
+$pass = "";
+$charset = "utf8mb4";
+
+$dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (Throwable $e) {
+    echo json_encode(["status" => "error", "message" => "DB connection failed", "detail" => $e->getMessage()]);
+    exit;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-
-switch ($method) {
-    case 'GET':
-        $result = $conn->query("SELECT * FROM resources");
-        $resources = [];
-        while ($row = $result->fetch_assoc()) {
-            $resources[] = $row;
-        }
+// ----------------------------------------------------
+// GET — fetch all resources
+// ----------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    try {
+        $stmt = $pdo->query("SELECT * FROM resources ORDER BY created_at DESC");
+        $resources = $stmt->fetchAll();
         echo json_encode(["status" => "success", "resources" => $resources]);
-        break;
-
-    case 'POST':
-        $data = json_decode(file_get_contents("php://input"));
-
-        // Using prepared statements to prevent SQL injection
-        $stmt = $conn->prepare("INSERT INTO resources (title, kind, course, semester, tags, description, author, src_type, url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssssss", $data->title, $data->kind, $data->course, $data->semester, $data->tags, $data->description, $data->author, $data->src_type, $data->url);
-
-        if ($stmt->execute()) {
-            echo json_encode(["status" => "success", "message" => "New resource added."]);
-        } else {
-            http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "Error: " . $stmt->error]);
-        }
-        $stmt->close();
-        break;
-
-    case 'PUT':
-        $data = json_decode(file_get_contents("php://input"));
-        $id = $data->id;
-        unset($data->id);
-
-        $updates = [];
-        $params = [];
-        $types = '';
-
-        foreach ($data as $key => $value) {
-            $updates[] = "$key = ?";
-            $params[] = $value;
-            $types .= is_int($value) ? 'i' : (is_string($value) ? 's' : 'd');
-        }
-
-        if (empty($updates)) {
-            http_response_code(400);
-            echo json_encode(["status" => "error", "message" => "No fields to update."]);
-            exit();
-        }
-
-        $sql = "UPDATE resources SET " . implode(", ", $updates) . " WHERE id = ?";
-        $params[] = $id;
-        $types .= 'i';
-
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-
-        if ($stmt->execute()) {
-            echo json_encode(["status" => "success", "message" => "Resource updated."]);
-        } else {
-            http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "Error: " . $stmt->error]);
-        }
-        $stmt->close();
-        break;
+    } catch (Throwable $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
 }
 
-$conn->close();
+// ----------------------------------------------------
+// POST — add new resource (with correct author)
+// ----------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        // Validate basic fields
+        if (empty($data['title']) || empty($data['course']) || empty($data['semester'])) {
+            echo json_encode(["status" => "error", "message" => "Missing required fields"]);
+            exit;
+        }
+
+        // --- Resolve author name ---
+        $author = trim($data['author'] ?? '');
+
+        // If user is logged in and not anonymous, use real username
+        if ($author !== "Anonymous" && isset($_SESSION['user_id'])) {
+            $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $realName = $stmt->fetchColumn();
+            if ($realName) {
+                $author = $realName;
+            }
+        }
+
+        // --- Prepare insert ---
+        $stmt = $pdo->prepare("
+            INSERT INTO resources 
+                (title, kind, course, semester, tags, description, author, src_type, url, votes, bookmarks, flagged, created_at)
+            VALUES 
+                (:title, :kind, :course, :semester, :tags, :description, :author, :src_type, :url, 0, 0, 0, NOW())
+        ");
+
+        $stmt->execute([
+            ":title" => $data["title"],
+            ":kind" => $data["kind"] ?? "other",
+            ":course" => $data["course"],
+            ":semester" => $data["semester"],
+            ":tags" => $data["tags"] ?? "",
+            ":description" => $data["description"] ?? "",
+            ":author" => $author ?: "Unknown",
+            ":src_type" => $data["src_type"] ?? "link",
+            ":url" => $data["url"] ?? "",
+        ]);
+
+        echo json_encode(["status" => "success", "message" => "Resource added successfully"]);
+    } catch (Throwable $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ----------------------------------------------------
+// PUT — update a resource (vote, bookmark, flag)
+// ----------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+    try {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id = $data['id'] ?? null;
+        if (!$id) {
+            echo json_encode(["status" => "error", "message" => "Missing resource ID"]);
+            exit;
+        }
+
+        $fields = [];
+        $params = [];
+        foreach (['votes', 'bookmarks', 'flagged'] as $col) {
+            if (isset($data[$col])) {
+                $fields[] = "$col = :$col";
+                $params[":$col"] = $data[$col];
+            }
+        }
+        if (!$fields) {
+            echo json_encode(["status" => "error", "message" => "No valid update fields"]);
+            exit;
+        }
+
+        $params[":id"] = $id;
+        $sql = "UPDATE resources SET " . implode(", ", $fields) . " WHERE id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        echo json_encode(["status" => "success", "message" => "Resource updated"]);
+    } catch (Throwable $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ----------------------------------------------------
+// Fallback
+// ----------------------------------------------------
+echo json_encode(["status" => "error", "message" => "Invalid request method"]);
+exit;
 ?>

@@ -45,7 +45,7 @@ export default function App() {
   const fetchResources = async () => {
     setLoading(true);
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL, { credentials: "include" });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -102,6 +102,7 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       const data = await response.json();
@@ -125,6 +126,7 @@ export default function App() {
       const response = await fetch(API_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id, ...updates })
       });
       const data = await response.json();
@@ -370,7 +372,7 @@ function CreateModal({ onClose, onCreate }) {
     semester: semester.trim(),
     tags: tags.trim(),
     description: description.trim(),
-    author: anonymous ? "Anonymous" : "You",
+    author: anonymous ? "Anonymous" : "",
   });
 
   return (
