@@ -1,241 +1,638 @@
-// Simple signaling + presence for StudyNest
-// cd study-nest/src/realtime
-// npm i
-// npm start
+// src/realtime/useWebRTC.js
 
-// Minimal P2P mesh WebRTC with WS signaling.
-// Works fine up to ~6 peers. For bigger rooms, move to an SFU later.
 const STUN = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun.cloudflare.com:3478' }
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  {
+    urls: "turn:relay1.expressturn.com:3478",
+    username: "efree",
+    credential: "turnpassword",
+  },
 ];
 
-const WS_URL = 'ws://localhost:3001';
+const WS_URL = "ws://localhost:5173";
 
 export function useWebRTC(roomId, displayName) {
-  // Lightweight store sans Redux
   const state = {
     ws: null,
-    me: null,                      // my clientId from server
-    peers: new Map(),              // peerId -> { pc, stream, dc, name }
-    streamsCb: () => {},           // subscriber for UI to get streams
-    participantsCb: () => {},      // subscriber for UI participants list
-    chatCb: () => {},
-    localStream: null
+    me: null,
+
+    peers: new Map(),
+    localCamStream: null,
+    localScreenStream: null,
+    camError: false,
+
+    streamsCb: () => { },
+    participantsCb: () => { },
+    chatCb: () => { },
+
+    makingOffer: false,
+    ignoreOffer: false,
   };
 
-  function subscribeStreams(cb){ state.streamsCb = cb; }
-  function subscribeParticipants(cb){ state.participantsCb = cb; }
-  function onChat(cb){ state.chatCb = cb; }
+  /* ---------------- subscriptions ---------------- */
+  function subscribeStreams(cb) {
+    state.streamsCb = cb;
+    emitStreams();
+  }
+  function subscribeParticipants(cb) {
+    state.participantsCb = cb;
+    emitParticipants();
+  }
+  function onChat(cb) {
+    state.chatCb = cb;
+  }
 
-  function emitChat(msg) { state.chatCb?.(msg); }
-
+  /* ---------------- emitters ---------------- */
   function emitStreams() {
     const list = [];
-    for (const [id, p] of state.peers.entries()) {
-      list.push({ id, stream: p.stream || null, name: p.name || 'Student' });
+
+    // local cam
+    if (state.localCamStream) {
+      list.push({
+        id: (state.me || "me") + "::cam",
+        stream: state.localCamStream,
+        name: displayName || "You",
+        self: true,
+        type: "cam",
+      });
     }
+
+    if (state.localScreenStream) {
+      list.push({
+        id: (state.me || "me") + "::screen",
+        stream: state.localScreenStream,
+        name: (displayName || "You") + " (screen)",
+        self: true,
+        type: "screen",
+      });
+    }
+
+    // peers - FIXED: Properly handle all peer streams
+    for (const [pid, p] of state.peers) {
+      if (p.tracks.cam) {
+        list.push({
+          id: pid + "::cam",
+          stream: p.tracks.cam,
+          name: p.name || "Student",
+          self: false,
+          type: "cam",
+        });
+      }
+      if (p.tracks.screen) {
+        list.push({
+          id: pid + "::screen",
+          stream: p.tracks.screen,
+          name: (p.name || "Student") + " (screen)",
+          self: false,
+          type: "screen",
+        });
+      }
+    }
+
     state.streamsCb(list);
   }
+
   function emitParticipants() {
-    const list = [];
-    for (const [id, p] of state.peers.entries()) {
-      list.push({ id, name: p.name || 'Student', hand: !!p.hand });
+    const arr = [];
+    if (state.me) {
+      arr.push({
+        id: state.me,
+        name: displayName || "You",
+        hand: false,
+        self: true,
+        // FIXED: Add proper state tracking for host
+        state: 'connected'
+      });
     }
-    state.participantsCb(list);
+    for (const [pid, p] of state.peers) {
+      arr.push({
+        id: pid,
+        name: p.name || "Student",
+        hand: !!p.hand,
+        self: false,
+        state: p.pc && p.pc.connectionState === 'connected' ? 'connected' : 'joining'
+      });
+    }
+    state.participantsCb(arr);
   }
 
-  function ensureWS(){
+  function emitChat(msg) {
+    state.chatCb?.(msg);
+  }
+
+  /* ---------------- signaling (WS) ---------------- */
+  function ensureWS() {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
+
     state.ws = new WebSocket(WS_URL);
+
     state.ws.onopen = () => {
-      state.ws.send(JSON.stringify({ type:'join', roomId, name: displayName || 'Student' }));
+      sendWS({ type: "join", roomId, name: displayName || "Student" });
     };
+
     state.ws.onmessage = async (ev) => {
-      let m; try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.type === 'joined') {
+      let m;
+      try { m = JSON.parse(ev.data); } catch { return; }
+
+      if (m.type === "joined") {
         state.me = m.clientId;
-        // Seed placeholders from snapshot (names without streams yet)
+
         (m.participants || []).forEach(p => {
           if (p.id === state.me) return;
-          if (!state.peers.has(p.id)) state.peers.set(p.id, { name: p.name });
+          if (!state.peers.has(p.id)) state.peers.set(p.id, mkPeerShell(p.name));
         });
-        emitParticipants(); emitStreams();
-        // Make offers to everyone we see
-        for (const [pid] of state.peers.entries()) { await createPeer(pid, true); }
+
+        emitParticipants();
+        emitStreams();
+
+        for (const [pid] of state.peers) {
+          const iAmInitiator = state.me < pid;
+          await createPeer(pid, iAmInitiator);
+        }
         return;
       }
-      if (m.type === 'peer-joined') {
-        if (!state.peers.has(m.id)) state.peers.set(m.id, { name: m.name });
-        emitParticipants(); emitStreams();
-        createPeer(m.id, true); // I am the older peer, make offer
+
+      if (m.type === "peer-joined") {
+        if (!state.peers.has(m.id)) {
+          state.peers.set(m.id, mkPeerShell(m.name));
+        }
+        emitParticipants();
+        emitStreams();
+
+        const iAmInitiator = state.me < m.id;
+        await createPeer(m.id, iAmInitiator);
         return;
       }
-      if (m.type === 'peer-left') {
-        const p = state.peers.get(m.id);
-        if (p?.pc) try { p.pc.close(); } catch {}
-        state.peers.delete(m.id);
-        emitParticipants(); emitStreams();
+
+      if (m.type === "peer-left") {
+        cleanupPeer(m.id);
+        emitParticipants();
+        emitStreams();
         return;
       }
-      if (m.type === 'hand') {
+
+      if (m.type === "hand") {
         const p = state.peers.get(m.id);
         if (p) { p.hand = m.up; emitParticipants(); }
         return;
       }
-      if (m.type === 'offer') {
-        await createPeer(m.from, false);
-        const peer = state.peers.get(m.from);
-        await peer.pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
-        const ans = await peer.pc.createAnswer();
-        await peer.pc.setLocalDescription(ans);
-        sendWS({ type:'answer', to: m.from, sdp: peer.pc.localDescription });
+
+      if (m.type === "chat") {
+        emitChat({ author: m.author, text: m.text, ts: m.ts, self: false });
         return;
       }
-      if (m.type === 'answer') {
-        const peer = state.peers.get(m.from);
-        if (!peer?.pc) return;
-        await peer.pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+
+      // WebRTC signaling
+      if (m.type === "offer") {
+        const peer = await createPeer(m.from, false);
+        const pc = peer.pc;
+        const offer = new RTCSessionDescription(m.sdp);
+
+        const polite = m.from > state.me;
+        const isStable = pc.signalingState === "stable" || pc.signalingState === "have-local-offer";
+        state.ignoreOffer = !polite && (state.makingOffer || !isStable);
+        if (state.ignoreOffer) return;
+
+        console.log("📩 offer from", m.from, "polite:", polite);
+        await pc.setRemoteDescription(offer);
+        const ans = await pc.createAnswer();
+        await pc.setLocalDescription(ans);
+        sendWS({ type: "answer", to: m.from, sdp: pc.localDescription });
         return;
       }
-      if (m.type === 'ice') {
+
+      if (m.type === "answer") {
         const peer = state.peers.get(m.from);
         if (!peer?.pc) return;
-        try { await peer.pc.addIceCandidate(m.candidate); } catch {}
+        const pc = peer.pc;
+        if (pc.signalingState !== "have-local-offer") return;
+        console.log("📩 answer from", m.from);
+        await pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+        return;
+      }
+
+      if (m.type === "ice") {
+        const peer = state.peers.get(m.from);
+        if (!peer?.pc) return;
+        try {
+          await peer.pc.addIceCandidate(m.candidate);
+        } catch (err) {
+          console.warn("addIceCandidate failed", err);
+        }
         return;
       }
     };
   }
 
-  function sendWS(obj){
+  function sendWS(obj) {
     if (state.ws?.readyState === WebSocket.OPEN) {
       state.ws.send(JSON.stringify(obj));
     }
   }
 
-  async function getLocal(kind){
-    if (kind === 'screen') {
-      return await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
+  /* ---------------- local media ---------------- */
+  async function ensureLocalCam() {
+    if (state.camError) return null;
+    if (!state.localCamStream) {
+      try {
+        state.localCamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+        });
+        console.log("🎥 local stream ready:", state.localCamStream.getTracks().map(t => t.kind));
+        emitStreams();
+      } catch (e) {
+        state.camError = true;
+        state.localCamStream = null;
+        console.warn("ensureLocalCam: NotReadable/denied → joining without local media", e);
+        return null;
+      }
     }
-    if (!state.localStream) {
-      state.localStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
-    }
-    return state.localStream;
+    return state.localCamStream;
   }
 
-  async function createPeer(peerId, isInitiator){
-    let peer = state.peers.get(peerId) || {};
-    if (peer.pc) return peer;
+  async function ensureLocalScreen() {
+    try {
+      const share = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30 } },
+        audio: true
+      });
+
+      // Help downstream renderers detect "screen"
+      const v = share.getVideoTracks()[0];
+      try { v.contentHint = "text"; } catch { }
+
+      state.localScreenStream = share;
+
+      // End handler (user clicks "Stop sharing")
+      share.getTracks().forEach(track => {
+        track.addEventListener("ended", () => {
+          stopScreenInternal();
+        });
+      });
+
+      emitStreams();
+      return share;
+    } catch (err) {
+      console.warn("Screen share denied/cancelled", err);
+      return null;
+    }
+  }
+
+  async function stopScreenInternal() {
+    if (state.localScreenStream) {
+      try {
+        state.localScreenStream.getTracks().forEach(t => t.stop());
+      } catch { }
+      state.localScreenStream = null;
+    }
+
+    // FIXED: Properly stop screen sharing for all peers
+    for (const [, p] of state.peers) {
+      if (p.senders.screen) {
+        try {
+          await p.senders.screen.replaceTrack(null);
+        } catch { }
+      }
+    }
+    emitStreams();
+  }
+
+  /* ---------------- peers ---------------- */
+  function mkPeerShell(name) {
+    return {
+      name,
+      hand: false,
+      pc: null,
+      dc: null,
+      dcOpen: false,
+      dcQueue: [],
+      tracks: { cam: null, screen: null },
+      senders: { cam: null, screen: null },
+      tx: { audio: null, video: null, screen: null },
+      initiator: false,
+    };
+  }
+
+  function cleanupPeer(peerId) {
+    const p = state.peers.get(peerId);
+    if (!p) return;
+    try { p.dc?.close?.(); } catch { }
+    try { p.pc?.close?.(); } catch { }
+    state.peers.delete(peerId);
+  }
+
+  async function createPeer(peerId, isInitiator) {
+    let p = state.peers.get(peerId);
+    if (!p) { p = mkPeerShell("Student"); state.peers.set(peerId, p); }
+    if (p.pc) return p;
+    p.initiator = !!isInitiator;
+
     const pc = new RTCPeerConnection({ iceServers: STUN });
 
-    // Media
-    const local = await getLocal('cam');
-    local.getTracks().forEach(t => pc.addTrack(t, local));
+    console.log("🟢 creating peer", peerId, "initiator:", isInitiator);
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(peerId, "ICE", pc.iceConnectionState);
+      emitParticipants(); // FIXED: Update participant state on connection changes
+    };
+    pc.onconnectionstatechange = () => {
+      console.log(peerId, "PC", pc.connectionState);
+      emitParticipants(); // FIXED: Update participant state on connection changes
+    };
+
+    // Fixed transceiver order
+    p.tx.audio = pc.addTransceiver("audio", { direction: "sendrecv" });
+    p.tx.video = pc.addTransceiver("video", { direction: "sendrecv" });
+    p.tx.screen = pc.addTransceiver("video", { direction: "sendrecv" });
+
+    // Attach local tracks
+    const cam = await ensureLocalCam();
+    if (cam) {
+      const v = cam.getVideoTracks()[0] || null;
+      const a = cam.getAudioTracks()[0] || null;
+
+      // FIXED: Properly handle audio tracks
+      if (a) {
+        try {
+          await p.tx.audio.sender.replaceTrack(a);
+          a.enabled = true; // Ensure audio is enabled
+        } catch (err) {
+          console.warn("attach audio failed", err);
+        }
+      }
+      if (v) {
+        try {
+          await p.tx.video.sender.replaceTrack(v);
+          p.senders.cam = p.tx.video.sender;
+        } catch (err) {
+          console.warn("attach video failed", err);
+        }
+      }
+    }
+
+    if (state.localScreenStream) {
+      const screenTrack = state.localScreenStream.getVideoTracks()[0];
+      if (screenTrack) {
+        try {
+          await p.tx.screen.sender.replaceTrack(screenTrack);
+          p.senders.screen = p.tx.screen.sender;
+          console.log("📺 attached existing screen track for", peerId);
+        } catch (err) {
+          console.warn("attach existing screen failed", err);
+        }
+      }
+    }
 
     pc.ontrack = (e) => {
-      let stream = e.streams[0];
-      peer.stream = stream;
-      state.peers.set(peerId, peer);
+      const track = e.track;
+      const stream = (e.streams && e.streams[0]) || new MediaStream([track]);
+      const label = (track.label || "").toLowerCase();
+      const settings = (track.getSettings && track.getSettings()) || {};
+
+      // Robust screen detection
+      const isScreen =
+        track.kind === "video" && (
+          label.includes("screen") ||
+          label.includes("window") ||
+          settings.displaySurface === "monitor" ||
+          settings.displaySurface === "window" ||
+          settings.displaySurface === "application"
+        );
+
+      if (isScreen) {
+        p.tracks.screen = stream;
+      } else if (track.kind === "video") {
+        p.tracks.cam = stream;
+      } else if (track.kind === "audio") {
+        // merge audio into whichever stream exists, prefer screen first for clarity
+        if (p.tracks.screen) p.tracks.screen.addTrack(track);
+        else if (p.tracks.cam) p.tracks.cam.addTrack(track);
+        else p.tracks.cam = stream;
+      }
+
+      track.onunmute = () => emitStreams();
+      track.onended = () => {
+        if (isScreen) p.tracks.screen = null;
+        else if (track.kind === "video") p.tracks.cam = null;
+        emitStreams();
+      };
+
       emitStreams();
     };
 
-    // DataChannel (chat etc.)
-    let dc;
+    // Data channel
     if (isInitiator) {
-      dc = pc.createDataChannel('chat');
-      wireDC(peerId, dc);
-    } else {
-      pc.ondatachannel = (ev) => wireDC(peerId, ev.channel);
+      wireDC(peerId, pc.createDataChannel("chat", { ordered: true }));
     }
+    pc.ondatachannel = (ev) => wireDC(peerId, ev.channel);
 
+    // ICE
     pc.onicecandidate = (ev) => {
-      if (ev.candidate) sendWS({ type:'ice', to: peerId, candidate: ev.candidate });
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-        try { pc.close(); } catch {}
-        state.peers.delete(peerId);
-        emitParticipants(); emitStreams();
+      if (ev.candidate) {
+        sendWS({ type: "ice", to: peerId, candidate: ev.candidate });
       }
     };
 
-    peer.pc = pc; peer.dc = dc || null;
-    state.peers.set(peerId, peer);
+    // Negotiation
+    pc.onnegotiationneeded = async () => {
+      if (!p.initiator) return;
+      try {
+        await ensureLocalCam();
+        state.makingOffer = true;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendWS({ type: "offer", to: peerId, sdp: pc.localDescription });
+      } catch (err) {
+        console.warn("negotiationneeded error", err);
+      } finally {
+        state.makingOffer = false;
+      }
+    };
 
+    p.pc = pc;
+    state.peers.set(peerId, p);
+
+    // Initial handshake
     if (isInitiator) {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      sendWS({ type:'offer', to: peerId, sdp: pc.localDescription });
+      try {
+        await ensureLocalCam();
+        state.makingOffer = true;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendWS({ type: "offer", to: peerId, sdp: pc.localDescription });
+      } catch (err) {
+        console.warn("initial offer failed", err);
+      } finally {
+        state.makingOffer = false;
+      }
     }
 
-    emitParticipants(); emitStreams();
-    return peer;
+    emitParticipants();
+    emitStreams();
+    return p;
   }
 
-  function wireDC(peerId, dc){
-    const peer = state.peers.get(peerId) || {};
-    peer.dc = dc;
-    state.peers.set(peerId, peer);
+  function wireDC(peerId, dc) {
+    const p = state.peers.get(peerId) || mkPeerShell("Student");
+    p.dc = dc;
+    p.dcOpen = dc.readyState === "open";
+    p.dcQueue ??= [];
+
+    dc.onopen = () => {
+      p.dcOpen = true;
+      while (p.dcQueue.length) {
+        try { dc.send(p.dcQueue.shift()); } catch { break; }
+      }
+    };
+    dc.onclose = () => (p.dcOpen = false);
+    dc.onerror = () => (p.dcOpen = false);
+
     dc.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.type === 'chat') emitChat(m);
+      if (m.type === "chat") emitChat({ author: m.author, text: m.text, ts: m.ts, self: false });
     };
-    dc.onopen = () => {};
-    dc.onclose = () => {};
+
+    state.peers.set(peerId, p);
   }
 
-  // Public API for components
+  /* ---------------- public API ---------------- */
   return {
-    async connect(){
+    async connect() {
       ensureWS();
-      // also try to call the join REST to bump count (optional)
+
       try {
-        await fetch('http://localhost/StudyNest/study-nest/src/api/meetings.php/join', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          credentials:'include',
-          body: JSON.stringify({ id: roomId, display_name: displayName || 'Student' })
+        await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: roomId, display_name: displayName || "Student" }),
         });
-      } catch {}
-    },
-    sendChat(payload){ // {text, author, ts}
-      const msg = JSON.stringify({ type:'chat', ...payload });
-      for (const [,p] of state.peers.entries()) {
-        try { p.dc?.readyState === 'open' && p.dc.send(msg); } catch {}
-      }
-     emitChat(payload); // also echo locally
-   },
-    async getLocalStream(){ return await getLocal('cam'); },
-    toggleHand(up){ sendWS({ type:'hand', up: !!up }); },
+      } catch { }
 
-    // mic/cam toggles
-    setMic(on){
-      const s = state.localStream; if (!s) return;
-      s.getAudioTracks().forEach(t => t.enabled = !!on);
-    },
-    setCam(on){
-      const s = state.localStream; if (!s) return;
-      s.getVideoTracks().forEach(t => t.enabled = !!on);
+      if (!window.__studynestLeaveHook) {
+        window.addEventListener("beforeunload", () => {
+          try {
+            navigator.sendBeacon(
+              "http://localhost/StudyNest/study-nest/src/api/meetings.php/leave",
+              new Blob([JSON.stringify({ id: roomId })], { type: "application/json" })
+            );
+          } catch { }
+        });
+        window.__studynestLeaveHook = true;
+      }
     },
 
-    async startShare(){
-      const share = await getLocal('screen');
-      for (const [,p] of state.peers.entries()) {
-        const sender = p.pc.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) await sender.replaceTrack(share.getVideoTracks()[0]);
+    disconnect() {
+      try { state.ws?.close(); } catch { }
+      for (const [pid] of state.peers) cleanupPeer(pid);
+      try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch { }
+      try { state.localScreenStream?.getTracks().forEach(t => t.stop()); } catch { }
+      state.localCamStream = null;
+      state.localScreenStream = null;
+      state.camError = false;
+      emitStreams();
+      emitParticipants();
+      try {
+        fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: roomId }),
+        });
+      } catch { }
+    },
+
+    async getLocalStream() {
+      return await ensureLocalCam();
+    },
+
+    toggleHand(up) { sendWS({ type: "hand", up: !!up }); },
+
+    // FIXED: Proper mic control
+    setMic(on) {
+      if (state.localCamStream) {
+        state.localCamStream.getAudioTracks().forEach(t => {
+          t.enabled = !!on;
+          console.log("🎤 Mic", on ? "enabled" : "disabled");
+        });
       }
-      const vt = share.getVideoTracks()[0];
-      vt.addEventListener('ended', async () => {
-        const cam = await getLocal('cam');
-        for (const [,p] of state.peers.entries()) {
-          const sender = p.pc.getSenders().find(s => s.track?.kind === 'video');
-          if (sender) await sender.replaceTrack(cam.getVideoTracks()[0]);
+    },
+
+    setCam(on) {
+      if (state.localCamStream) {
+        state.localCamStream.getVideoTracks().forEach(t => {
+          t.enabled = !!on;
+          console.log("📷 Camera", on ? "enabled" : "disabled");
+        });
+      }
+    },
+
+    sendChat(payload) {
+      const msg = { type: "chat", ...payload, self: undefined };
+
+      for (const [, p] of state.peers) {
+        if (p.dcOpen) {
+          try { p.dc.send(JSON.stringify(msg)); } catch { }
+        } else {
+          p.dcQueue?.push?.(JSON.stringify(msg));
         }
-      });
+      }
+
+      sendWS(msg);
+      emitChat({ ...payload, self: true });
+    },
+
+    async startShare() {
+      const screenStream = await ensureLocalScreen();
+      if (!screenStream) throw new Error("Screen share cancelled");
+
+      const videoTrack = screenStream.getVideoTracks()[0];
+      const audioTrack = screenStream.getAudioTracks()[0];
+
+      for (const [, p] of state.peers) {
+        // If the transceiver/sender doesn’t exist yet (rare timing), create one
+        if (!p.tx?.screen?.sender) {
+          p.tx = p.tx || {};
+          p.tx.screen = p.pc.addTransceiver("video", { direction: "sendrecv" });
+        }
+      }
+      for (const [, p] of state.peers) {
+        if (p.tx?.screen?.sender) {
+          try {
+            // FIXED: Replace track for screen sharing
+            await p.tx.screen.sender.replaceTrack(videoTrack);
+            p.senders.screen = p.tx.screen.sender;
+          } catch (err) {
+            console.warn("replaceTrack(screen) failed", err);
+          }
+        }
+      }
+
+      emitStreams();
+    },
+
+    async stopShare() {
+      await stopScreenInternal();
     },
 
     subscribeStreams,
     subscribeParticipants,
     onChat,
+
+    onShareEnded(cb) {
+      // FIXED: Proper share ended callback
+      if (cb && state.localScreenStream) {
+        state.localScreenStream.getTracks().forEach(track => {
+          track.addEventListener("ended", cb);
+        });
+      }
+    },
   };
 }
