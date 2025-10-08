@@ -1,4 +1,3 @@
-// Components/Header.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -8,9 +7,8 @@ const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
 function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
-    if (m && m[0]) return m[0]; // e.g. http://localhost
-  } catch { }
-  // last resort: current origin (better than crashing)
+    if (m && m[0]) return m[0];
+  } catch {}
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
 
@@ -18,9 +16,9 @@ function getBackendOrigin() {
 function toBackendUrl(url) {
   if (!url) return null;
   const ORIGIN = getBackendOrigin();
-  if (/^https?:\/\//i.test(url)) return url;        // already absolute
-  if (url.startsWith("/")) return ORIGIN + url; // root-relative path
-  return ORIGIN + "/" + url.replace(/^\/+/, "");     // plain relative path
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/")) return ORIGIN + url;
+  return ORIGIN + "/" + url.replace(/^\/+/, "");
 }
 
 const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => {
@@ -40,27 +38,54 @@ const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => 
 export default function Header({ sidebarWidth = 72 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
+  const notifRef = useRef(null);
 
   const [profile, setProfile] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem("studynest.profile")) || null;
+    } catch {
+      return null;
+    }
   });
   const [auth, setAuth] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem("studynest.auth")) || null;
+    } catch {
+      return null;
+    }
   });
 
-  // Sync with localStorage + same-tab update events
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const navigate = useNavigate();
+
+  /* ==================== Sync profile/auth between tabs ==================== */
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === "studynest.profile") {
-        try { setProfile(JSON.parse(e.newValue) || null); } catch { setProfile(null); }
+        try {
+          setProfile(JSON.parse(e.newValue) || null);
+        } catch {
+          setProfile(null);
+        }
       }
       if (e.key === "studynest.auth") {
-        try { setAuth(JSON.parse(e.newValue) || null); } catch { setAuth(null); }
+        try {
+          setAuth(JSON.parse(e.newValue) || null);
+        } catch {
+          setAuth(null);
+        }
       }
     };
     const onLocalProfile = () => {
-      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch { }
-      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch { }
+      try {
+        setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null);
+      } catch {}
+      try {
+        setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null);
+      } catch {}
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("studynest:profile-updated", onLocalProfile);
@@ -70,18 +95,24 @@ export default function Header({ sidebarWidth = 72 }) {
     };
   }, []);
 
-  // Fetch fresh profile (session-based)
+  /* ==================== Fetch latest profile once ==================== */
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
         const text = await res.text();
         let j = null;
-        try { j = JSON.parse(text); } catch { console.warn("profile.php non-JSON:", text); }
+        try {
+          j = JSON.parse(text);
+        } catch {
+          console.warn("profile.php non-JSON:", text);
+        }
         const incoming = j?.ok ? j.profile : j;
         if (incoming && (incoming.id || incoming.student_id || incoming.email)) {
           setProfile(incoming);
-          try { localStorage.setItem("studynest.profile", JSON.stringify(incoming)); } catch { }
+          try {
+            localStorage.setItem("studynest.profile", JSON.stringify(incoming));
+          } catch {}
         }
       } catch (e) {
         console.warn("Profile fetch failed:", e);
@@ -89,19 +120,87 @@ export default function Header({ sidebarWidth = 72 }) {
     })();
   }, []);
 
-  // Build avatar URL against backend origin + cache-buster to avoid stale cached image
-  const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
-  const profile_pic = rawPic ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}` : null;
+  /* ==================== Real-Time Notifications via SSE ==================== */
+  useEffect(() => {
+    const sid = profile?.student_id || auth?.student_id;
+    if (!sid) return;
 
-  const email = profile?.email || auth?.email || "";
-  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
+    // Initial fetch for existing notifications
+    (async () => {
+      try {
+        const url = `${API_BASE}/notifications.php?action=list&student_id=${encodeURIComponent(sid)}&limit=30`;
+        const res = await fetch(url, { credentials: "include" });
+        const j = await res.json().catch(() => null);
+        if (j?.ok) {
+          setNotifications(j.notifications || []);
+          setUnreadCount(j.unread || 0);
+        }
+      } catch {}
+    })();
 
-  // Close dropdown on outside click/ESC
+    // Setup SSE Stream
+    const es = new EventSource(
+      `${API_BASE}/notifications.php?action=stream&student_id=${encodeURIComponent(sid)}`,
+      { withCredentials: true }
+    );
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === "new_notification" && data.notification) {
+          setNotifications((prev) => [data.notification, ...prev]);
+          setUnreadCount((c) => c + 1);
+          // Optional: play subtle sound
+          // new Audio("/notification.mp3").play().catch(() => {});
+        }
+      } catch (err) {
+        console.warn("SSE parse error:", err);
+      }
+    };
+
+    es.onerror = () => {
+      console.log("SSE connection lost, will auto-reconnect...");
+    };
+
+    return () => es.close();
+  }, [profile?.student_id, auth?.student_id]);
+
+  /* ==================== Mark notifications read ==================== */
+  async function markAllRead() {
+    const sid = profile?.student_id || auth?.student_id;
+    if (!sid) return;
+    try {
+      await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ student_id: sid, mark_all: true }),
+      });
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
+      );
+      setUnreadCount(0);
+    } catch {}
+  }
+
+  function handleNotificationClick(n) {
+    markAllRead();
+    if (n.link) navigate(n.link);
+    setNotifOpen(false);
+  }
+
+  /* ==================== Close dropdowns on click/ESC ==================== */
   useEffect(() => {
     function onDocClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
     }
-    function onKey(e) { if (e.key === "Escape") setProfileOpen(false); }
+    function onKey(e) {
+      if (e.key === "Escape") {
+        setProfileOpen(false);
+        setNotifOpen(false);
+      }
+    }
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -110,21 +209,29 @@ export default function Header({ sidebarWidth = 72 }) {
     };
   }, []);
 
-  const navigate = useNavigate();
+  /* ==================== Logout ==================== */
   const handleLogout = () => {
     localStorage.removeItem("studynest.auth");
     localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
+    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => {});
     navigate("/login");
   };
 
+  const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
+  const profile_pic = rawPic
+    ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}`
+    : null;
+  const email = profile?.email || auth?.email || "";
+  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
+
+  /* ==================== Render ==================== */
   return (
     <div
       className="sticky top-0 z-40 backdrop-blur bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700 shadow-sm"
       style={{ paddingLeft: sidebarWidth }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-3">
-        {/* Logo / Title */}
+        {/* Logo */}
         <div className="flex items-center gap-2">
           <Link to="/home" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition">
             Study Nest
@@ -145,29 +252,22 @@ export default function Header({ sidebarWidth = 72 }) {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          {/* Group */}
           {/* Groups */}
           <button
             className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+            onClick={() => navigate("/groups")}
             aria-label="Groups"
-            onClick={() => navigate('/groups')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M17 20h5v-2a4 4 0 00-4-4h-1m-4 6v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2h9zm3-6a4 4 0 100-8 4 4 0 000 8zM6 8a4 4 0 118 0 4 4 0 01-8 0z" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4h-1m-4 6v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2h9zm3-6a4 4 0 100-8 4 4 0 000 8zM6 8a4 4 0 118 0 4 4 0 01-8 0z" />
             </svg>
           </button>
 
           {/* Messages */}
           <button
             className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+            onClick={() => navigate("/messages")}
             aria-label="Messages"
-            onClick={() => navigate('/messages')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.068.157 2.148.279 3.238.364.466.037.893.281 1.153.671L12 21l2.652-3.978c.26-.39.687-.634 1.153-.67 1.09-.086 2.17-.208 3.238-.365 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
@@ -175,21 +275,72 @@ export default function Header({ sidebarWidth = 72 }) {
           </button>
 
           {/* Notifications */}
-          <button className="text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition" aria-label="Notifications">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              className="relative text-slate-300 hover:text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 rounded-lg p-1.5 transition"
+              onClick={() => {
+                const next = !notifOpen;
+                setNotifOpen(next);
+                if (next) markAllRead();
+              }}
+              aria-label="Notifications"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] leading-[18px] text-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/60">
+                  <div className="text-slate-200 text-sm font-medium">Notifications</div>
+                  <button onClick={markAllRead} className="text-xs text-cyan-300 hover:text-cyan-200">
+                    Mark all read
+                  </button>
+                </div>
+                <ul className="max-h-80 overflow-auto divide-y divide-slate-700/60">
+                  {notifications.length === 0 && (
+                    <li className="px-3 py-4 text-slate-400 text-sm">No notifications yet</li>
+                  )}
+                  {notifications.map((n) => (
+                    <li
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${
+                        n.read_at ? "text-slate-300" : "text-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div
+                          className={`mt-1 h-2 w-2 rounded-full ${
+                            n.read_at ? "bg-slate-600" : "bg-cyan-400"
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{n.title}</div>
+                          {n.body && <div className="text-slate-400 truncate">{n.body}</div>}
+                          <div className="text-[10px] text-slate-500">
+                            {new Date(n.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((v) => !v)}
               className="h-9 w-9 rounded-xl overflow-hidden ring-0 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-              aria-expanded={profileOpen}
-              aria-haspopup="true"
-              aria-controls="profile-menu"
-              aria-label="User menu"
             >
               {profile_pic ? (
                 <img src={profile_pic} alt="Profile" className="h-9 w-9 object-cover" />
@@ -201,42 +352,77 @@ export default function Header({ sidebarWidth = 72 }) {
             </button>
 
             {profileOpen && (
-              <ul id="profile-menu" className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50 py-1" role="menu">
+              <ul className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50 py-1">
                 <li className="px-3 py-2">
                   <div className="flex items-center gap-3">
                     {profile_pic ? (
-                      <img src={profile_pic} alt="Profile" className="h-10 w-10 rounded-full border border-cyan-500/40 object-cover" />
+                      <img
+                        src={profile_pic}
+                        alt="Profile"
+                        className="h-10 w-10 rounded-full border border-cyan-500/40 object-cover"
+                      />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center border border-cyan-500/40">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-6 w-6 text-slate-300">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                          className="h-6 w-6 text-slate-300"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                          />
                         </svg>
                       </div>
                     )}
                     <div className="break-words pr-2">
-                      <div className="text-white text-xs whitespace-normal">{email || "guest@example.com"}</div>
-                      <div className="text-slate-400 text-xs whitespace-normal">ID: {studentId}</div>
+                      <div className="text-white text-xs whitespace-normal">
+                        {email || "guest@example.com"}
+                      </div>
+                      <div className="text-slate-400 text-xs whitespace-normal">
+                        ID: {studentId}
+                      </div>
                     </div>
                   </div>
                 </li>
                 <li className="border-t border-slate-700/60 my-1" />
                 <li>
-                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
+                    onClick={() => setProfileOpen(false)}
+                  >
                     Profile
                   </Link>
                 </li>
                 <li>
-                  <Link to="/groups" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
+                  <Link
+                    to="/groups"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
+                    onClick={() => setProfileOpen(false)}
+                  >
                     Group Chat
                   </Link>
                 </li>
                 <li>
-                  <Link to="/history" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
+                  <Link
+                    to="/history"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
+                    onClick={() => setProfileOpen(false)}
+                  >
                     History
                   </Link>
                 </li>
                 <li>
-                  <Link to="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80" role="menuitem" onClick={() => setProfileOpen(false)}>
+                  <Link
+                    to="/settings"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
+                    onClick={() => setProfileOpen(false)}
+                  >
                     Settings & Privacy
                   </Link>
                 </li>
@@ -244,7 +430,6 @@ export default function Header({ sidebarWidth = 72 }) {
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 text-white text-sm py-2 hover:from-rose-500 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
-                    role="menuitem"
                   >
                     Log out
                   </button>
