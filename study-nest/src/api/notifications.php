@@ -1,6 +1,8 @@
 <?php
 session_start();
 header('Content-Type: application/json; charset=utf-8');
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+
 $origin = 'http://localhost:5173';
 header("Access-Control-Allow-Origin: $origin");
 header("Access-Control-Allow-Credentials: true");
