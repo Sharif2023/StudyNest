@@ -65,7 +65,7 @@ export default function Login() {
       {/* Brand */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <Link to="/" className="inline-flex items-center gap-2">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-200 text-white font-bold">
             <img src="src/assets/logo.png" alt="Study-Nests-Logo" className="h-7 w-7" />
           </span>
           <span className="text-zinc-900 font-semibold tracking-tight">StudyNest</span>
