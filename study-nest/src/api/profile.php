@@ -93,6 +93,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $stmt->execute([$user_id]);
     $out['questions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    //bookmarks
+    $stmt = $pdo->prepare("
+  SELECT r.id, r.title, r.author, r.course, r.semester, r.created_at
+  FROM bookmarks b
+  JOIN resources r ON b.resource_id = r.id
+  WHERE b.user_id = ?
+  ORDER BY b.created_at DESC
+");
+    $stmt->execute([$user_id]);
+    $out['bookmarks'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode(["ok" => true, "content" => $out]);
   } catch (Throwable $e) {
     http_response_code(500);

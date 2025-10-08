@@ -112,6 +112,13 @@ export default function Profile() {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
                   </p>
+                  {(profile?.bio ?? "").trim() ? (
+                    <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
+                  ) : (
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                      Add a short bio to personalize your profile.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="sm:ml-auto flex items-center gap-2">
@@ -129,13 +136,13 @@ export default function Profile() {
           <div className="grid gap-6 lg:grid-cols-12">
             {/* Left pane: profile card + vertical tabs */}
             <aside className="lg:col-span-4 space-y-6">
-              {/* Profile card */}
+              {/* Profile card 
               <div className="rounded-2xl bg-white p-5 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
                 <div className="flex items-start gap-4">
                   <profile_picture url={user.profile_picture} name={user.name} size={56} />
 
                   <div className="flex-1 min-w-0">
-                    {/* Name row */}
+                     Name row 
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                         {profile?.name || user.name}
@@ -147,17 +154,17 @@ export default function Profile() {
                       )}
                     </div>
 
-                    {/* Email */}
+                    Email 
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 truncate">
                       {profile?.email || auth?.email || "—"}
                     </p>
 
-                    {/* ID */}
+                     ID 
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                       ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
                     </p>
 
-                    {/* Bio (optional) */}
+                     Bio (optional) 
                     {(profile?.bio ?? "").trim() ? (
                       <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
                     ) : (
@@ -166,7 +173,7 @@ export default function Profile() {
                       </p>
                     )}
 
-                    {/* Focus (optional) */}
+                     Focus (optional) 
                     {user.prefs?.courseFocus && (
                       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                         Focus: {user.prefs.courseFocus}
@@ -175,14 +182,14 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Quick stats */}
+                 Quick stats 
                 <div className="mt-4 grid grid-cols-4 gap-2">
                   <StatMini label="Notes" value={myNotes.length} to="/notes" />
                   <StatMini label="Resources" value={myResources.length} to="/resources" />
                   <StatMini label="Rooms" value={myRooms.length} to="/rooms" />
                   <StatMini label="Saves" value={bookmarks.length} to="/resources" />
                 </div>
-              </div>
+              </div> */}
 
               {/* Vertical tabs */}
               <nav className="rounded-2xl bg-white p-2 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
@@ -192,7 +199,7 @@ export default function Profile() {
                   ["prefs", "Preferences", "Dark mode, anonymity, focus"],
                   ["bookmarks", "Bookmarks", "Your saved resources"],
                   ["content", "My Content", "Notes, resources, rooms"],
-                  ["security", "Security", "Password (demo), danger zone"],
+                  ["security", "Security", "Change your password, danger zone"],
                 ].map(([val, label, desc]) => (
                   <button
                     key={val}
@@ -233,7 +240,7 @@ export default function Profile() {
                   }}
                 />
               )}
-              {tab === "bookmarks" && <Bookmarks items={bookmarks} />}
+              {tab === "bookmarks" && <Bookmarks />}
               {tab === "content" && (
                 <MyContent notes={myNotes} resources={myResources} rooms={myRooms} />
               )}
@@ -264,20 +271,63 @@ export default function Profile() {
 }
 
 /* -------------------- Sections -------------------- */
-function Overview({ user, displayName, notes, resources, rooms, bookmarks }) {
+function Overview({ user, displayName }) {
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOverview() {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/profile.php?content=1`, {
+          credentials: "include",
+        });
+        const json = await res.json();
+        if (json.ok && json.content) {
+          setData(json.content);
+        } else {
+          console.warn("Overview fetch failed:", json);
+        }
+      } catch (err) {
+        console.error("Error loading overview:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOverview();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 text-center text-sm text-zinc-500 dark:bg-slate-900 dark:ring-white/10">
+        Loading overview...
+      </div>
+    );
+  }
+
+  const totalNotes = data.notes.length;
+  const totalResources = data.resources.length;
+  const totalRooms = data.rooms.length;
+  const totalQuestions = data.questions.length;
+
   return (
     <section className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex items-start gap-4">
-          <profile_picture url={user.profile_picture} name={user.name} size={56} />
+          <profile_picture url={user.profile_picture_url} name={user.name} size={56} />
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Welcome back, {displayName} 👋</h3>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Welcome back, {displayName} 👋
+            </h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Quick snapshot of your activity and collections.
+              Here’s a quick snapshot of your StudyNest activity.
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-400">
               {user.prefs?.defaultAnonymous && (
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">Anonymous by default</span>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">
+                  Anonymous by default
+                </span>
               )}
               {user.prefs?.courseFocus && (
                 <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">
@@ -295,15 +345,53 @@ function Overview({ user, displayName, notes, resources, rooms, bookmarks }) {
         </div>
       </div>
 
+      {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="My Notes" value={notes.length} link="/notes" />
-        <StatCard label="My Resources" value={resources.length} link="/resources" />
-        <StatCard label="My Rooms" value={rooms.length} link="/rooms" />
-        <StatCard label="Bookmarks" value={bookmarks.length} link="/resources" />
+        <StatCard label="My Notes" value={totalNotes} link="/notes" />
+        <StatCard label="My Resources" value={totalResources} link="/resources" />
+        <StatCard label="My Rooms" value={totalRooms} link="/rooms" />
+        <StatCard label="My Questions" value={totalQuestions} link="/forum" />
+      </div>
+
+      {/* Recent Items Preview */}
+      <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
+        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Recent Activity</h4>
+        {totalNotes + totalResources + totalRooms + totalQuestions === 0 ? (
+          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+            No recent content yet — start creating notes, resources, or rooms!
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+            <PreviewList title="Notes" items={data.notes} />
+            <PreviewList title="Resources" items={data.resources} />
+            <PreviewList title="Rooms" items={data.rooms} />
+            <PreviewList title="Questions" items={data.questions} />
+          </div>
+        )}
       </div>
     </section>
   );
 }
+
+function PreviewList({ title, items }) {
+  return (
+    <div>
+      <div className="font-semibold text-zinc-800 dark:text-zinc-200 mb-1">{title}</div>
+      {items.length === 0 ? (
+        <div className="text-xs text-zinc-500">—</div>
+      ) : (
+        <ul className="space-y-1">
+          {items.slice(0, 3).map((it) => (
+            <li key={it.id} className="truncate text-xs text-zinc-600 dark:text-zinc-400">
+              {it.title || it.name || "(Untitled)"}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 
 function EditProfile({ user, onChange }) {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
@@ -556,39 +644,86 @@ function Preferences({ user, onChange }) {
   );
 }
 
-function Bookmarks({ items }) {
+function Bookmarks() {
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadBookmarks() {
+      try {
+        const res = await fetch(`${API_BASE}/profile.php?content=1`, {
+          credentials: "include",
+        });
+        const json = await res.json();
+
+        if (json.ok && json.content?.bookmarks?.length > 0) {
+          setItems(json.content.bookmarks);
+        } else {
+          console.warn("No bookmarks found in API", json);
+        }
+      } catch (err) {
+        console.error("Failed to load bookmarks:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBookmarks();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-white p-6 text-center text-zinc-500 dark:bg-slate-900">
+        Loading bookmarks...
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl bg-white p-6 text-center text-zinc-500 dark:bg-slate-900">
+        Nothing saved yet. Go to Resources and hit 🔖 Save on items you like.
+      </div>
+    );
+  }
+
   return (
-    <section className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Saved resources</h3>
-      {items.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-zinc-300 bg-white/60 px-4 py-8 text-center text-sm text-zinc-600 dark:bg-slate-900/60 dark:border-zinc-700 dark:text-zinc-400">
-          Nothing saved yet. Go to Resources and hit 🔖 Save on items you like.
-        </div>
-      ) : (
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-          {items.map((it) => (
-            <li key={it.id} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:bg-slate-900 dark:border-slate-800">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{it.title}</div>
-                  <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">{it.course} • {it.kind || it.type || it.semester}</div>
+    <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
+      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
+        Saved Resources
+      </h3>
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {items.map((it) => (
+          <li
+            key={it.id}
+            className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:bg-slate-900 dark:border-slate-800"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                  {it.title}
                 </div>
-                <a
-                  href={it.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-slate-800"
-                >
-                  Open
-                </a>
+                <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                  {it.course} • {it.kind || it.semester}
+                </div>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+              <a
+                href={it.url}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-slate-800"
+              >
+                Open
+              </a>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
+
 
 function MyContent() {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
@@ -651,11 +786,11 @@ function ListCard({ title, empty, items, type }) {
           {items.map((it) => (
             <li key={it.id} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:bg-slate-900 dark:border-slate-800">
               <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={it.title}>
-  {it.title}
-</div>
-<div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
-  {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
-</div>
+                {it.title}
+              </div>
+              <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
+              </div>
 
             </li>
           ))}
