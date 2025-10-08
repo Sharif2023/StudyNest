@@ -152,11 +152,34 @@ export default function App() {
     if (!item) return;
     updateResource(id, { votes: Math.max(0, item.votes + delta) });
   };
-  const toggleBookmark = (id) => {
-    const item = items.find(x => x.id === id);
-    if (!item) return;
-    updateResource(id, { bookmarks: item.bookmarks ? 0 : 1 });
+
+  const toggleBookmark = async (id) => {
+    try {
+      const form = new FormData();
+      form.append("action", "toggle_bookmark");
+      form.append("resource_id", id);
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        credentials: "include",
+        body: form
+      });
+      const json = await res.json();
+
+      if (json.status === "success") {
+        setItems(prev =>
+          prev.map(it =>
+            it.id === id ? { ...it, bookmarked: json.action === "added" } : it
+          )
+        );
+      } else {
+        console.error("Bookmark error:", json.message);
+      }
+    } catch (err) {
+      console.error("Bookmark request failed:", err);
+    }
   };
+
   const flag = (id) => updateResource(id, { flagged: 1 });
 
   return (
@@ -442,9 +465,10 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
           </button>
           <button
             onClick={() => onBookmark(item.id)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+            className={`rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 ${item.bookmarked ? "text-emerald-600" : ""
+              }`}
           >
-            🔖 {item.bookmarks ? "Saved" : "Save"}
+            {item.bookmarked ? "🔖 Saved" : "🔖 Save"}
           </button>
         </div>
         <div className="space-x-2">

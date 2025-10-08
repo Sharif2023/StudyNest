@@ -1,6 +1,6 @@
 <?php
 // ResourceLibrary.php
-header("Access-Control-Allow-Origin: http://localhost:5173"); // adjust for your frontend origin
+header("Access-Control-Allow-Origin: http://localhost:5173"); // Adjust to your frontend origin
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -32,6 +32,17 @@ try {
     exit;
 }
 
+// --- Create bookmarks table if not exists ---
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS bookmarks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        resource_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY (user_id, resource_id)
+    )
+");
+
 // ----------------------------------------------------
 // GET — Fetch all resources
 // ----------------------------------------------------
@@ -39,6 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $stmt = $pdo->query("SELECT * FROM resources ORDER BY created_at DESC");
         $resources = $stmt->fetchAll();
+
+        // If logged in, mark bookmarked resources
+        if (!empty($_SESSION['user_id'])) {
+            $uid = $_SESSION['user_id'];
+            $b = $pdo->prepare("SELECT resource_id FROM bookmarks WHERE user_id=?");
+            $b->execute([$uid]);
+            $bookmarked = array_column($b->fetchAll(), 'resource_id');
+            foreach ($resources as &$r) {
+                $r['bookmarked'] = in_array($r['id'], $bookmarked);
+            }
+        }
+
         echo json_encode(["status" => "success", "resources" => $resources]);
     } catch (Throwable $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
@@ -47,11 +70,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // ----------------------------------------------------
-// POST — Add a new resource (supports all file types)
+// POST — Add a new resource OR toggle bookmark
 // ----------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- Toggle Bookmark ---
+    if (!empty($_POST['action']) && $_POST['action'] === 'toggle_bookmark') {
+        if (empty($_SESSION['user_id'])) {
+            echo json_encode(["status" => "error", "message" => "Not logged in"]);
+            exit;
+        }
+
+        $user_id = (int) $_SESSION['user_id'];
+        $resource_id = (int) ($_POST['resource_id'] ?? 0);
+
+        if (!$resource_id) {
+            echo json_encode(["status" => "error", "message" => "Missing resource ID"]);
+            exit;
+        }
+
+        try {
+            $check = $pdo->prepare("SELECT id FROM bookmarks WHERE user_id=? AND resource_id=?");
+            $check->execute([$user_id, $resource_id]);
+            if ($check->fetch()) {
+                $del = $pdo->prepare("DELETE FROM bookmarks WHERE user_id=? AND resource_id=?");
+                $del->execute([$user_id, $resource_id]);
+                echo json_encode(["status" => "success", "action" => "removed"]);
+            } else {
+                $add = $pdo->prepare("INSERT INTO bookmarks (user_id, resource_id) VALUES (?, ?)");
+                $add->execute([$user_id, $resource_id]);
+                echo json_encode(["status" => "success", "action" => "added"]);
+            }
+        } catch (Throwable $e) {
+            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // --- Add new resource ---
     try {
-        // Handle JSON and multipart form
         $data = $_POST ?: json_decode(file_get_contents("php://input"), true);
 
         if (empty($data['title']) || empty($data['course']) || empty($data['semester'])) {
@@ -59,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // --- Determine author ---
+        // Determine author
         $author = trim($data['author'] ?? '');
         if ($author !== "Anonymous" && isset($_SESSION['user_id'])) {
             $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
@@ -69,32 +125,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $author = $realName;
         }
 
-        // --- Handle upload ---
+        // Handle upload
         $src_type = $data['src_type'] ?? 'link';
         $url = trim($data['url'] ?? '');
 
         if ($src_type === 'file' && isset($_FILES['file'])) {
             $file = $_FILES['file'];
-
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 echo json_encode(["status" => "error", "message" => "File upload error"]);
                 exit;
             }
 
-            // --- Detect MIME safely ---
+            // MIME validation
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime = finfo_file($finfo, $file['tmp_name']);
             finfo_close($finfo);
-
-            // Clean up MIME (remove duplicates or spaces)
             $mime = trim(preg_replace('/\s+/', '', $mime));
 
-            // Some PHP builds may repeat the MIME string (bug fix)
-            if (preg_match('/(application\/[a-zA-Z0-9.\-+]+)\1/', $mime, $matches)) {
-                $mime = $matches[1];
-            }
-
-            // Allow list
             $allowed_mimes = [
                 'application/pdf',
                 'application/msword',
@@ -111,24 +158,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'image/webp',
                 'image/gif'
             ];
-
             if (!in_array($mime, $allowed_mimes, true)) {
-                echo json_encode(["status" => "error", "message" => "Invalid or unsupported file type: $mime"]);
+                echo json_encode(["status" => "error", "message" => "Invalid file type: $mime"]);
                 exit;
             }
 
-            // Ensure uploads dir
+            // Upload
             $uploadDir = __DIR__ . '/uploads';
             if (!is_dir($uploadDir))
                 mkdir($uploadDir, 0775, true);
-
-            // Safe unique filename
             $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
             $safeName = 'resource-' . uniqid() . '.' . $ext;
             $targetPath = $uploadDir . '/' . $safeName;
-
             if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-                echo json_encode(["status" => "error", "message" => "Failed to move uploaded file"]);
+                echo json_encode(["status" => "error", "message" => "Failed to save file"]);
                 exit;
             }
 
@@ -137,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $src_type = 'file';
         }
 
-        // --- Insert DB record ---
+        // Insert DB record
         $stmt = $pdo->prepare("
             INSERT INTO resources 
                 (title, kind, course, semester, tags, description, author, src_type, url, votes, bookmarks, flagged, created_at)
