@@ -590,15 +590,48 @@ function Bookmarks({ items }) {
   );
 }
 
-function MyContent({ notes, resources, rooms }) {
+function MyContent() {
+  const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchContent() {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/profile.php?content=1`, {
+          credentials: "include", // required for PHP session
+        });
+        const json = await res.json();
+        if (json.ok && json.content) setData(json.content);
+        else console.warn("Failed to load content:", json);
+      } catch (err) {
+        console.error("Error loading content:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchContent();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 text-center text-sm text-zinc-500 dark:bg-slate-900 dark:ring-white/10">
+        Loading your content...
+      </div>
+    );
+  }
+
   return (
     <section className="space-y-6">
-      <ListCard title="My Notes" empty="No notes yet" items={notes} type="notes" />
-      <ListCard title="My Resources" empty="No resources yet" items={resources} type="resources" />
-      <ListCard title="My Rooms" empty="No rooms yet" items={rooms} type="rooms" />
+      <ListCard title="My Notes" empty="No notes yet" items={data.notes} type="notes" />
+      <ListCard title="My Resources" empty="No resources yet" items={data.resources} type="resources" />
+      <ListCard title="My Questions" empty="No questions yet" items={data.questions} type="forum" />
+      <ListCard title="My Rooms" empty="No rooms yet" items={data.rooms} type="rooms" />
     </section>
   );
 }
+
 
 function ListCard({ title, empty, items, type }) {
   return (
@@ -617,12 +650,13 @@ function ListCard({ title, empty, items, type }) {
         <ul className="grid gap-3 sm:grid-cols-2">
           {items.map((it) => (
             <li key={it.id} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:bg-slate-900 dark:border-slate-800">
-              <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={it.title || it.name}>
-                {it.title || it.name}
-              </div>
-              <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
-                {it.course || it.topic || "—"} • {safeDate(it.updatedAt || it.createdAt)}
-              </div>
+              <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={it.title}>
+  {it.title}
+</div>
+<div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
+  {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
+</div>
+
             </li>
           ))}
         </ul>
