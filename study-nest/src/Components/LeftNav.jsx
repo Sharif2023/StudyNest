@@ -11,7 +11,7 @@ function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
     if (m && m[0]) return m[0]; // e.g., http://localhost
-  } catch {}
+  } catch { }
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
 
@@ -20,7 +20,7 @@ function toBackendUrl(url) {
   if (!url) return null;
   const ORIGIN = getBackendOrigin();
   if (/^https?:\/\//i.test(url)) return url;             // already absolute
-  if (url.startsWith("/"))       return ORIGIN + url;     // root-relative
+  if (url.startsWith("/")) return ORIGIN + url;     // root-relative
   return ORIGIN + "/" + url.replace(/^\/+/, "");          // plain relative
 }
 
@@ -91,8 +91,8 @@ export default function LeftNav({
       }
     };
     const onLocalProfile = () => {
-      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch {}
-      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch {}
+      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch { }
+      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch { }
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("studynest:profile-updated", onLocalProfile);
@@ -105,7 +105,7 @@ export default function LeftNav({
   const toggleMoreVisibility = () => setMoreVisible((v) => !v);
 
   const displayName = profile?.name || auth?.name || "Student";
-  const studentId   = profile?.student_id || auth?.student_id || auth?.id || "—";
+  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
 
   // Normalize picture URL to backend origin, add cache-buster via updated_at
   const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
@@ -202,7 +202,7 @@ export default function LeftNav({
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="5" y1="8" x2="19" y2="8" /><circle cx="5" cy="8" r="1" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="1" /><line x1="5" y1="16" x2="19" y2="16" /><circle cx="5" cy="16" r="1" /></svg>}
             />
             <NavItem to="/group-chats" label="Group Chats" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></svg>}
+              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M13 8H7" /><path d="M17 12H7" /></svg>}
             />
             <NavItem
               to="#"
@@ -220,9 +220,67 @@ export default function LeftNav({
             />
             {moreVisible && (
               <div className="space-y-1 mt-2">
-                <NavItem to="/ai-check"   icon="🧠" label="Ai File Check"   expanded={navOpen} />
-                <NavItem to="/ai-usage"   icon="🤖" label="Ai Usage Check"  expanded={navOpen} />
-                <NavItem to="/humanize"   icon="✍️" label="Humanize Writing" expanded={navOpen} />
+                <NavItem
+                  to="/ai-check"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="w-6 h-6 flex-shrink-0 text-current"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="m23.5 17l-5 5l-3.5-3.5l1.5-1.5l2 2l3.5-3.5zM6 2a2 2 0 0 0-2 2v16c0 1.11.89 2 2 2h7.81c-.36-.62-.61-1.3-.73-2H6V4h7v5h5v4.08c.33-.05.67-.08 1-.08c.34 0 .67.03 1 .08V8l-6-6M8 12v2h8v-2m-8 4v2h5v-2Z"
+                      />
+                    </svg>
+                  }
+                  label="AI File Check"
+                  expanded={navOpen}
+                />
+
+                <NavItem
+                  to="/ai-usage"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="w-6 h-6 flex-shrink-0 text-current"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M23 15v3c0 .5-.36.88-.83.97L20.2 17h.8v-1h-1.8l-.2-.2V14c0-2.76-2.24-5-5-5h-1.8l-2-2h.8V5.73c-.6-.34-1-.99-1-1.73c0-1.1.9-2 2-2s2 .9 2 2c0 .74-.4 1.39-1 1.73V7h1c3.87 0 7 3.13 7 7h1c.55 0 1 .45 1 1M8.5 13.5c-1.1 0-2 .9-2 2s.9 2 2 2s2-.89 2-2s-.89-2-2-2m13.61 7.96l-1.27 1.27l-.95-.95c-.27.14-.57.22-.89.22H5a2 2 0 0 1-2-2v-1H2c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1h1c0-2.47 1.29-4.64 3.22-5.89L1.11 3l1.28-1.27zm-4-1.46l-2.51-2.5h-.1a2 2 0 0 1-2-2v-.1L7.7 9.59C6.1 10.42 5 12.08 5 14v2H3v1h2v3z"
+                      />
+                    </svg>
+                  }
+                  label="AI Usage Check"
+                  expanded={navOpen}
+                />
+
+                <NavItem
+                  to="/humanize"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 32 32"
+                      className="w-6 h-6 flex-shrink-0 text-current"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M28.19 13.71h1.52v10.67h-1.52Z"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M26.67 27.43H11.43v-1.52H9.9v1.52H8.38V32h21.33v-4.57h-1.52v-3.05h-1.52Zm0 3.05h-3.05v-1.53h3.05Zm0-18.29h1.52v1.52h-1.52Zm-3.05 1.52h1.52v4.58h-1.52Zm0-3.04h3.05v1.52h-3.05Zm-3.05-6.1h1.52V6.1h-1.52Zm1.52 0h1.53V0h-4.57v1.52h3.04zm-3.04 9.14h1.52v4.58h-1.52Zm0-7.61h1.52v1.52h-1.52Zm0-3.05h1.52v1.52h-1.52Zm-1.53-1.53h1.53v1.53h-1.53ZM16 3.05h1.52v1.52H16Zm-1.52 10.66H16v4.58h-1.52Z"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M14.48 10.67h9.14V9.14h-4.57V7.62h-1.53v1.52H16V4.57h-4.57V6.1h3.05zM9.9 15.24H8.38v1.52H9.9v3.05h1.53V6.1H9.9v3.04H8.38v1.53H9.9zm-1.52 9.14H9.9v1.53H8.38Zm-1.52-3.05h1.52v3.05H6.86Zm0-4.57h1.52v1.53H6.86Zm0-6.09h1.52v1.52H6.86Zm-1.53 7.62h1.53v3.04H5.33Zm0-6.1h1.53v1.52H5.33Zm-1.52 4.57h1.52v1.53H3.81Zm0-3.05h1.52v1.53H3.81Zm-1.52 1.53h1.52v1.52H2.29Z"
+                      />
+                    </svg>
+                  }
+                  label="Humanize Writing"
+                  expanded={navOpen}
+                />
               </div>
             )}
           </nav>
