@@ -314,6 +314,14 @@ function StudyRoom({ anonymous, activeRoom }) {
       } catch (e) { }
     })();
   }, []);
+  useEffect(() => {
+    function handleClear() {
+      setActiveRoom(null);
+    }
+    window.addEventListener("activeRoomCleared", handleClear);
+    return () => window.removeEventListener("activeRoomCleared", handleClear);
+  }, []);
+
 
   return (
     <Card className="h-full flex flex-col overflow-hidden">
@@ -358,7 +366,8 @@ function StudyRoom({ anonymous, activeRoom }) {
                   size="md"
                   onClick={() => {
                     localStorage.removeItem("activeRoom");
-                    window.location.reload(); // Refresh homepage to blank MiniTV
+                    // Signal Home() to clear immediately without reload
+                    window.dispatchEvent(new Event("activeRoomCleared"));
                   }}
                 >
                   Leave
@@ -518,6 +527,13 @@ export default function Home() {
         setActiveRoom(JSON.parse(stored));
       } catch { }
     }
+  }, []);
+  useEffect(() => {
+    function handleRoomCleared() {
+      setActiveRoom(null);
+    }
+    window.addEventListener("activeRoomCleared", handleRoomCleared);
+    return () => window.removeEventListener("activeRoomCleared", handleRoomCleared);
   }, []);
 
   useEffect(() => {
@@ -722,7 +738,7 @@ export default function Home() {
             {/* Right column */}
             <div className="order-1 xl:order-2 xl:col-span-7 space-y-6">
               <div className="xl:sticky xl:top-[84px]">
-                {activeRoom && activeRoom.status === "live" ? (
+                {activeRoom ? (
                   <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
                     <iframe
                       src={`http://localhost:5173/rooms/${activeRoom.id}`}
@@ -732,7 +748,7 @@ export default function Home() {
                     ></iframe>
                   </div>
                 ) : (
-                  <StudyRoom anonymous={anonymous} activeRoom={activeRoom} />
+                  <StudyRoom anonymous={anonymous} activeRoom={null} />
                 )}
               </div>
 
