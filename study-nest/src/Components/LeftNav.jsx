@@ -151,22 +151,34 @@ export default function LeftNav({
         {/* Profile / points (only in expanded) */}
         {navOpen && (
           <div className="px-3 py-2 border-b border-slate-800">
-            <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+            <Link
+              to="/profile"
+              className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:bg-slate-800/70 transition"
+              title="View Profile"
+            >
               <div className="h-9 w-9 rounded-xl overflow-hidden bg-slate-800 grid place-content-center">
                 {profilePicUrl ? (
-                  <img src={profilePicUrl} alt={displayName} className="h-9 w-9 object-cover" />
+                  <img
+                    src={profilePicUrl}
+                    alt={displayName}
+                    className="h-9 w-9 object-cover"
+                  />
                 ) : (
                   <span className="text-white text-sm">
-                    {String(displayName || "U").slice(0, 1).toUpperCase()}
+                    {String(displayName || 'U').slice(0, 1).toUpperCase()}
                   </span>
                 )}
               </div>
-              <div className="text-sm">
-                <div className="font-medium leading-tight text-white">{displayName}</div>
-                <div className="font-medium leading-tight text-white">ID: {studentId}</div>
+              <div className="text-sm text-left">
+                <div className="font-medium leading-tight text-white hover:text-cyan-300 transition">
+                  {displayName}
+                </div>
+                <div className="font-medium leading-tight text-slate-400 hover:text-cyan-300 transition">
+                  ID: {studentId}
+                </div>
               </div>
-            </div>
-
+            </Link>
+            
             {/* Points row unchanged */}
             <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200">
               Points <span className="font-semibold">1,245</span>
@@ -195,9 +207,9 @@ export default function LeftNav({
             <NavItem to="/notes" label="Notes Repo" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125" /></svg>}
             />
-            <NavItem to="/library" label="Shared Library" expanded={navOpen}
+            {/* <NavItem to="/library" label="Shared Library" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-12v8m-16-8v8" /></svg>}
-            />
+            /> */}
             <NavItem to="/to-do-list" label="To-Do List" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="5" y1="8" x2="19" y2="8" /><circle cx="5" cy="8" r="1" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="1" /><line x1="5" y1="16" x2="19" y2="16" /><circle cx="5" cy="16" r="1" /></svg>}
             />
@@ -288,7 +300,7 @@ export default function LeftNav({
 
         {/* Pinned footer */}
         <div className="px-3 py-3 border-t border-slate-800 space-y-2">
-          {navOpen && (
+          {/* {navOpen && (
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
               <div className="flex items-center gap-3">
                 <span className="text-xl">
@@ -317,7 +329,7 @@ export default function LeftNav({
                 </button>
               </div>
             </div>
-          )}
+          )} */}
           <Link to={"/login"}>
             <Button variant="danger" className={`w-full flex items-center justify-center ${navOpen ? "gap-2 px-3" : "px-2"} py-2`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
