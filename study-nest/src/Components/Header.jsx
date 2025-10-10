@@ -8,7 +8,7 @@ function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
     if (m && m[0]) return m[0];
-  } catch {}
+  } catch { }
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
 
@@ -82,10 +82,10 @@ export default function Header({ sidebarWidth = 72 }) {
     const onLocalProfile = () => {
       try {
         setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null);
-      } catch {}
+      } catch { }
       try {
         setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null);
-      } catch {}
+      } catch { }
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("studynest:profile-updated", onLocalProfile);
@@ -112,7 +112,7 @@ export default function Header({ sidebarWidth = 72 }) {
           setProfile(incoming);
           try {
             localStorage.setItem("studynest.profile", JSON.stringify(incoming));
-          } catch {}
+          } catch { }
         }
       } catch (e) {
         console.warn("Profile fetch failed:", e);
@@ -135,7 +135,7 @@ export default function Header({ sidebarWidth = 72 }) {
           setNotifications(j.notifications || []);
           setUnreadCount(j.unread || 0);
         }
-      } catch {}
+      } catch { }
     })();
 
     // Setup SSE Stream
@@ -180,7 +180,7 @@ export default function Header({ sidebarWidth = 72 }) {
         prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
       );
       setUnreadCount(0);
-    } catch {}
+    } catch { }
   }
 
   function handleNotificationClick(n) {
@@ -213,7 +213,7 @@ export default function Header({ sidebarWidth = 72 }) {
   const handleLogout = () => {
     localStorage.removeItem("studynest.auth");
     localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => {});
+    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
     navigate("/login");
   };
 
@@ -233,13 +233,13 @@ export default function Header({ sidebarWidth = 72 }) {
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Link to="/home" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition">
+          <Link to="/home" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition text-2xl">
             Study Nest
           </Link>
         </div>
 
         {/* Search */}
-        <div className="relative max-w-xl w-full">
+        {/* <div className="relative max-w-xl w-full">
           <input
             className="w-full bg-slate-800/70 border border-slate-600 rounded-xl pl-3 pr-24 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
             placeholder="Search topics, tags, notes…"
@@ -248,7 +248,7 @@ export default function Header({ sidebarWidth = 72 }) {
             <Button size="sm">Tags</Button>
             <Button size="sm">AI</Button>
           </div>
-        </div>
+        </div> */}
 
         {/* Actions */}
         <div className="flex items-center gap-3">
@@ -311,15 +311,13 @@ export default function Header({ sidebarWidth = 72 }) {
                     <li
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${
-                        n.read_at ? "text-slate-300" : "text-white"
-                      }`}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${n.read_at ? "text-slate-300" : "text-white"
+                        }`}
                     >
                       <div className="flex items-start gap-2">
                         <div
-                          className={`mt-1 h-2 w-2 rounded-full ${
-                            n.read_at ? "bg-slate-600" : "bg-cyan-400"
-                          }`}
+                          className={`mt-1 h-2 w-2 rounded-full ${n.read_at ? "bg-slate-600" : "bg-cyan-400"
+                            }`}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{n.title}</div>

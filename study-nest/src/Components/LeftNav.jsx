@@ -213,7 +213,7 @@ export default function LeftNav({
             <NavItem to="/to-do-list" label="To-Do List" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="5" y1="8" x2="19" y2="8" /><circle cx="5" cy="8" r="1" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="1" /><line x1="5" y1="16" x2="19" y2="16" /><circle cx="5" cy="16" r="1" /></svg>}
             />
-            <NavItem to="/group-chats" label="Group Chats" expanded={navOpen}
+            <NavItem to="/groups" label="Group Chats" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M13 8H7" /><path d="M17 12H7" /></svg>}
             />
             <NavItem
