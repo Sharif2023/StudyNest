@@ -81,8 +81,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
-      {/* LeftNav (pinned) */}
+    <div className="min-h-screen bg-gradient-to-b from-slate-200 to-cyan-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
+      {/* Sidebar */}
       <LeftNav
         navOpen={navOpen}
         setNavOpen={setNavOpen}
@@ -91,19 +91,21 @@ export default function Profile() {
         sidebarWidth={sidebarWidth}
       />
 
-      {/* Header (sticky, offset by sidebar) */}
+      {/* Sticky header */}
       <Header sidebarWidth={sidebarWidth} />
 
-      {/* Page container */}
-      <main className="pt-4 pb-10" style={{ paddingLeft: sidebarWidth }}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Page header / identity bar */}
-          <div className="mb-6 rounded-2xl bg-white/90 dark:bg-slate-900/60 ring-1 ring-zinc-200 dark:ring-white/10 backdrop-blur p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-4">
-                <profile_picture url={user.profile_picture_url} name={user.name} size={64} />
+      {/* Page content */}
+      <main className="pt-6 pb-12" style={{ paddingLeft: sidebarWidth }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-10">
+
+          {/* === Profile Identity Card === */}
+          <section className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 shadow-md backdrop-blur-lg p-6 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              {/* Profile avatar */}
+              <div className="flex items-center gap-5">
+                <profile_picture url={user.profile_picture_url} name={user.name} size={72} />
                 <div>
-                  <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                     {profile?.name || user.name || "Student"}
                   </h1>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -112,113 +114,66 @@ export default function Profile() {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
                   </p>
+
                   {(profile?.bio ?? "").trim() ? (
-                    <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
+                    <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                      {profile.bio}
+                    </p>
                   ) : (
-                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400 italic">
                       Add a short bio to personalize your profile.
                     </p>
                   )}
                 </div>
               </div>
+
+              {/* Quick Action */}
               <div className="sm:ml-auto flex items-center gap-2">
                 <Link
                   to="/search"
-                  className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
                 >
                   Quick Search
                 </Link>
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Content grid */}
-          <div className="grid gap-6 lg:grid-cols-12">
-            {/* Left pane: profile card + vertical tabs */}
+          {/* === Profile Layout Grid === */}
+          <div className="grid gap-8 lg:grid-cols-12">
+
+            {/* === Left Sidebar (Tabs) === */}
             <aside className="lg:col-span-4 space-y-6">
-              {/* Profile card 
-              <div className="rounded-2xl bg-white p-5 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
-                <div className="flex items-start gap-4">
-                  <profile_picture url={user.profile_picture} name={user.name} size={56} />
-
-                  <div className="flex-1 min-w-0">
-                     Name row 
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                        {profile?.name || user.name}
-                      </h2>
-                      {user.prefs?.defaultAnonymous && (
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                          Anonymous
-                        </span>
-                      )}
-                    </div>
-
-                    Email 
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 truncate">
-                      {profile?.email || auth?.email || "—"}
-                    </p>
-
-                     ID 
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      ID: {profile?.student_id || auth?.student_id || auth?.id || "—"}
-                    </p>
-
-                     Bio (optional) 
-                    {(profile?.bio ?? "").trim() ? (
-                      <p className="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-400">{profile.bio}</p>
-                    ) : (
-                      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        Add a short bio to personalize your profile.
-                      </p>
-                    )}
-
-                     Focus (optional) 
-                    {user.prefs?.courseFocus && (
-                      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                        Focus: {user.prefs.courseFocus}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                 Quick stats 
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  <StatMini label="Notes" value={myNotes.length} to="/notes" />
-                  <StatMini label="Resources" value={myResources.length} to="/resources" />
-                  <StatMini label="Rooms" value={myRooms.length} to="/rooms" />
-                  <StatMini label="Saves" value={bookmarks.length} to="/resources" />
-                </div>
-              </div> */}
-
-              {/* Vertical tabs */}
-              <nav className="rounded-2xl bg-white p-2 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
+              <nav className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 backdrop-blur shadow-md p-3 transition-all">
                 {[
-                  ["overview", "Overview", "Home profile summary"],
-                  ["edit", "Edit Profile", "Name, email, bio, profile_picture"],
+                  ["overview", "Overview", "Your profile summary"],
+                  ["edit", "Edit Profile", "Update your name, email, or bio"],
                   ["prefs", "Preferences", "Dark mode, anonymity, focus"],
                   ["bookmarks", "Bookmarks", "Your saved resources"],
-                  ["content", "My Content", "Notes, resources, rooms"],
-                  ["security", "Security", "Change your password, danger zone"],
+                  ["content", "My Content", "Notes, resources, and rooms"],
+                  ["security", "Security", "Password & account safety"],
                 ].map(([val, label, desc]) => (
                   <button
                     key={val}
                     onClick={() => setTab(val)}
-                    className={
-                      "w-full text-left rounded-xl px-3 py-2.5 transition " +
-                      (tab === val
-                        ? "bg-zinc-900 text-white dark:bg-slate-800"
-                        : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-slate-800/60")
-                    }
+                    className={`w-full text-left rounded-xl px-4 py-2.5 mb-1 transition-all duration-200 ${tab === val
+                      ? "bg-gradient-to-r from-cyan-700 to-blue-700 text-white shadow-md"
+                      : "text-zinc-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                      }`}
                   >
                     <div className="text-sm font-semibold">{label}</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">{desc}</div>
+                    <div
+                      className={`text-xs ${tab === val ? "text-cyan-100" : "text-zinc-500 dark:text-zinc-400"
+                        }`}
+                    >
+                      {desc}
+                    </div>
                   </button>
                 ))}
               </nav>
             </aside>
 
-            {/* Right pane: active tab */}
+            {/* === Right Content Area === */}
             <section className="lg:col-span-8 space-y-6">
               {tab === "overview" && (
                 <Overview
@@ -264,7 +219,7 @@ export default function Profile() {
         </div>
       </main>
 
-      {/* Footer (offset by sidebar) */}
+      {/* Footer */}
       <Footer sidebarWidth={sidebarWidth} />
     </div>
   );
@@ -318,57 +273,94 @@ function Overview({ user, displayName }) {
           <profile_picture url={user.profile_picture_url} name={user.name} size={56} />
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              Welcome back, {displayName} 👋
+              Welcome back, <span className="text-cyan-500">{displayName}</span> 👋
             </h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Here’s a quick snapshot of your StudyNest activity.
+              Your personalized StudyNest summary is below.
             </p>
+
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-400">
               {user.prefs?.defaultAnonymous && (
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">
-                  Anonymous by default
+                <span className="rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm px-2.5 py-1 border border-zinc-200 dark:border-slate-700">
+                  🕶️ Anonymous by default
                 </span>
               )}
               {user.prefs?.courseFocus && (
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">
-                  Focus: {user.prefs.courseFocus}
+                <span className="rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm px-2.5 py-1 border border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300">
+                  🎯 Focus: {user.prefs.courseFocus}
                 </span>
               )}
             </div>
           </div>
+
           <Link
             to="/resources"
-            className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-slate-800"
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
           >
             Explore Resources
           </Link>
+
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="My Notes" value={totalNotes} link="/notes" />
-        <StatCard label="My Resources" value={totalResources} link="/resources" />
-        <StatCard label="My Rooms" value={totalRooms} link="/rooms" />
-        <StatCard label="My Questions" value={totalQuestions} link="/forum" />
-      </div>
+      {/* === Stat Cards Section === */}
+      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="My Notes"
+          value={totalNotes}
+          link="/notes"
+          className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+        <StatCard
+          label="My Resources"
+          value={totalResources}
+          link="/resources"
+          className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+        <StatCard
+          label="My Rooms"
+          value={totalRooms}
+          link="/rooms"
+          className="bg-gradient-to-br from-cyan-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+        <StatCard
+          label="My Questions"
+          value={totalQuestions}
+          link="/forum"
+          className="bg-gradient-to-br from-indigo-50 to-cyan-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+      </section>
 
-      {/* Recent Items Preview */}
-      <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
-        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Recent Activity</h4>
+      {/* === Recent Items Preview === */}
+      <section className="rounded-2xl bg-white/90 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 backdrop-blur shadow-md hover:shadow-lg transition-all duration-300 p-6 mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-base font-semibold text-zinc-900 dark:text-white tracking-tight">
+            Recent Activity
+          </h4>
+          {(totalNotes + totalResources + totalRooms + totalQuestions) > 0 && (
+            <Link
+              to="/home"
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
+            >
+              View All
+            </Link>
+          )}
+        </div>
+
         {totalNotes + totalResources + totalRooms + totalQuestions === 0 ? (
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="text-sm text-zinc-600 dark:text-zinc-400 py-4 italic">
             No recent content yet — start creating notes, resources, or rooms!
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <PreviewList title="Notes" items={data.notes} />
             <PreviewList title="Resources" items={data.resources} />
             <PreviewList title="Rooms" items={data.rooms} />
             <PreviewList title="Questions" items={data.questions} />
           </div>
         )}
-      </div>
+      </section>
+
     </section>
   );
 }
@@ -655,7 +647,7 @@ function Bookmarks() {
         const res = await fetch(`${API_BASE}/profile.php?content=1`, {
           credentials: "include",
         });
-        const json = await res.json();
+        const json = await res.json(); 6
 
         if (json.ok && json.content?.bookmarks?.length > 0) {
           setItems(json.content.bookmarks);
