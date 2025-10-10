@@ -202,27 +202,27 @@ if ($method === 'POST') {
         $body = trim($data['body'] ?? '');
 
         $stmt = $conn->prepare("INSERT INTO answers (question_id, body, user_id, author)
-                              VALUES (?, ?, ?, ?)");
+                          VALUES (?, ?, ?, ?)");
         $stmt->bind_param("isis", $qid, $body, $logged_in_user_id, $author);
 
         if ($stmt->execute()) {
           /* 🆕 Create notification for question owner */
           $qres = $conn->prepare("
-          SELECT q.title AS q_title, u.student_id AS target_sid, u.username AS q_author
-          FROM questions q
-          LEFT JOIN users u ON q.user_id = u.id
-          WHERE q.id=?
-        ");
+      SELECT q.title AS q_title, u.student_id AS target_sid, u.username AS q_author
+      FROM questions q
+      LEFT JOIN users u ON q.user_id = u.id
+      WHERE q.id=?
+    ");
           $qres->bind_param("i", $qid);
           $qres->execute();
           $meta = $qres->get_result()->fetch_assoc();
           if (!empty($meta['target_sid'])) {
-            $n_title = "New answer to your question";
-            $n_body = "{$author} replied to: {$meta['q_title']}";
-            $n_link = "/forum/";
-            $nstmt = $conn->prepare("INSERT INTO notifications (student_id, title, body, link)
-                                   VALUES (?, ?, ?, ?)");
-            $nstmt->bind_param("ssss", $meta['target_sid'], $n_title, $n_body, $n_link);
+            $n_title = "💬 New answer to your question";
+            $n_message = "{$author} replied to: \"{$meta['q_title']}\"";
+            $n_link = "/forum"; // Fixed link path
+            $nstmt = $conn->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id)
+                               VALUES (?, ?, ?, ?, 'forum_answer', ?)");
+            $nstmt->bind_param("ssssi", $meta['target_sid'], $n_title, $n_message, $n_link, $qid);
             $nstmt->execute();
           }
 

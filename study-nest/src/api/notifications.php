@@ -20,17 +20,29 @@ $action = $_GET['action'] ?? '';
 if ($action === 'list') {
     $sid = $_GET['student_id'] ?? '';
     $limit = intval($_GET['limit'] ?? 30);
-    
+
     try {
         $stmt = $pdo->prepare("
-            SELECT * FROM notifications 
+            SELECT 
+                id, 
+                student_id, 
+                title, 
+                COALESCE(message, body) as message, 
+                link, 
+                type, 
+                reference_id,
+                scheduled_at,
+                sent_at,
+                read_at,
+                created_at
+            FROM notifications 
             WHERE student_id = ? 
             ORDER BY created_at DESC 
             LIMIT ?
         ");
         $stmt->execute([$sid, $limit]);
         $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Count unread
         $unreadStmt = $pdo->prepare("
             SELECT COUNT(*) as unread_count 
@@ -39,10 +51,10 @@ if ($action === 'list') {
         ");
         $unreadStmt->execute([$sid]);
         $unread = $unreadStmt->fetch(PDO::FETCH_ASSOC)['unread_count'] ?? 0;
-        
+
         echo json_encode([
-            "ok" => true, 
-            "notifications" => $notifications, 
+            "ok" => true,
+            "notifications" => $notifications,
             "unread" => $unread
         ]);
     } catch (Exception $e) {
@@ -54,7 +66,7 @@ if ($action === 'list') {
 if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $sid = $data['student_id'] ?? '';
-    
+
     try {
         if (!empty($data['mark_all'])) {
             $stmt = $pdo->prepare("
@@ -71,7 +83,7 @@ if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$data['notification_id'], $sid]);
         }
-        
+
         echo json_encode(["ok" => true]);
     } catch (Exception $e) {
         echo json_encode(["ok" => false, "error" => $e->getMessage()]);
@@ -95,7 +107,7 @@ if ($action === 'stream') {
     }
 
     $lastId = intval($_GET['last_id'] ?? 0);
-    
+
     // Send initial connection message
     echo "data: " . json_encode(["type" => "connected", "last_id" => $lastId]) . "\n\n";
     ob_flush();
@@ -118,7 +130,7 @@ if ($action === 'stream') {
                 $lastId = $notification['id'];
                 echo "event: message\n";
                 echo "data: " . json_encode([
-                    "type" => "new_notification", 
+                    "type" => "new_notification",
                     "notification" => $notification
                 ]) . "\n\n";
                 ob_flush();
@@ -137,4 +149,3 @@ if ($action === 'stream') {
 }
 
 echo json_encode(["ok" => false, "error" => "Invalid action"]);
-?>

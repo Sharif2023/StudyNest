@@ -37,6 +37,23 @@ try {
             FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS notifications (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        student_id VARCHAR(32) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        link VARCHAR(255) NULL,
+        type VARCHAR(64) DEFAULT 'general',
+        reference_id INT NULL,
+        scheduled_at DATETIME NULL,
+        sent_at DATETIME NULL,
+        read_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_student (student_id),
+        FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 } catch (Exception $e) {
     echo json_encode(["ok" => false, "error" => "DB init failed: " . $e->getMessage()]);
     exit;
