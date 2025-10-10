@@ -1,22 +1,19 @@
 <?php
 session_start();
 header('Content-Type: application/json; charset=utf-8');
-header("Access-Control-Allow-Origin: *");
+
+$allowedOrigin = "http://localhost:5173";
+header("Access-Control-Allow-Origin: $allowedOrigin");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Credentials: true");
 
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "studynest";
-
-$conn = new mysqli($servername, $username, $password, $dbname);
-if ($conn->connect_error) {
-  http_response_code(500);
-  echo json_encode(["ok" => false, "error" => "DB error"]);
-  exit;
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
 }
+
 
 $action = $_GET['action'] ?? '';
 if ($action === 'list') {
