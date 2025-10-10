@@ -1,13 +1,14 @@
 <?php
 session_start();
-require_once "db.php"; // Add this line
-header('Content-Type: application/json; charset=utf-8');
+require_once "db.php";
 
+// Set CORS headers FIRST for ALL requests
 $allowedOrigin = "http://localhost:5173";
 header("Access-Control-Allow-Origin: $allowedOrigin");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Credentials: true");
+header('Content-Type: application/json; charset=utf-8');
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -75,6 +76,7 @@ if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE student_id = ? AND read_at IS NULL
             ");
             $stmt->execute([$sid]);
+            echo json_encode(["ok" => true, "message" => "All notifications marked as read"]);
         } else if (!empty($data['notification_id'])) {
             $stmt = $pdo->prepare("
                 UPDATE notifications 
@@ -82,9 +84,10 @@ if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ? AND student_id = ?
             ");
             $stmt->execute([$data['notification_id'], $sid]);
+            echo json_encode(["ok" => true, "message" => "Notification marked as read"]);
+        } else {
+            echo json_encode(["ok" => false, "error" => "No valid action specified"]);
         }
-
-        echo json_encode(["ok" => true]);
     } catch (Exception $e) {
         echo json_encode(["ok" => false, "error" => $e->getMessage()]);
     }
@@ -96,7 +99,7 @@ if ($action === 'stream') {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
-    header('X-Accel-Buffering: no'); // Important for Nginx
+    header('X-Accel-Buffering: no');
 
     $sid = $_GET['student_id'] ?? '';
     if (!$sid) {
@@ -115,7 +118,6 @@ if ($action === 'stream') {
 
     try {
         while (true) {
-            // Check if client is still connected
             if (connection_aborted()) break;
 
             $stmt = $pdo->prepare("
@@ -137,7 +139,6 @@ if ($action === 'stream') {
                 flush();
             }
 
-            // Longer sleep to reduce server load
             sleep(5);
         }
     } catch (Exception $e) {
@@ -149,3 +150,4 @@ if ($action === 'stream') {
 }
 
 echo json_encode(["ok" => false, "error" => "Invalid action"]);
+?>

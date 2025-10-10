@@ -169,6 +169,10 @@ export default function Header({ sidebarWidth = 72 }) {
   async function markAllRead() {
     const sid = profile?.student_id || auth?.student_id;
     if (!sid) return;
+
+    console.log('Marking all notifications as read for student:', sid);
+    console.log('Current unread count:', unreadCount);
+
     try {
       const response = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
         method: "POST",
@@ -178,9 +182,14 @@ export default function Header({ sidebarWidth = 72 }) {
       });
 
       const data = await response.json();
+      console.log('Mark all read response:', data);
+
       if (data.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
         setUnreadCount(0);
+        console.log('Successfully marked all as read');
+      } else {
+        console.error('Failed to mark all as read:', data);
       }
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
@@ -188,14 +197,19 @@ export default function Header({ sidebarWidth = 72 }) {
   }
 
   function handleNotificationClick(n) {
-    // Mark as read when clicked
+    // Don't mark as read here - it's already handled by markAllRead when dropdown opens
+    // Or mark individual notification if needed
     if (!n.read_at) {
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.id === n.id ? { ...notif, read_at: new Date().toISOString() } : notif
-        )
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
+      // Mark single notification as read via API
+      const sid = profile?.student_id || auth?.student_id;
+      if (sid) {
+        fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ student_id: sid, notification_id: n.id }),
+        }).catch(console.error);
+      }
     }
 
     // Navigate if link exists
@@ -309,7 +323,10 @@ export default function Header({ sidebarWidth = 72 }) {
               onClick={() => {
                 const next = !notifOpen;
                 setNotifOpen(next);
-                if (next) markAllRead();
+                // Only mark as read when opening, not when closing
+                if (next && unreadCount > 0) {
+                  markAllRead();
+                }
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -336,7 +353,7 @@ export default function Header({ sidebarWidth = 72 }) {
                   )}
                   {notifications.map((n) => (
                     <li
-                      key={n.id}
+                      key={`notification-${n.id}-${n.created_at}`} // More unique key
                       onClick={() => handleNotificationClick(n)}
                       className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${n.read_at ? "text-slate-300" : "text-white"
                         }`}
