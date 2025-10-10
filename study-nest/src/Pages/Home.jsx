@@ -425,6 +425,150 @@ export default function Home() {
     }
   });
 
+  // Add these state variables
+  const [qaList, setQaList] = useState([]);
+  const [resourceCategories, setResourceCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Add these useEffect hooks for data fetching
+  useEffect(() => {
+    fetchQAData();
+    fetchResourceData();
+  }, []);
+
+  const fetchQAData = async () => {
+    try {
+      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/QnAForum.php', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const questions = await response.json();
+        // Transform the data to match your existing format
+        const formattedQuestions = questions.slice(0, 3).map(q => ({
+          id: q.id,
+          question: q.title,
+          course: q.tags?.[0] || 'General',
+          votes: q.votes,
+          answers: q.answers?.length || 0,
+          tag: q.tags?.[0] || 'General'
+        }));
+        setQaList(formattedQuestions);
+      } else {
+        // Fallback to mock data if API fails
+        setQaList([
+          {
+            id: 11,
+            course: "CSE 220",
+            question: "Proof that activity selection is greedy-optimal?",
+            votes: 12,
+            answers: 3,
+            tag: "Greedy",
+          },
+          {
+            id: 12,
+            course: "EEE 205",
+            question: "Why does convolution flip one signal?",
+            votes: 9,
+            answers: 2,
+            tag: "Signals",
+          },
+          {
+            id: 13,
+            course: "CSE 310",
+            question: "Clustered vs Non-clustered index trade-offs",
+            votes: 15,
+            answers: 6,
+            tag: "DBMS",
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching Q&A data:', error);
+      // Fallback to mock data
+      setQaList([
+        {
+          id: 11,
+          course: "CSE 220",
+          question: "Proof that activity selection is greedy-optimal?",
+          votes: 12,
+          answers: 3,
+          tag: "Greedy",
+        },
+        {
+          id: 12,
+          course: "EEE 205",
+          question: "Why does convolution flip one signal?",
+          votes: 9,
+          answers: 2,
+          tag: "Signals",
+        },
+        {
+          id: 13,
+          course: "CSE 310",
+          question: "Clustered vs Non-clustered index trade-offs",
+          votes: 15,
+          answers: 6,
+          tag: "DBMS",
+        },
+      ]);
+    }
+  };
+
+  const fetchResourceData = async () => {
+    try {
+      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/ResourceLibrary.php', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success') {
+          // Group resources by course and count files/notes
+          const categories = {};
+
+          data.resources.forEach(resource => {
+            const course = resource.course || 'Other';
+            if (!categories[course]) {
+              categories[course] = {
+                name: course,
+                fileCount: 0,
+                noteCount: 0,
+              };
+            }
+
+            if (resource.kind === 'note' || resource.src_type === 'file') {
+              categories[course].noteCount++;
+            } else {
+              categories[course].fileCount++;
+            }
+          });
+
+          // Convert to array and take first 4
+          const categoryArray = Object.values(categories).slice(0, 4);
+          setResourceCategories(categoryArray);
+        } else {
+          setFallbackResourceData();
+        }
+      } else {
+        setFallbackResourceData();
+      }
+    } catch (error) {
+      console.error('Error fetching resource data:', error);
+      setFallbackResourceData();
+    }
+  };
+
+  const setFallbackResourceData = () => {
+    // Fallback to demo data
+    setResourceCategories([
+      { name: "Algebra", fileCount: 8, noteCount: 4, progress: 65 },
+      { name: "Calculus", fileCount: 12, noteCount: 6, progress: 80 },
+      { name: "DBMS", fileCount: 15, noteCount: 8, progress: 45 },
+      { name: "AI", fileCount: 10, noteCount: 5, progress: 30 },
+    ]);
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem("activeRoom");
     if (stored) {
@@ -631,12 +775,13 @@ export default function Home() {
                 </div>
               </Card>
 
+              {/* Questions and forum part */}
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase">Q&A Forum</h3>
-                  <Link to="/qa/ask">
+                  <Link to="/forum">
                     <Button variant="soft" size="sm">
-                      Ask
+                      Ask here
                     </Button>
                   </Link>
                 </div>
@@ -644,25 +789,60 @@ export default function Home() {
                   {qaList.map((q) => (
                     <div
                       key={q.id}
-                      className="p-3 rounded-xl bg-slate-900/70 border border-slate-800"
+                      className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 hover:bg-slate-800/50 transition-colors cursor-pointer"
+                      onClick={() => window.location.href = `/forum`}
                     >
                       <div className="text-sm font-medium text-slate-100">{q.question}</div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
                         <Badge tone="neutral">{q.course}</Badge>
                         <span>👍 {q.votes}</span>
                         <span>{q.answers} answers</span>
+                        <Badge tone="accent">{q.tag}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {qaList.length === 0 && (
+                    <div className="text-sm text-slate-400 text-center py-4">
+                      No questions yet. Be the first to ask!
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Resource part */}
+              <Card className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase">
+                    Resource Library
+                  </h3>
+                  <Link to="/resources/upload">
+                    <Button variant="soft" size="sm">
+                      Upload your Resources
+                    </Button>
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {resourceCategories.map((category) => (
+                    <div
+                      key={category.name}
+                      className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 hover:bg-slate-800/50 transition-colors cursor-pointer"
+                      onClick={() => window.location.href = `/resources?category=${category.name}`}
+                    >
+                      <div className="text-sm font-medium text-slate-100">{category.name}</div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {category.fileCount} files • {category.noteCount} notes
                       </div>
                     </div>
                   ))}
                 </div>
               </Card>
 
+              {/* Adjusted grid container for shortcuts */}
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase">Shortcuts</h3>
                 </div>
-                {/* Adjusted grid container for shortcuts */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"> {/* Changed gap to gap-2 for tighter spacing */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   <Link to="/forum" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
                     Ask a question
                   </Link>
@@ -693,28 +873,6 @@ export default function Home() {
                   <Link to="/search" className="p-2 rounded-xl bg-slate-900/70 border border-slate-800 text-slate-100 text-sm text-center font-medium hover:bg-slate-800 transition-colors whitespace-nowrap overflow-hidden text-ellipsis">
                     Search
                   </Link>
-                </div>
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase">
-                    Shared Resource Library
-                  </h3>
-                  <Button variant="soft" size="sm">
-                    Upload
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {["Algebra", "Calculus", "DBMS", "AI"].map((t) => (
-                    <div
-                      key={t}
-                      className="p-3 rounded-xl bg-slate-900/70 border border-slate-800"
-                    >
-                      <div className="text-sm font-medium text-slate-100">{t}</div>
-                      <div className="text-xs text-slate-400 mt-1">12 files • 4 notes</div>
-                    </div>
-                  ))}
                 </div>
               </Card>
 
