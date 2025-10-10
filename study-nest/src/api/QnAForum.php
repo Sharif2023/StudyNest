@@ -123,10 +123,12 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
   $questions = [];
   $result_q = $conn->query("
-    SELECT q.*, u.username AS author_username
+    SELECT q.*, u.username AS author_username,
+           (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id) as answer_count
     FROM questions q
     LEFT JOIN users u ON q.user_id = u.id
     ORDER BY q.created_at DESC
+    LIMIT 10
   ");
   if ($result_q === false) send_response("error", "Failed to query questions: " . $conn->error);
 
