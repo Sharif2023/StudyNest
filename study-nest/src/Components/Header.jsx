@@ -8,7 +8,7 @@ function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
     if (m && m[0]) return m[0];
-  } catch {}
+  } catch { }
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
 function toBackendUrl(url) {
@@ -98,7 +98,7 @@ export default function Header({ sidebarWidth = 72 }) {
           setProfile(incoming);
           localStorage.setItem("studynest.profile", JSON.stringify(incoming));
         }
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -118,26 +118,51 @@ export default function Header({ sidebarWidth = 72 }) {
           setNotifications(j.notifications || []);
           setUnreadCount(j.unread || 0);
         }
-      } catch {}
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+      }
     })();
 
-    // Setup SSE
-    const es = new EventSource(`${API_BASE}/notifications.php?action=stream&student_id=${sid}`, {
-      withCredentials: true,
-    });
+    // Setup SSE with reconnect logic
+    let es;
+    let reconnectTimeout;
 
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === "new_notification" && data.notification) {
-          setNotifications((prev) => [data.notification, ...prev]);
-          setUnreadCount((c) => c + 1);
+    const setupSSE = () => {
+      es = new EventSource(`${API_BASE}/notifications.php?action=stream&student_id=${sid}`, {
+        withCredentials: true,
+      });
+
+      es.onopen = () => {
+        console.log('SSE connected');
+      };
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "new_notification" && data.notification) {
+            setNotifications((prev) => [data.notification, ...prev]);
+            setUnreadCount((c) => c + 1);
+          }
+        } catch (error) {
+          console.error('SSE message error:', error);
         }
-      } catch {}
+      };
+
+      es.onerror = (e) => {
+        console.log('SSE error, reconnecting...');
+        es.close();
+
+        // Reconnect after 5 seconds
+        reconnectTimeout = setTimeout(setupSSE, 5000);
+      };
     };
 
-    es.onerror = () => console.log("SSE disconnected, retrying...");
-    return () => es.close();
+    setupSSE();
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (es) es.close();
+    };
   }, [profile?.student_id, auth?.student_id]);
 
   /* ===== Mark all notifications read ===== */
@@ -145,20 +170,38 @@ export default function Header({ sidebarWidth = 72 }) {
     const sid = profile?.student_id || auth?.student_id;
     if (!sid) return;
     try {
-      await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+      const response = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ student_id: sid, mark_all: true }),
       });
-      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
-      setUnreadCount(0);
-    } catch {}
+
+      const data = await response.json();
+      if (data.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Failed to mark notifications as read:', error);
+    }
   }
 
   function handleNotificationClick(n) {
-    markAllRead();
-    if (n.link) navigate(n.link);
+    // Mark as read when clicked
+    if (!n.read_at) {
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === n.id ? { ...notif, read_at: new Date().toISOString() } : notif
+        )
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
+    }
+
+    // Navigate if link exists
+    if (n.link) {
+      navigate(n.link);
+    }
     setNotifOpen(false);
   }
 
@@ -186,7 +229,7 @@ export default function Header({ sidebarWidth = 72 }) {
   const handleLogout = () => {
     localStorage.removeItem("studynest.auth");
     localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => {});
+    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
     navigate("/login");
   };
 
@@ -295,19 +338,17 @@ export default function Header({ sidebarWidth = 72 }) {
                     <li
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${
-                        n.read_at ? "text-slate-300" : "text-white"
-                      }`}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${n.read_at ? "text-slate-300" : "text-white"
+                        }`}
                     >
                       <div className="flex items-start gap-2">
                         <div
-                          className={`mt-1 h-2 w-2 rounded-full ${
-                            n.read_at ? "bg-slate-600" : "bg-cyan-400"
-                          }`}
+                          className={`mt-1 h-2 w-2 rounded-full ${n.read_at ? "bg-slate-600" : "bg-cyan-400"
+                            }`}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{n.title}</div>
-                          {n.body && <div className="text-slate-400 truncate">{n.body}</div>}
+                          {n.message && <div className="text-slate-400 truncate">{n.message}</div>}
                           <div className="text-[10px] text-slate-500">
                             {new Date(n.created_at).toLocaleString()}
                           </div>

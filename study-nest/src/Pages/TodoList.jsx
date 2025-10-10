@@ -136,9 +136,25 @@ export default function TodoList() {
 
   // ----- Auto background reminder trigger (if no cron) -----
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch(`${API_BASE}/notify_due_todos.php`).catch(() => {});
-    }, 5 * 60 * 1000); // every 5 min
+    const checkDueTasks = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/notify_due_todos.php`);
+        const data = await response.json();
+
+        if (data.ok && data.processed > 0) {
+          console.log(`Processed ${data.processed} due task reminders`);
+        }
+      } catch (error) {
+        console.error('Failed to check due tasks:', error);
+      }
+    };
+
+    // Check immediately on component mount
+    checkDueTasks();
+
+    // Then check every 2 minutes (reduced from 5 for better responsiveness)
+    const interval = setInterval(checkDueTasks, 2 * 60 * 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -211,11 +227,10 @@ export default function TodoList() {
               <button
                 onClick={saveTask}
                 disabled={loading}
-                className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${
-                  loading
+                className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${loading
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
-                }`}
+                  }`}
               >
                 {loading ? "Saving..." : "Add Task"}
               </button>
@@ -293,9 +308,8 @@ export default function TodoList() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h3
-                        className={`font-semibold text-base ${
-                          t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
-                        }`}
+                        className={`font-semibold text-base ${t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
+                          }`}
                       >
                         {t.title}
                       </h3>
