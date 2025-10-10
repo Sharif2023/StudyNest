@@ -530,11 +530,12 @@ export default function Home() {
   }, []);
   useEffect(() => {
     function handleRoomCleared() {
-      setActiveRoom(null);
+      setActiveRoom(null); // Reset active room state
     }
     window.addEventListener("activeRoomCleared", handleRoomCleared);
     return () => window.removeEventListener("activeRoomCleared", handleRoomCleared);
   }, []);
+
 
   useEffect(() => {
     const t = setInterval(() => {

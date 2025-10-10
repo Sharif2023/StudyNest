@@ -27,7 +27,8 @@ if ($conn->connect_error) {
   exit;
 }
 
-function send_response($status, $message, $data = []) {
+function send_response($status, $message, $data = [])
+{
   http_response_code($status === 'success' ? 200 : 500);
   $response = ["status" => $status, "message" => $message];
   if (!empty($data)) $response = array_merge($response, $data);
@@ -35,7 +36,8 @@ function send_response($status, $message, $data = []) {
   exit;
 }
 
-function bearerIsValid(): bool {
+function bearerIsValid(): bool
+{
   if (empty($_SERVER['HTTP_AUTHORIZATION'])) return false;
   if (stripos($_SERVER['HTTP_AUTHORIZATION'], 'Bearer ') !== 0) return false;
   $token = substr($_SERVER['HTTP_AUTHORIZATION'], 7);
@@ -49,11 +51,11 @@ $create_users_table = "
 CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(191) NOT NULL UNIQUE,
-  student_id VARCHAR(32) NULL,
-  email VARCHAR(191) NULL,
+  student_id VARCHAR(32) NOT NULL UNIQUE,
+  email VARCHAR(191) NOT NULL UNIQUE,
   bio TEXT NULL,
   profile_picture_url VARCHAR(255) NULL,
-  password_hash VARCHAR(255) NULL,
+  password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -171,101 +173,101 @@ if ($method === 'POST') {
   switch ($action) {
 
     case 'add_question': {
-      $title = trim($data['title'] ?? '');
-      $body = trim($data['body'] ?? '');
-      $tags = $data['tags'] ?? '';
-      if (is_array($tags)) $tags = implode(',', $tags);
-      $anonymous = isset($data['anonymous']) ? (int)$data['anonymous'] : 0;
-      $author = $anonymous ? 'Anonymous' : ($data['author'] ?? 'Anonymous');
-      $stmt = $conn->prepare("INSERT INTO questions (title, body, tags, user_id, anonymous, author)
+        $title = trim($data['title'] ?? '');
+        $body = trim($data['body'] ?? '');
+        $tags = $data['tags'] ?? '';
+        if (is_array($tags)) $tags = implode(',', $tags);
+        $anonymous = isset($data['anonymous']) ? (int)$data['anonymous'] : 0;
+        $author = $anonymous ? 'Anonymous' : ($data['author'] ?? 'Anonymous');
+        $stmt = $conn->prepare("INSERT INTO questions (title, body, tags, user_id, anonymous, author)
                               VALUES (?, ?, ?, ?, ?, ?)");
-      $stmt->bind_param("sssiss", $title, $body, $tags, $logged_in_user_id, $anonymous, $author);
-      $stmt->execute() ? send_response('success', 'Question added.', ['id' => $conn->insert_id])
-                       : send_response('error', 'Failed to add question: ' . $stmt->error);
-      break;
-    }
+        $stmt->bind_param("sssiss", $title, $body, $tags, $logged_in_user_id, $anonymous, $author);
+        $stmt->execute() ? send_response('success', 'Question added.', ['id' => $conn->insert_id])
+          : send_response('error', 'Failed to add question: ' . $stmt->error);
+        break;
+      }
 
-    /* ==========================================================
+      /* ==========================================================
        🆕 ADD ANSWER + CREATE NOTIFICATION
        ========================================================== */
     case 'add_answer': {
-      $author = $data['author'] ?? 'Anonymous';
-      $qid = (int)($data['question_id'] ?? 0);
-      $body = trim($data['body'] ?? '');
+        $author = $data['author'] ?? 'Anonymous';
+        $qid = (int)($data['question_id'] ?? 0);
+        $body = trim($data['body'] ?? '');
 
-      $stmt = $conn->prepare("INSERT INTO answers (question_id, body, user_id, author)
+        $stmt = $conn->prepare("INSERT INTO answers (question_id, body, user_id, author)
                               VALUES (?, ?, ?, ?)");
-      $stmt->bind_param("isis", $qid, $body, $logged_in_user_id, $author);
+        $stmt->bind_param("isis", $qid, $body, $logged_in_user_id, $author);
 
-      if ($stmt->execute()) {
-        /* 🆕 Create notification for question owner */
-        $qres = $conn->prepare("
+        if ($stmt->execute()) {
+          /* 🆕 Create notification for question owner */
+          $qres = $conn->prepare("
           SELECT q.title AS q_title, u.student_id AS target_sid, u.username AS q_author
           FROM questions q
           LEFT JOIN users u ON q.user_id = u.id
           WHERE q.id=?
         ");
-        $qres->bind_param("i", $qid);
-        $qres->execute();
-        $meta = $qres->get_result()->fetch_assoc();
-        if (!empty($meta['target_sid'])) {
-          $n_title = "New answer to your question";
-          $n_body = "{$author} replied to: {$meta['q_title']}";
-          $n_link = "/forum/";
-          $nstmt = $conn->prepare("INSERT INTO notifications (student_id, title, body, link)
+          $qres->bind_param("i", $qid);
+          $qres->execute();
+          $meta = $qres->get_result()->fetch_assoc();
+          if (!empty($meta['target_sid'])) {
+            $n_title = "New answer to your question";
+            $n_body = "{$author} replied to: {$meta['q_title']}";
+            $n_link = "/forum/";
+            $nstmt = $conn->prepare("INSERT INTO notifications (student_id, title, body, link)
                                    VALUES (?, ?, ?, ?)");
-          $nstmt->bind_param("ssss", $meta['target_sid'], $n_title, $n_body, $n_link);
-          $nstmt->execute();
-        }
+            $nstmt->bind_param("ssss", $meta['target_sid'], $n_title, $n_body, $n_link);
+            $nstmt->execute();
+          }
 
-        send_response('success', 'Answer added.');
-      } else {
-        send_response('error', 'Failed to add answer: ' . $stmt->error);
+          send_response('success', 'Answer added.');
+        } else {
+          send_response('error', 'Failed to add answer: ' . $stmt->error);
+        }
+        break;
       }
-      break;
-    }
 
     case 'vote_question': {
-      $stmt = $conn->prepare("UPDATE questions SET votes = votes + ? WHERE id = ?");
-      $stmt->bind_param("ii", $data['delta'], $data['id']);
-      $stmt->execute() ? send_response('success', 'Vote updated.')
-                       : send_response('error', 'Vote failed: ' . $stmt->error);
-      break;
-    }
+        $stmt = $conn->prepare("UPDATE questions SET votes = votes + ? WHERE id = ?");
+        $stmt->bind_param("ii", $data['delta'], $data['id']);
+        $stmt->execute() ? send_response('success', 'Vote updated.')
+          : send_response('error', 'Vote failed: ' . $stmt->error);
+        break;
+      }
 
     case 'vote_answer': {
-      $stmt = $conn->prepare("UPDATE answers SET votes = votes + ? WHERE id = ?");
-      $stmt->bind_param("ii", $data['delta'], $data['id']);
-      $stmt->execute() ? send_response('success', 'Vote updated.')
-                       : send_response('error', 'Vote failed: ' . $stmt->error);
-      break;
-    }
+        $stmt = $conn->prepare("UPDATE answers SET votes = votes + ? WHERE id = ?");
+        $stmt->bind_param("ii", $data['delta'], $data['id']);
+        $stmt->execute() ? send_response('success', 'Vote updated.')
+          : send_response('error', 'Vote failed: ' . $stmt->error);
+        break;
+      }
 
     case 'peer_review': {
-      $stmt = $conn->prepare("UPDATE answers SET helpful = helpful + 1 WHERE id = ?");
-      $stmt->bind_param("i", $data['id']);
-      $stmt->execute() ? send_response('success', 'Marked as helpful.')
-                       : send_response('error', 'Failed to mark helpful: ' . $stmt->error);
-      break;
-    }
+        $stmt = $conn->prepare("UPDATE answers SET helpful = helpful + 1 WHERE id = ?");
+        $stmt->bind_param("i", $data['id']);
+        $stmt->execute() ? send_response('success', 'Marked as helpful.')
+          : send_response('error', 'Failed to mark helpful: ' . $stmt->error);
+        break;
+      }
 
     case 'accept_answer': {
-      $conn->begin_transaction();
-      try {
-        $stmt1 = $conn->prepare("UPDATE answers SET is_accepted = 0 WHERE question_id = ?");
-        $stmt1->bind_param("i", $data['question_id']);
-        $stmt1->execute();
-        $stmt2 = $conn->prepare("UPDATE answers SET is_accepted = 1 WHERE id = ?");
-        $stmt2->bind_param("i", $data['answer_id']);
-        $stmt2->execute();
-        $conn->commit();
-        send_response('success', 'Answer accepted.');
-      } catch (mysqli_sql_exception $e) {
-        $conn->rollback();
-        send_response('error', 'Failed to accept answer: ' . $e->getMessage());
+        $conn->begin_transaction();
+        try {
+          $stmt1 = $conn->prepare("UPDATE answers SET is_accepted = 0 WHERE question_id = ?");
+          $stmt1->bind_param("i", $data['question_id']);
+          $stmt1->execute();
+          $stmt2 = $conn->prepare("UPDATE answers SET is_accepted = 1 WHERE id = ?");
+          $stmt2->bind_param("i", $data['answer_id']);
+          $stmt2->execute();
+          $conn->commit();
+          send_response('success', 'Answer accepted.');
+        } catch (mysqli_sql_exception $e) {
+          $conn->rollback();
+          send_response('error', 'Failed to accept answer: ' . $e->getMessage());
+        }
+        break;
       }
-      break;
-    }
 
     default:
       send_response('error', 'Invalid action specified.');
@@ -273,4 +275,3 @@ if ($method === 'POST') {
 }
 
 $conn->close();
-?>
