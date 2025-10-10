@@ -95,16 +95,22 @@ CREATE TABLE IF NOT EXISTS answers (
 ";
 $conn->query($create_answers_table);
 
-/* 🆕 Notifications table */
+/* 🆕 Notifications table (updated schema to match todo + reminders) */
 $create_notifications_table = "
 CREATE TABLE IF NOT EXISTS notifications (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_id VARCHAR(32) NOT NULL,
   title VARCHAR(255) NOT NULL,
-  body TEXT,
-  link VARCHAR(255),
+  message TEXT,
+  link VARCHAR(255) NULL,
+  type VARCHAR(64) DEFAULT 'general',
+  reference_id INT NULL,
+  scheduled_at DATETIME NULL,
+  sent_at DATETIME NULL,
   read_at DATETIME NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_student (student_id),
+  FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ";
 $conn->query($create_notifications_table);

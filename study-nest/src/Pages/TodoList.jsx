@@ -26,52 +26,99 @@ export default function TodoList() {
   });
   const [editingId, setEditingId] = useState(null);
   const [editingForm, setEditingForm] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const profile = JSON.parse(localStorage.getItem("studynest.profile") || "{}");
   const studentId = profile?.student_id || "—";
 
-  useEffect(() => {
+  // Load tasks
+  const loadTodos = async () => {
     if (!studentId || studentId === "—") return;
-    fetch(`${API_BASE}/todo.php?student_id=${studentId}`)
-      .then((r) => r.json())
-      .then((data) => data.ok && setTodos(data.todos));
+    try {
+      const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`);
+      const data = await res.json();
+      if (data.ok) setTodos(data.todos);
+    } catch (err) {
+      console.error("Error loading todos:", err);
+      alert("⚠️ Failed to load your to-do list. Please check your connection.");
+    }
+  };
+
+  useEffect(() => {
+    loadTodos();
   }, [studentId]);
 
+  // ----- Add Task -----
   const saveTask = async () => {
-    if (!form.title.trim()) return;
-    const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      setTodos([{ id: data.id, ...form, status: "pending" }, ...todos]);
-      setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
+    if (!form.title.trim()) {
+      alert("⚠️ Please enter a task title.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        alert("✅ Task added successfully!");
+        setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
+        await loadTodos(); // re-fetch updated list
+      } else {
+        alert("❌ Failed to add task. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Network or server error while adding task.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ----- Update Task -----
   const updateTask = async (id, updates) => {
-    const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...updates }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+    try {
+      const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+        alert("✅ Task updated successfully!");
+      } else {
+        alert("❌ Failed to update task.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Network or server error while updating task.");
     }
   };
 
+  // ----- Delete Task -----
   const deleteTask = async (id) => {
-    const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      setTodos((prev) => prev.filter((t) => t.id !== id));
+    if (!window.confirm("🗑️ Are you sure you want to delete this task?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/todo.php?student_id=${studentId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTodos((prev) => prev.filter((t) => t.id !== id));
+        alert("✅ Task deleted.");
+      } else {
+        alert("❌ Failed to delete task.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Server error while deleting task.");
     }
   };
 
@@ -87,6 +134,14 @@ export default function TodoList() {
     setEditingForm(null);
   };
 
+  // ----- Auto background reminder trigger (if no cron) -----
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch(`${API_BASE}/notify_due_todos.php`).catch(() => {});
+    }, 5 * 60 * 1000); // every 5 min
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
       <LeftNav
@@ -100,23 +155,19 @@ export default function TodoList() {
 
       <main className="pt-10 pb-16" style={{ paddingLeft: sidebarWidth }}>
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          {/* Header Title */}
+          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                To-Do List
-              </h1>
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">To-Do List</h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Organize your assignments, reports, and exams in one place.
               </p>
             </div>
           </div>
 
-          {/* Task Creation Card */}
+          {/* Add Task */}
           <div className="rounded-2xl bg-white/70 dark:bg-slate-900/80 backdrop-blur shadow-lg ring-1 ring-zinc-200 dark:ring-slate-800 p-6 mb-10 transition-all">
-            <h2 className="text-lg font-semibold mb-4 text-zinc-800 dark:text-zinc-100">
-              Add New Task
-            </h2>
+            <h2 className="text-lg font-semibold mb-4 text-zinc-800 dark:text-zinc-100">Add New Task</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <input
                 value={form.title}
@@ -159,9 +210,14 @@ export default function TodoList() {
             <div className="mt-4 flex justify-end">
               <button
                 onClick={saveTask}
-                className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white hover:from-cyan-500 hover:to-blue-500 transition-colors shadow-md"
+                disabled={loading}
+                className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
+                }`}
               >
-                Add Task
+                {loading ? "Saving..." : "Add Task"}
               </button>
             </div>
           </div>
@@ -176,33 +232,21 @@ export default function TodoList() {
 
             {todos.map((t) =>
               editingId === t.id ? (
-                <li
-                  key={t.id}
-                  className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 shadow ring-1 ring-zinc-200 dark:ring-slate-700"
-                >
+                <li key={t.id} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 shadow ring-1 ring-zinc-200 dark:ring-slate-700">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <input
                       value={editingForm.title}
-                      onChange={(e) =>
-                        setEditingForm({ ...editingForm, title: e.target.value })
-                      }
+                      onChange={(e) => setEditingForm({ ...editingForm, title: e.target.value })}
                       className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
                     />
                     <input
                       value={editingForm.description}
-                      onChange={(e) =>
-                        setEditingForm({
-                          ...editingForm,
-                          description: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setEditingForm({ ...editingForm, description: e.target.value })}
                       className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
                     />
                     <select
                       value={editingForm.type}
-                      onChange={(e) =>
-                        setEditingForm({ ...editingForm, type: e.target.value })
-                      }
+                      onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value })}
                       className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
                     >
                       <option value="default">Default</option>
@@ -216,23 +260,13 @@ export default function TodoList() {
                     <input
                       type="date"
                       value={editingForm.due_date || ""}
-                      onChange={(e) =>
-                        setEditingForm({
-                          ...editingForm,
-                          due_date: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setEditingForm({ ...editingForm, due_date: e.target.value })}
                       className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
                     />
                     <input
                       type="time"
                       value={editingForm.due_time || ""}
-                      onChange={(e) =>
-                        setEditingForm({
-                          ...editingForm,
-                          due_time: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setEditingForm({ ...editingForm, due_time: e.target.value })}
                       className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
                     />
                   </div>
@@ -260,16 +294,12 @@ export default function TodoList() {
                     <div>
                       <h3
                         className={`font-semibold text-base ${
-                          t.status === "completed"
-                            ? "line-through text-zinc-400"
-                            : "text-zinc-900 dark:text-zinc-100"
+                          t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
                         }`}
                       >
                         {t.title}
                       </h3>
-                      {t.description && (
-                        <p className="text-xs text-zinc-500">{t.description}</p>
-                      )}
+                      {t.description && <p className="text-xs text-zinc-500">{t.description}</p>}
                       <p className="text-xs text-zinc-400">
                         {t.type} • {t.due_date || "No date"} {t.due_time || ""}
                       </p>
@@ -277,11 +307,7 @@ export default function TodoList() {
                     <div className="flex gap-2">
                       <button
                         onClick={() =>
-                          updateTask(t.id, {
-                            ...t,
-                            status:
-                              t.status === "completed" ? "pending" : "completed",
-                          })
+                          updateTask(t.id, { ...t, status: t.status === "completed" ? "pending" : "completed" })
                         }
                         className="text-xs rounded-lg bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
                       >
@@ -309,9 +335,7 @@ export default function TodoList() {
           {/* Completed Tasks */}
           {todos.some((t) => t.status === "completed") && (
             <div className="mt-10">
-              <h2 className="text-lg font-semibold mb-4 text-zinc-900 dark:text-zinc-100">
-                Completed Tasks
-              </h2>
+              <h2 className="text-lg font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Completed Tasks</h2>
               <ul className="space-y-2">
                 {todos
                   .filter((t) => t.status === "completed")
