@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // ⬅️ added useLocation
 
 const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
 
-/** Get backend origin safely from API_BASE, with fallbacks. */
 function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
@@ -11,8 +10,6 @@ function getBackendOrigin() {
   } catch { }
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
 }
-
-/** Build an absolute URL that points to the backend host. */
 function toBackendUrl(url) {
   if (!url) return null;
   const ORIGIN = getBackendOrigin();
@@ -21,25 +18,15 @@ function toBackendUrl(url) {
   return ORIGIN + "/" + url.replace(/^\/+/, "");
 }
 
-const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => {
-  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-3.5 py-2 text-sm" };
-  const variants = {
-    soft:
-      "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50",
-  };
-  return (
-    <button
-      className={`${sizes[size]} rounded-lg font-medium transition-colors ${variants[variant]} ${className}`}
-      {...props}
-    />
-  );
-};
-
 export default function Header({ sidebarWidth = 72 }) {
+  const location = useLocation(); // ⬅️ detect current route
+  const navigate = useNavigate();
+
+  // ==================== existing header logic (profile, notif, SSE, etc.) ====================
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
-
   const [profile, setProfile] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("studynest.profile")) || null;
@@ -54,168 +41,10 @@ export default function Header({ sidebarWidth = 72 }) {
       return null;
     }
   });
-
-  const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const navigate = useNavigate();
-
-  /* ==================== Sync profile/auth between tabs ==================== */
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === "studynest.profile") {
-        try {
-          setProfile(JSON.parse(e.newValue) || null);
-        } catch {
-          setProfile(null);
-        }
-      }
-      if (e.key === "studynest.auth") {
-        try {
-          setAuth(JSON.parse(e.newValue) || null);
-        } catch {
-          setAuth(null);
-        }
-      }
-    };
-    const onLocalProfile = () => {
-      try {
-        setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null);
-      } catch { }
-      try {
-        setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null);
-      } catch { }
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("studynest:profile-updated", onLocalProfile);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("studynest:profile-updated", onLocalProfile);
-    };
-  }, []);
-
-  /* ==================== Fetch latest profile once ==================== */
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
-        const text = await res.text();
-        let j = null;
-        try {
-          j = JSON.parse(text);
-        } catch {
-          console.warn("profile.php non-JSON:", text);
-        }
-        const incoming = j?.ok ? j.profile : j;
-        if (incoming && (incoming.id || incoming.student_id || incoming.email)) {
-          setProfile(incoming);
-          try {
-            localStorage.setItem("studynest.profile", JSON.stringify(incoming));
-          } catch { }
-        }
-      } catch (e) {
-        console.warn("Profile fetch failed:", e);
-      }
-    })();
-  }, []);
-
-  /* ==================== Real-Time Notifications via SSE ==================== */
-  useEffect(() => {
-    const sid = profile?.student_id || auth?.student_id;
-    if (!sid) return;
-
-    // Initial fetch for existing notifications
-    (async () => {
-      try {
-        const url = `${API_BASE}/notifications.php?action=list&student_id=${encodeURIComponent(sid)}&limit=30`;
-        const res = await fetch(url, { credentials: "include" });
-        const j = await res.json().catch(() => null);
-        if (j?.ok) {
-          setNotifications(j.notifications || []);
-          setUnreadCount(j.unread || 0);
-        }
-      } catch { }
-    })();
-
-    // Setup SSE Stream
-    const es = new EventSource(
-      `${API_BASE}/notifications.php?action=stream&student_id=${encodeURIComponent(sid)}`,
-      { withCredentials: true }
-    );
-
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === "new_notification" && data.notification) {
-          setNotifications((prev) => [data.notification, ...prev]);
-          setUnreadCount((c) => c + 1);
-          // Optional: play subtle sound
-          // new Audio("/notification.mp3").play().catch(() => {});
-        }
-      } catch (err) {
-        console.warn("SSE parse error:", err);
-      }
-    };
-
-    es.onerror = () => {
-      console.log("SSE connection lost, will auto-reconnect...");
-    };
-
-    return () => es.close();
-  }, [profile?.student_id, auth?.student_id]);
-
-  /* ==================== Mark notifications read ==================== */
-  async function markAllRead() {
-    const sid = profile?.student_id || auth?.student_id;
-    if (!sid) return;
-    try {
-      await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ student_id: sid, mark_all: true }),
-      });
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
-      );
-      setUnreadCount(0);
-    } catch { }
-  }
-
-  function handleNotificationClick(n) {
-    markAllRead();
-    if (n.link) navigate(n.link);
-    setNotifOpen(false);
-  }
-
-  /* ==================== Close dropdowns on click/ESC ==================== */
-  useEffect(() => {
-    function onDocClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
-    }
-    function onKey(e) {
-      if (e.key === "Escape") {
-        setProfileOpen(false);
-        setNotifOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, []);
-
-  /* ==================== Logout ==================== */
-  const handleLogout = () => {
-    localStorage.removeItem("studynest.auth");
-    localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
-    navigate("/login");
-  };
+  // ... (keep all your existing useEffects here: profile fetch, SSE, markAllRead, etc.)
 
   const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
   const profile_pic = rawPic
@@ -224,19 +53,187 @@ export default function Header({ sidebarWidth = 72 }) {
   const email = profile?.email || auth?.email || "";
   const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
 
-  /* ==================== Render ==================== */
+  // ==================== NEW: Dynamic Left Section ====================
+  const renderLeftSection = () => {
+    const path = location.pathname;
+
+    // Home / default
+    if (path === "/" || path.startsWith("/home")) {
+      return (
+        <Link
+          to="/home"
+          className="font-bold text-white text-2xl hover:text-cyan-300 transition"
+        >
+          StudyNest
+        </Link>
+      );
+    }
+
+    // Notes
+    if (path.startsWith("/notes")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Lecture Notes</h1>
+          <p className="text-sm text-slate-300">
+            Browse, upload, and manage your notes.
+          </p>
+        </div>
+      );
+    }
+
+    // Forum
+    if (path.startsWith("/forum")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Q&A Forum</h1>
+          <p className="text-sm text-slate-300">
+            Ask questions, review peers, and vote on the best answers.
+          </p>
+        </div>
+      );
+    }
+
+    // Study Rooms
+    if (path.startsWith("/rooms")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Study Rooms</h1>
+          <p className="text-sm text-slate-300">
+            Meet on video, chat, and collaborate live.
+          </p>
+        </div>
+      );
+    }
+
+    // Search
+    if (path.startsWith("/search")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Search & Tags</h1>
+          <p className="text-sm text-slate-300">
+            Explore notes, forums, and resources across StudyNest by topic.
+          </p>
+        </div>
+      );
+    }
+
+    // Resources
+    if (path.startsWith("/resources")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Resource Library</h1>
+          <p className="text-sm text-slate-300">
+            Books, slides, past papers, and study guides from your peers.
+          </p>
+        </div>
+      );
+    }
+
+    // To-do list
+    if (path.startsWith("/to-do-list")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">To-Do List</h1>
+          <p className="text-sm text-slate-300">
+            Organize your academic tasks and reminders.
+          </p>
+        </div>
+      );
+    }
+
+    // AI Check
+    if (path.startsWith("/ai-check")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">AI File Check</h1>
+          <p className="text-sm text-slate-300">
+            Upload a file to get summary, key points, study tips, and more.
+          </p>
+        </div>
+      );
+    }
+
+    // AI Usage Checker
+    if (path.startsWith("/ai-usage")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">AI Usage Checker</h1>
+          <p className="text-sm text-slate-300">
+            Review your writing for AI involvement.
+          </p>
+        </div>
+      );
+    }
+
+    // Humanize Writing
+    if (path.startsWith("/humanize")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Humanize Writing</h1>
+          <p className="text-sm text-slate-300">
+            Refine AI-generated content to sound natural.
+          </p>
+        </div>
+      );
+    }
+
+    // Messages
+    if (path.startsWith("/messages")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Messages</h1>
+          <p className="text-sm text-slate-300">
+            Chat with classmates and peers.
+          </p>
+        </div>
+      );
+    }
+
+    // Groups
+    if (path.startsWith("/groups") || path.startsWith("/group")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Study Groups</h1>
+          <p className="text-sm text-slate-300">
+            Collaborate with others in group chats.
+          </p>
+        </div>
+      );
+    }
+
+    // Profile
+    if (path.startsWith("/profile")) {
+      return (
+        <div>
+          <h1 className="text-xl font-bold text-white">Your Profile</h1>
+          <p className="text-sm text-slate-300">
+            Manage your personal info and settings.
+          </p>
+        </div>
+      );
+    }
+
+    // Default fallback
+    return (
+      <Link
+        to="/home"
+        className="font-bold text-white text-2xl hover:text-cyan-300 transition"
+      >
+        StudyNest
+      </Link>
+    );
+  };
+
+
+  // ==================== Render ====================
   return (
     <div
       className="sticky top-0 z-40 backdrop-blur bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700 shadow-sm"
       style={{ paddingLeft: sidebarWidth }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-3">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <Link to="/home" className="font-bold text-white hidden sm:block hover:text-cyan-300 transition text-2xl">
-            Study Nest
-          </Link>
-        </div>
+        {/* Left Part: Dynamic */}
+        {renderLeftSection()}
 
         {/* Search */}
         {/* <div className="relative max-w-xl w-full">

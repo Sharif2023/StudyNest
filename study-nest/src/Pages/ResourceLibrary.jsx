@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 // Since we don't have access to the external files, we'll create the components here
@@ -192,20 +193,10 @@ export default function App() {
         sidebarWidth={sidebarWidth}
       />
 
-      {/* Header (no filters here anymore) */}
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Shared Resource Library</h1>
-            <p className="text-sm text-white">Books, slides, past papers, and study guides from your peers.</p>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Header */}
+      <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
-          </div>
-        </div>
-      </header>
-
-      {/* Filters — moved to body */}
+      {/* Filters */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
           <div className="relative w-full md:max-w-md">

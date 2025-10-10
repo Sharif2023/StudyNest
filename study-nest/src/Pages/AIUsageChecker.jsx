@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+import Header from "../Components/Header";
 
 export default function AIUsageChecker() {
     const navigate = useNavigate();
@@ -73,14 +74,7 @@ export default function AIUsageChecker() {
                 sidebarWidth={sidebarWidth}
             />
             {/* Header */}
-            <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold text-white">AI Usage Checker</h1>
-                        <p className="text-sm text-white">Check your AI usage %, Make it Huminize version.</p>
-                    </div>
-                </div>
-            </header>
+            <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
             <div className="mx-auto max-w-2xl px-6 py-10 space-y-6">
                 <div className="rounded-2xl border-2 border-dashed border-zinc-300 p-6 text-center bg-white">

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useWebRTC } from "../realtime/useWebRTC";
+import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
@@ -64,14 +65,7 @@ export function RoomsLobby() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-6">
-          <div className="flex-shrink-0">
-            <h1 className="text-xl font-bold tracking-tight text-white">Study Rooms</h1>
-            <p className="text-sm text-white/70 hidden sm:block">Meet on video, chat, and collaborate live.</p>
-          </div>
-        </div>
-      </header>
+      <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
       {/* Create */}
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 mt-4">

@@ -422,23 +422,24 @@ export default function Messages() {
     );
 
     return (
-        <div className="bg-slate-900 text-slate-100 min-h-screen">
+        <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
             <LeftNav sidebarWidth={72} />
             <Header sidebarWidth={72} />
 
             <div className="flex" style={{ paddingLeft: 72, height: "calc(100vh - 64px)" }}>
                 {/* Left: conversations + search */}
                 <aside className="w-80 border-r border-slate-700 p-3 overflow-y-auto">
-                    <div className="text-sm font-semibold mb-2">Chats</div>
+                    <div className="text-2xl font-semibold mb-2">Chats</div>
 
                     <div className="flex gap-2 mb-2">
                         <input
-                            className="flex-1 bg-slate-800/70 border border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                            className="flex-1 bg-gradient-to-r from-cyan-950 via-slate-900 to-blue-950 border border-slate-800 text-white placeholder-cyan-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400/60 focus:border-cyan-500 transition-all"
                             placeholder="Search users by username, email, ID…"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => (e.key === "Enter" ? searchUsers() : null)}
+                            onKeyDown={(e) => (e.key === 'Enter' ? searchUsers() : null)}
                         />
+
                         <button
                             onClick={searchUsers}
                             disabled={searching}
@@ -457,7 +458,7 @@ export default function Messages() {
                                     <button
                                         key={u.id}
                                         onClick={() => startChatWith(u.id)}
-                                        className="w-full text-left p-2 rounded-lg hover:bg-slate-800/70 transition"
+                                        className="w-full text-left p-2 rounded-lg hover:bg-slate-300 transition"
                                         title={u.email}
                                     >
                                         <div className="text-sm">
@@ -479,22 +480,40 @@ export default function Messages() {
                             <button
                                 key={c.conversation_id}
                                 onClick={() => openConversation(c.conversation_id)}
-                                className={`w-full text-left p-2 rounded-lg hover:bg-slate-800/70 transition ${activeCid === c.conversation_id ? "bg-slate-800 ring-1 ring-cyan-500/40" : ""
+                                className={`w-full text-left p-2 rounded-lg transition ${activeCid === c.conversation_id
+                                        ? "bg-cyan-800 ring-1 ring-cyan-600/40"
+                                        : "hover:bg-slate-300"
                                     }`}
                             >
                                 <div className="flex items-center justify-between gap-2">
-                                    <div className="text-sm">{labelForUser(c.other_user_id, c)}</div>
+                                    {/* 👇 Username text color changes when active */}
+                                    <div
+                                        className={`text-lg font-medium ${activeCid === c.conversation_id ? "text-white" : "text-slate-800"
+                                            }`}
+                                    >
+                                        {labelForUser(c.other_user_id, c)}
+                                    </div>
+
                                     {c.unread > 0 && (
-                                        <span className="text-xs bg-cyan-600/80 px-2 py-0.5 rounded-full">{c.unread}</span>
+                                        <span className="text-xs bg-cyan-600/80 px-2 py-0.5 rounded-full text-white">
+                                            {c.unread}
+                                        </span>
                                     )}
                                 </div>
-                                <div className="text-xs text-slate-400 line-clamp-1">
+
+                                <div
+                                    className={`text-xs line-clamp-1 ${activeCid === c.conversation_id ? "text-cyan-100" : "text-slate-400"
+                                        }`}
+                                >
                                     {c.last_message || "No messages yet"}
                                 </div>
                             </button>
                         ))}
+
                         {conversations.length === 0 && results.length === 0 && (
-                            <div className="text-xs text-slate-400">No conversations yet. Try searching above ➜</div>
+                            <div className="text-xs text-slate-400">
+                                No conversations yet. Try searching above ➜
+                            </div>
                         )}
                     </div>
                 </aside>
@@ -588,7 +607,7 @@ export default function Messages() {
                     <div className="border-t border-slate-700 p-3 flex flex-wrap gap-2 items-center">
                         <input
                             ref={composerRef}
-                            className="flex-1 min-w-[220px] bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                            className="flex-1 min-w-[220px] bg-slate-350 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
                             placeholder={activeCid ? "Write a message…" : "Select a conversation first"}
                             value={text}
                             onChange={(e) => setText(e.target.value)}
@@ -615,8 +634,8 @@ export default function Messages() {
                             type="button"
                             onClick={() => (isRecording ? stopRecordingAndSend() : startRecording())}
                             className={`h-10 px-4 rounded-full text-white shadow-md focus:outline-none focus:ring-2 grid place-items-center ${isRecording
-                                    ? "bg-red-600 hover:bg-red-500 focus:ring-red-400/60"
-                                    : "bg-gradient-to-br from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 focus:ring-pink-400/60"
+                                ? "bg-red-600 hover:bg-red-500 focus:ring-red-400/60"
+                                : "bg-gradient-to-br from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 focus:ring-pink-400/60"
                                 }`}
                             disabled={!activeCid || loading}
                             title={isRecording ? "Stop & send" : "Record voice note"}

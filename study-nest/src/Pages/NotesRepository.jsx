@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
@@ -129,14 +130,9 @@ export default function NotesRepository() {
         setAnonymous={setAnonymous}
         sidebarWidth={sidebarWidth}
       />
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Lecture Notes</h1>
-            <p className="text-sm text-white">Upload, organize, and version your course notes.</p>
-          </div>
-        </div>
-      </header>
+      
+      {/* Header */}
+      <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
       {/* Search + Filters + Upload */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">

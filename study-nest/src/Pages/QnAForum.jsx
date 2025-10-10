@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+import Header from "../Components/Header";
 
 /**
  * StudyNest — Q&A Forum (Peer Review & Voting)
@@ -353,14 +354,7 @@ export default function QnAForum() {
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Q&A Forum</h1>
-            <p className="text-sm text-white">Ask questions, review peers, and vote on the best answers.</p>
-          </div>
-        </div>
-      </div>
+      <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
       {/* Search + Sort + Ask */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">

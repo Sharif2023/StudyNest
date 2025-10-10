@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+import Header from "../Components/Header";
 
 /**
  * StudyNest — Tagging & Topic Search (Live API version)
@@ -153,16 +154,7 @@ export default function TagSearch() {
         sidebarWidth={sidebarWidth}
       />
 
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg transition-all duration-300 ease-in-out">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            Search & Tags
-          </h1>
-          <p className="text-sm text-white">
-            Find anything across StudyNest by topic.
-          </p>
-        </div>
-      </header>
+      <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
       {/* Search bar + filters */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
