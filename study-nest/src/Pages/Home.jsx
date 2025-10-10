@@ -915,6 +915,22 @@ export default function Home() {
                 <Pomodoro />
 
                 <Card className="p-4">
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">
+                    Study Streak
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">🔥</div>
+                    <div>
+                      <div className="text-2xl font-semibold">12 days</div>
+                      <div className="text-xs text-slate-400">Keep it going! +20 pts/day</div>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <ProgressBar value={57} />
+                  </div>
+                </Card>
+
+                <Card className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-slate-300 uppercase">
                       Calendar & Todo
@@ -939,22 +955,6 @@ export default function Home() {
                       <span className="text-xs text-slate-400">Fri 10:00 AM</span>
                     </li>
                   </ul>
-                </Card>
-
-                <Card className="p-4">
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">
-                    Study Streak
-                  </h3>
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">🔥</div>
-                    <div>
-                      <div className="text-2xl font-semibold">12 days</div>
-                      <div className="text-xs text-slate-400">Keep it going! +20 pts/day</div>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <ProgressBar value={57} />
-                  </div>
                 </Card>
 
                 <Card className="p-4">
