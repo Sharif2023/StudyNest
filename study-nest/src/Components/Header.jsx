@@ -103,7 +103,7 @@ export default function Header({ sidebarWidth = 72 }) {
   }, []);
 
   /* ===== Real-Time Notifications (SSE) ===== */
-  useEffect(() => {
+  /* useEffect(() => {
     const sid = profile?.student_id || auth?.student_id;
     if (!sid) return;
 
@@ -163,10 +163,10 @@ export default function Header({ sidebarWidth = 72 }) {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (es) es.close();
     };
-  }, [profile?.student_id, auth?.student_id]);
+  }, [profile?.student_id, auth?.student_id]); */
 
   /* ===== Mark all notifications read ===== */
-  async function markAllRead() {
+  /* async function markAllRead() {
     const sid = profile?.student_id || auth?.student_id;
     if (!sid) return;
 
@@ -194,9 +194,9 @@ export default function Header({ sidebarWidth = 72 }) {
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
     }
-  }
+  } */
 
-  function handleNotificationClick(n) {
+  /* function handleNotificationClick(n) {
     // Don't mark as read here - it's already handled by markAllRead when dropdown opens
     // Or mark individual notification if needed
     if (!n.read_at) {
@@ -217,7 +217,7 @@ export default function Header({ sidebarWidth = 72 }) {
       navigate(n.link);
     }
     setNotifOpen(false);
-  }
+  } */
 
   /* ===== Close dropdowns on click outside / ESC ===== */
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function Header({ sidebarWidth = 72 }) {
           </button>
 
           {/* Notifications */}
-          <div className="relative" ref={notifRef}>
+          {/* <div className="relative" ref={notifRef}>
             <button
               className="relative text-slate-300 hover:text-cyan-300 rounded-lg p-1.5 transition"
               onClick={() => {
@@ -376,7 +376,7 @@ export default function Header({ sidebarWidth = 72 }) {
                 </ul>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Profile Dropdown */}
           <div className="relative" ref={profileRef}>
