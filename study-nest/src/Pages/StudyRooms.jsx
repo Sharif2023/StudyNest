@@ -352,6 +352,7 @@ export function StudyRoom() {
   const [sharing, setSharing] = useState(false);
   const [room, setRoom] = useState(null);
   const [ending, setEnding] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -488,6 +489,12 @@ export function StudyRoom() {
     }
   }
 
+  function toggleRecord() {
+    setRecording(prev => !prev);
+    // Add your recording logic here
+    console.log("Recording:", !recording);
+  }
+
   function toggleFullTile(tileId) {
     const el = document.getElementById(tileId);
     if (!el) return;
@@ -517,7 +524,7 @@ export function StudyRoom() {
   }, [rtc]);
 
   return (
-    <main className="min-h-screen bg-zinc-950">
+    <main className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-20 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between text-zinc-200">
@@ -580,20 +587,91 @@ export function StudyRoom() {
         </div>
       </div>
 
-      {/* Layout: video grid + sidebar */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid gap-4 lg:grid-cols-3">
-        {/* Video grid */}
-        {/* Video area (Screens on top, People below) */}
-        <section className="lg:col-span-2">
-          <RoomVideoWall
-            streams={streams}
-            participants={participants}
-            mic={mic}
-            toggleFullTile={toggleFullTile}
-          />
+      {/* Main content area */}
+      <div className="flex-1 overflow-auto">
+        {/* Layout: video grid + sidebar */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid gap-4 lg:grid-cols-3">
+          {/* Video grid */}
+          {/* Video area (Screens on top, People below) */}
+          <section className="lg:col-span-2">
+            <RoomVideoWall
+              streams={streams}
+              participants={participants}
+              mic={mic}
+              toggleFullTile={toggleFullTile}
+            />
+          </section>
 
-          {/* Controls (unchanged) */}
-          <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
+          {/* Sidebar: chat & participants */}
+          <aside className="space-y-4">
+            <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-zinc-100">Chat</h3>
+                <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={anon}
+                    onChange={(e) => setAnon(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900"
+                  />
+                  Anonymous
+                </label>
+              </div>
+              <ul className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
+                {chat.map((m) => (
+                  <li
+                    key={m.id}
+                    className={
+                      "rounded-xl px-3 py-2 text-sm " +
+                      (m.self ? "bg-emerald-600 text-white ml-8" : "bg-zinc-800 text-zinc-200 mr-8")
+                    }
+                  >
+                    <div className="text-[10px] opacity-70">
+                      {m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div className="break-words">{m.text}</div>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  value={msg}
+                  onChange={(e) => setMsg(e.target.value)}
+                  placeholder="Type a message"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+                <button onClick={send} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                  Send
+                </button>
+              </div>
+            </div>
+
+            {/* Participants List */}
+            <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
+              <h3 className="text-sm font-semibold text-zinc-100">Participants ({participants.length})</h3>
+              <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                {participants.map((p) => (
+                  <li key={p.id} className="flex items-center gap-2">
+                    <span className={`inline-block h-2 w-2 rounded-full ${p.state === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`} />
+                    {p.self ? "You" : p.name || "Student"}
+                    {p.state === 'joining' && !p.self && (
+                      <span className="text-xs text-amber-400">(joining...)</span>
+                    )}
+                    {p.self && hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+                    {!p.self && p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      {/* Sticky Controls at Bottom */}
+      <div className="sticky bottom-0 z-10 border-t border-zinc-800/80 bg-zinc-950/90 backdrop-blur py-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center gap-4">
             <ToggleButton on={mic} onClick={() => setMic((s) => !s)} label={mic ? "Mute" : "Unmute"}>
               {mic ? <MicIcon /> : <MicOffIcon />}
             </ToggleButton>
@@ -603,6 +681,32 @@ export function StudyRoom() {
             <ToggleButton on={sharing} onClick={toggleShare} label={sharing ? "Stop sharing" : "Share screen"}>
               <ScreenIcon />
             </ToggleButton>
+            
+            {/* Record Button in the Middle */}
+            <button
+              onClick={toggleRecord}
+              className={
+                "rounded-xl px-4 py-2 text-sm font-semibold transition-colors " +
+                (recording
+                  ? "bg-rose-600 text-white hover:bg-rose-700"
+                  : "bg-zinc-800 text-zinc-100 hover:bg-zinc-700")
+              }
+            >
+              <div className="flex items-center gap-2">
+                {recording ? (
+                  <>
+                    <div className="h-3 w-3 rounded-sm bg-white"></div>
+                    <span>Stop Recording</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-3 w-3 rounded-full bg-rose-500"></div>
+                    <span>Record</span>
+                  </>
+                )}
+              </div>
+            </button>
+
             <button
               onClick={() => {
                 setHand((s) => {
@@ -620,71 +724,7 @@ export function StudyRoom() {
               ✋ {hand ? "Lower hand" : "Raise hand"}
             </button>
           </div>
-        </section>
-
-        {/* Sidebar: chat & participants */}
-        <aside className="space-y-4">
-          <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-100">Chat</h3>
-              <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={anon}
-                  onChange={(e) => setAnon(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900"
-                />
-                Anonymous
-              </label>
-            </div>
-            <ul className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
-              {chat.map((m) => (
-                <li
-                  key={m.id}
-                  className={
-                    "rounded-xl px-3 py-2 text-sm " +
-                    (m.self ? "bg-emerald-600 text-white ml-8" : "bg-zinc-800 text-zinc-200 mr-8")
-                  }
-                >
-                  <div className="text-[10px] opacity-70">
-                    {m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                  <div className="break-words">{m.text}</div>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                value={msg}
-                onChange={(e) => setMsg(e.target.value)}
-                placeholder="Type a message"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-              />
-              <button onClick={send} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                Send
-              </button>
-            </div>
-          </div>
-
-          {/* Participants List */}
-          <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
-            <h3 className="text-sm font-semibold text-zinc-100">Participants ({participants.length})</h3>
-            <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-              {participants.map((p) => (
-                <li key={p.id} className="flex items-center gap-2">
-                  <span className={`inline-block h-2 w-2 rounded-full ${p.state === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`} />
-                  {p.self ? "You" : p.name || "Student"}
-                  {p.state === 'joining' && !p.self && (
-                    <span className="text-xs text-amber-400">(joining...)</span>
-                  )}
-                  {p.self && hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
-                  {!p.self && p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
+        </div>
       </div>
     </main>
   );
