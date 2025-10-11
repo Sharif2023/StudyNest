@@ -126,6 +126,33 @@ const qaList = [
   },
 ];
 
+const getDayAndDate = (dateString) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Check if it's today
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  }
+
+  // Check if it's tomorrow
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return 'Tomorrow';
+  }
+
+  // Check if it's within the next 6 days
+  const diffTime = date - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays >= 2 && diffDays <= 6) {
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  }
+
+  // For dates further in the future, show the date
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 const leaderboard = [
   { id: "s1", name: "Ayesha", points: 1280, streak: 17 },
   { id: "s2", name: "Siam", points: 1100, streak: 15 },
@@ -429,6 +456,50 @@ export default function Home() {
   const [qaList, setQaList] = useState([]);
   const [resourceCategories, setResourceCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [todoItems, setTodoItems] = useState([]);
+
+  // Fetch Todo data (use the correct API URL for fetching real todo data)
+  // Fetch Todo data
+  useEffect(() => {
+    const fetchTodoData = async () => {
+      try {
+        // Get user profile to get user_id
+        const profileStr = localStorage.getItem("studynest.profile");
+        const profile = profileStr ? JSON.parse(profileStr) : {};
+        const userId = profile?.id;
+
+        if (!userId) {
+          console.log("No user ID found, skipping todo fetch");
+          return;
+        }
+
+        const response = await fetch(`http://localhost/StudyNest/study-nest/src/api/todo.php?user_id=${userId}`, {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.todos) {
+            // Filter to only show pending tasks in the home preview
+            const pendingTodos = data.todos
+              .filter(todo => todo.status === 'pending')
+              .sort((a, b) => new Date(a.due_date || '9999-12-31') - new Date(b.due_date || '9999-12-31'));
+
+            setTodoItems(pendingTodos);
+          } else {
+            console.error('Error in todo response:', data.error);
+          }
+        } else {
+          console.error('Error fetching todo data:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching todo data:', error);
+      }
+    };
+
+    fetchTodoData();
+  }, []);
 
   // Add these useEffect hooks for data fetching
   useEffect(() => {
@@ -932,28 +1003,32 @@ export default function Home() {
 
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-slate-300 uppercase">
-                      Calendar & Todo
-                    </h3>
-                    <Link to="/calendar">
-                      <Button variant="soft" size="sm">
-                        Open
-                      </Button>
+                    <h3 className="text-sm font-semibold text-slate-300 uppercase">To-Do List</h3>
+                    <Link to="/to-do-list">
+                      <Button variant="soft" size="sm">Open</Button>
                     </Link>
                   </div>
                   <ul className="space-y-2">
-                    <li className="flex items-center justify-between text-sm">
-                      <div className="truncate max-w-[60%]">CSE 220 – Homework 4</div>
-                      <span className="text-xs text-slate-400">Today 9:00 PM</span>
-                    </li>
-                    <li className="flex items-center justify-between text-sm">
-                      <div className="truncate max-w-[60%]">DBMS reading – Index Trees</div>
-                      <span className="text-xs text-slate-400">Tomorrow 8:00 AM</span>
-                    </li>
-                    <li className="flex items-center justify-between text-sm">
-                      <div className="truncate max-w-[60%]">EEE 205 – Quiz</div>
-                      <span className="text-xs text-slate-400">Fri 10:00 AM</span>
-                    </li>
+                    {todoItems.slice(0, 3).map((item) => (
+                      <li key={item.id} className="flex items-center justify-between text-sm">
+                        <div className={`truncate max-w-[60%] ${item.status === 'completed' ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                          {item.title}
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {item.due_date ? getDayAndDate(item.due_date) : 'No date'}
+                        </span>
+                      </li>
+                    ))}
+                    {todoItems.length === 0 && (
+                      <div className="text-sm text-slate-400 text-center py-4">
+                        No upcoming tasks.
+                      </div>
+                    )}
+                    {todoItems.length > 3 && (
+                      <div className="text-xs text-slate-400 text-center pt-2">
+                        +{todoItems.length - 3} more tasks
+                      </div>
+                    )}
                   </ul>
                 </Card>
 
