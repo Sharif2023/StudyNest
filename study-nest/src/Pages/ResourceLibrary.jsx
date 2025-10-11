@@ -293,15 +293,22 @@ function Select({ label, value, onChange, options }) {
 
 function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
   const isFile = item.src_type === "file";
+  const isRecording = item.kind === "recording";
   const url = item.url || "";
   const isPdf = url.toLowerCase().endsWith(".pdf");
   const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+  const isVideo = isRecording || url.match(/\.(mp4|webm|mov)$/i);
 
   return (
     <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition">
       {/* ---------- File / Preview thumbnail ---------- */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-zinc-50 grid place-items-center">
-        {isFile && isImage ? (
+        {isRecording ? (
+          <div className="flex flex-col items-center text-zinc-400">
+            <VideoIcon className="h-10 w-10" />
+            <span className="mt-1 text-xs font-medium">Recording</span>
+          </div>
+        ) : isFile && isImage ? (
           <img
             src={url}
             alt={item.title}
@@ -331,7 +338,7 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
           className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
         >
           <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">
-            {isFile ? "Preview" : "Open"}
+            {isRecording ? "Play" : isFile ? "Preview" : "Open"}
           </span>
         </button>
       </div>
@@ -481,6 +488,14 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
         </div>
       </div>
     </article>
+  );
+}
+
+function VideoIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
+      <path fill="currentColor" d="M17 10.5V7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z" />
+    </svg>
   );
 }
 
@@ -689,3 +704,4 @@ function FileIcon(props) { return (<svg viewBox="0 0 24 24" className="h-10 w-10
 
 /* -------------------- Utils -------------------- */
 function uniq(arr) { return [...new Set(arr.filter(Boolean))]; }
+

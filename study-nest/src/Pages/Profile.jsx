@@ -39,18 +39,37 @@ export default function Profile() {
   const displayName = (profile?.name && profile.name.trim())
     || (auth?.name && auth.name.trim())
     || "Student";
+
+  const profile_pic = profile?.profile_picture_url || auth?.profile_picture_url;
   // On mount, refresh profile from backend (session-based)
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+        const r = await fetch(`${API_BASE}/profile.php`, {
+          credentials: "include",
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (r.status === 401) {
+          console.error("Authentication failed - Please log in again");
+          return;
+        }
+
+        if (!r.ok) {
+          throw new Error(`HTTP error! status: ${r.status}`);
+        }
+
         const j = await r.json();
         const p = j?.ok ? j.profile : j;
         if (p) {
           setProfile(p);
           localStorage.setItem("studynest.profile", JSON.stringify(p));
         }
-      } catch { /* non-fatal */ }
+      } catch (e) {
+        console.error("Profile fetch error:", e);
+      }
     })();
   }, []);
 
@@ -101,12 +120,12 @@ export default function Profile() {
           {/* === Profile Identity Card === */}
           <section className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 shadow-md backdrop-blur-lg p-6 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-              {/* Profile avatar */}
+              {/* Profile avatar - USE profile_pic instead of user.profile_picture_url */}
               <div className="flex items-center gap-5">
-                <profile_picture url={user.profile_picture_url} name={user.name} size={72} />
+                <ProfilePicture url={profile_pic} name={displayName} size={72} />
                 <div>
                   <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {profile?.name || user.name || "Student"}
+                    {displayName}
                   </h1>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {profile?.email || auth?.email || "—"}
@@ -179,10 +198,6 @@ export default function Profile() {
                 <Overview
                   user={user}
                   displayName={displayName}
-                  notes={myNotes}
-                  resources={myResources}
-                  rooms={myRooms}
-                  bookmarks={bookmarks}
                 />
               )}
               {tab === "edit" && <EditProfile user={user} onChange={updateUser} />}
@@ -197,7 +212,7 @@ export default function Profile() {
               )}
               {tab === "bookmarks" && <Bookmarks />}
               {tab === "content" && (
-                <MyContent notes={myNotes} resources={myResources} rooms={myRooms} />
+                <MyContent />
               )}
               {tab === "security" && (
                 <Security
@@ -228,8 +243,20 @@ export default function Profile() {
 /* -------------------- Sections -------------------- */
 function Overview({ user, displayName }) {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
-  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [] });
+  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [], recordings: [] });
+  const [counts, setCounts] = useState({ notes: 0, resources: 0, rooms: 0, questions: 0, recordings: 0, bookmarks: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Get profile data from localStorage like Header.jsx does
+  const [profile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
+  });
+  const [auth] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
+  });
+
+  // Use profile picture from profile data
+  const profile_pic = profile?.profile_picture_url || auth?.profile_picture_url;
 
   useEffect(() => {
     async function fetchOverview() {
@@ -238,20 +265,44 @@ function Overview({ user, displayName }) {
         const res = await fetch(`${API_BASE}/profile.php?content=1`, {
           credentials: "include",
         });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
         const json = await res.json();
+        console.log("Overview API response:", json); // Debug log
+
         if (json.ok && json.content) {
           setData(json.content);
+
+          // Update counts based on the actual data received
+          setCounts({
+            notes: json.content.notes?.length || 0,
+            resources: json.content.resources?.length || 0,
+            recordings: json.content.recordings?.length || 0,
+            rooms: json.content.rooms?.length || 0,
+            questions: json.content.questions?.length || 0,
+            bookmarks: json.content.bookmarks?.length || 0,
+          });
         } else {
           console.warn("Overview fetch failed:", json);
+          // Set empty counts on failure
+          setCounts({ notes: 0, resources: 0, recordings: 0, rooms: 0, questions: 0, bookmarks: 0 });
         }
       } catch (err) {
         console.error("Error loading overview:", err);
+        // Set empty counts on error
+        setCounts({ notes: 0, resources: 0, recordings: 0, rooms: 0, questions: 0, bookmarks: 0 });
       } finally {
         setLoading(false);
       }
     }
     fetchOverview();
   }, []);
+
+  // Use counts directly instead of recalculating
+  const { notes, resources, recordings, rooms, questions, bookmarks } = counts;
 
   if (loading) {
     return (
@@ -261,16 +312,11 @@ function Overview({ user, displayName }) {
     );
   }
 
-  const totalNotes = data.notes.length;
-  const totalResources = data.resources.length;
-  const totalRooms = data.rooms.length;
-  const totalQuestions = data.questions.length;
-
   return (
     <section className="space-y-6">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex items-start gap-4">
-          <profile_picture url={user.profile_picture_url} name={user.name} size={56} />
+          <ProfilePicture url={profile_pic} name={displayName} size={56} />
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               Welcome back, <span className="text-cyan-500">{displayName}</span> 👋
@@ -304,30 +350,36 @@ function Overview({ user, displayName }) {
       </div>
 
       {/* === Stat Cards Section === */}
-      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="My Notes"
-          value={totalNotes}
+          value={notes}
           link="/notes"
-          className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
         />
         <StatCard
           label="My Resources"
-          value={totalResources}
+          value={resources}
           link="/resources"
-          className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+        <StatCard
+          label="My Recordings"
+          value={recordings}
+          link="/resources?kind=recording"
         />
         <StatCard
           label="My Rooms"
-          value={totalRooms}
+          value={rooms}
           link="/rooms"
-          className="bg-gradient-to-br from-cyan-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
         />
         <StatCard
           label="My Questions"
-          value={totalQuestions}
+          value={questions}
           link="/forum"
-          className="bg-gradient-to-br from-indigo-50 to-cyan-50 dark:from-slate-800 dark:to-slate-900 border border-zinc-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl"
+        />
+        <StatCard
+          label="Bookmarks"
+          value={bookmarks}
+          link="/resources?bookmarked=true"
         />
       </section>
 
@@ -337,7 +389,7 @@ function Overview({ user, displayName }) {
           <h4 className="text-base font-semibold text-zinc-900 dark:text-white tracking-tight">
             Recent Activity
           </h4>
-          {(totalNotes + totalResources + totalRooms + totalQuestions) > 0 && (
+          {(notes + resources + rooms + questions + recordings) > 0 && (
             <Link
               to="/home"
               className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
@@ -347,16 +399,17 @@ function Overview({ user, displayName }) {
           )}
         </div>
 
-        {totalNotes + totalResources + totalRooms + totalQuestions === 0 ? (
+        {notes + resources + rooms + questions + recordings === 0 ? (
           <div className="text-sm text-zinc-600 dark:text-zinc-400 py-4 italic">
-            No recent content yet — start creating notes, resources, or rooms!
+            No recent content yet — start creating notes, resources, rooms, recordings!
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-            <PreviewList title="Notes" items={data.notes} />
-            <PreviewList title="Resources" items={data.resources} />
-            <PreviewList title="Rooms" items={data.rooms} />
-            <PreviewList title="Questions" items={data.questions} />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+            <PreviewList title="Notes" items={data.notes || []} />
+            <PreviewList title="Resources" items={data.resources || []} />
+            <PreviewList title="Rooms" items={data.rooms || []} />
+            <PreviewList title="Questions" items={data.questions || []} />
+            <PreviewList title="Recordings" items={data.recordings || []} />
           </div>
         )}
       </section>
@@ -384,7 +437,6 @@ function PreviewList({ title, items }) {
   );
 }
 
-
 function EditProfile({ user, onChange }) {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
   const [profile, setProfile] = useState(() => {
@@ -400,11 +452,11 @@ function EditProfile({ user, onChange }) {
 
   const [name, setName] = useState(profile?.name || user.name || "");
   const [bio, setBio] = useState(profile?.bio || "");
-  const [profile_picture, setprofile_picture] = useState(profile?.profile_picture_url || user.profile_picture || "");
+  const [profile_picture, setProfilePicture] = useState(profile?.profile_picture_url || user.profile_picture || "");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
-  async function handleprofile_picture(e) {
+  async function handleProfilePicture(e) {
     const f = e.target.files?.[0];
     if (!f) return;
 
@@ -418,11 +470,10 @@ function EditProfile({ user, onChange }) {
         credentials: "include",
       });
 
-      // only once
       const j = await res.json();
 
       if (j?.ok && j.url) {
-        setprofile_picture(j.url); // ✅ save local /images/... path
+        setProfilePicture(j.url);
       } else {
         alert("Upload failed: " + (j?.error || "unknown error"));
       }
@@ -498,8 +549,8 @@ function EditProfile({ user, onChange }) {
     <section className="grid gap-6 lg:grid-cols-3">
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
         <div className="flex flex-col items-center text-center">
-          <profile_picture url={profile_picture} name={name} size={96} />
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleprofile_picture} />
+          <ProfilePicture url={profile_picture} name={name} size={96} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleProfilePicture} />
           <button
             onClick={() => fileRef.current?.click()}
             className="mt-3 rounded-xl border border-zinc-300 px-3 py-1.5 text-sm font-semibold hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-slate-800"
@@ -544,12 +595,12 @@ function EditProfile({ user, onChange }) {
             />
           </div>
 
-          {/* profile picture URL (optional direct link field) */}
+          {/* Profile picture URL (optional direct link field) */}
           <div>
             <Label>Profile Picture URL (optional)</Label>
             <input
               value={profile_picture}
-              onChange={(e) => setprofile_picture(e.target.value)}
+              onChange={(e) => setProfilePicture(e.target.value)}
               placeholder="https://example.com/me.jpg"
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-zinc-700 dark:text-zinc-100"
             />
@@ -647,7 +698,7 @@ function Bookmarks() {
         const res = await fetch(`${API_BASE}/profile.php?content=1`, {
           credentials: "include",
         });
-        const json = await res.json(); 6
+        const json = await res.json();
 
         if (json.ok && json.content?.bookmarks?.length > 0) {
           setItems(json.content.bookmarks);
@@ -716,10 +767,9 @@ function Bookmarks() {
   );
 }
 
-
 function MyContent() {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
-  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [] });
+  const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [], recordings: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -727,7 +777,7 @@ function MyContent() {
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/profile.php?content=1`, {
-          credentials: "include", // required for PHP session
+          credentials: "include",
         });
         const json = await res.json();
         if (json.ok && json.content) setData(json.content);
@@ -753,12 +803,12 @@ function MyContent() {
     <section className="space-y-6">
       <ListCard title="My Notes" empty="No notes yet" items={data.notes} type="notes" />
       <ListCard title="My Resources" empty="No resources yet" items={data.resources} type="resources" />
+      <ListCard title="My Recordings" empty="No recordings yet" items={data.recordings} type="resources?kind=recording" />
       <ListCard title="My Questions" empty="No questions yet" items={data.questions} type="forum" />
       <ListCard title="My Rooms" empty="No rooms yet" items={data.rooms} type="rooms" />
     </section>
   );
 }
-
 
 function ListCard({ title, empty, items, type }) {
   return (
@@ -783,7 +833,6 @@ function ListCard({ title, empty, items, type }) {
               <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
                 {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
               </div>
-
             </li>
           ))}
         </ul>
@@ -896,9 +945,21 @@ function Security({ user, onClear }) {
 }
 
 /* -------------------- Small Components -------------------- */
-function profile_picture({ url, name, size = 40 }) {
-  return url ? (
-    <img src={url} alt={name} className="rounded-full object-cover ring-2 ring-cyan-200/50 dark:ring-cyan-400/20" style={{ width: size, height: size }} />
+function ProfilePicture({ url, name, size = 40 }) {
+  const imageUrl = url && url.startsWith('http') ? url :
+    url ? `http://localhost/StudyNest/study-nest${url}` : null;
+
+  return imageUrl ? (
+    <img
+      src={imageUrl}
+      alt={name}
+      className="rounded-full object-cover ring-2 ring-cyan-200/50 dark:ring-cyan-400/20"
+      style={{ width: size, height: size }}
+      onError={(e) => {
+        // If image fails to load, fall back to initial avatar
+        e.target.style.display = 'none';
+      }}
+    />
   ) : (
     <div
       className="grid place-items-center rounded-full bg-cyan-200 text-cyan-800 font-bold ring-2 ring-cyan-200/50 dark:ring-cyan-400/20"
@@ -917,18 +978,6 @@ function StatCard({ label, value, link }) {
     >
       <div className="text-2xl font-bold text-cyan-500">{value}</div>
       <div className="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{label}</div>
-    </Link>
-  );
-}
-
-function StatMini({ label, value, to }) {
-  return (
-    <Link
-      to={to}
-      className="rounded-xl bg-zinc-50 px-3 py-2 text-center ring-1 ring-zinc-200 hover:bg-zinc-100 dark:bg-slate-800 dark:ring-white/10 dark:hover:bg-slate-800/80"
-    >
-      <div className="text-sm font-bold text-cyan-500">{value}</div>
-      <div className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{label}</div>
     </Link>
   );
 }
@@ -962,7 +1011,7 @@ function loadUser() {
   } catch { }
   const seed = {
     name: "Student",
-    email: `{profile?.email || auth?.email || "—"}`,
+    email: "",
     bio: "Student at StudyNest",
     profile_picture_url: "",
     prefs: { defaultAnonymous: false, darkMode: false, courseFocus: "" },

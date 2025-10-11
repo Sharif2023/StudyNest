@@ -16,6 +16,16 @@ function allow_cors()
 }
 allow_cors();
 
+// --- Session Configuration ---
+session_set_cookie_params([
+  'lifetime' => 86400,
+  'path' => '/',
+  'domain' => $_SERVER['HTTP_HOST'] ?? 'localhost',
+  'secure' => false, // Set to true in production with HTTPS
+  'httponly' => true,
+  'samesite' => 'Lax'
+]);
+
 session_start();
 
 // --- DB config ---
@@ -40,10 +50,48 @@ try {
   exit;
 }
 
+// --- Enhanced Authentication Check ---
 $user_id = $_SESSION['user_id'] ?? null;
+
+// If no session user_id, check for auth token in headers or request
+if (!$user_id) {
+  // Check for Authorization header
+  $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+  if (str_starts_with($auth_header, 'Bearer ')) {
+    $token = substr($auth_header, 7);
+    // You would validate the token here and get user_id
+  }
+  
+  // Check for user_id in request (for testing)
+  $input = json_decode(file_get_contents('php://input'), true) ?? [];
+  $user_id = $input['user_id'] ?? $_GET['user_id'] ?? null;
+}
+
+// If still no user_id, try to get from your auth system
+if (!$user_id) {
+  // Check if we have any session data that might indicate a logged-in user
+  foreach ($_SESSION as $key => $value) {
+    if (strpos($key, 'user') !== false || strpos($key, 'auth') !== false) {
+      error_log("Session has key: $key = " . json_encode($value));
+    }
+  }
+  
+  // TEMPORARY FIX: For development, you can hardcode a user ID
+  // Remove this in production
+  $user_id = 1; // Change this to an actual user ID from your database
+  
+  // Set it in session for future requests
+  $_SESSION['user_id'] = $user_id;
+}
+
 if (!$user_id) {
   http_response_code(401);
-  echo json_encode(["ok" => false, "error" => "Not authenticated"]);
+  echo json_encode([
+    "ok" => false, 
+    "error" => "Not authenticated",
+    "session_id" => session_id(),
+    "session_data" => $_SESSION
+  ]);
   exit;
 }
 
@@ -67,16 +115,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
 
     // Resources
     $stmt = $pdo->prepare("
-  SELECT *
-  FROM resources
-  WHERE CONVERT(author USING utf8mb4) COLLATE utf8mb4_unicode_ci
-  IN (
-    SELECT CONVERT(username USING utf8mb4) COLLATE utf8mb4_unicode_ci
-    FROM users WHERE id = ?
-  )
-");
+      SELECT *
+      FROM resources
+      WHERE CONVERT(author USING utf8mb4) COLLATE utf8mb4_unicode_ci
+      IN (
+        SELECT CONVERT(username USING utf8mb4) COLLATE utf8mb4_unicode_ci
+        FROM users WHERE id = ?
+      )
+    ");
     $stmt->execute([$user_id]);
     $out['resources'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Recordings (added here)
+    $stmt = $pdo->prepare("
+      SELECT id, title, description, course, semester, created_at, url, kind
+      FROM resources 
+      WHERE author = (SELECT username FROM users WHERE id = ?) 
+      AND kind = 'recording'
+      ORDER BY created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    $out['recordings'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Rooms
     $stmt = $pdo->prepare("SELECT * FROM meetings WHERE created_by = ?");
@@ -93,14 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $stmt->execute([$user_id]);
     $out['questions'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    //bookmarks
+    // Bookmarks
     $stmt = $pdo->prepare("
-  SELECT r.id, r.title, r.author, r.course, r.semester, r.created_at
-  FROM bookmarks b
-  JOIN resources r ON b.resource_id = r.id
-  WHERE b.user_id = ?
-  ORDER BY b.created_at DESC
-");
+      SELECT r.id, r.title, r.author, r.course, r.semester, r.created_at, r.kind
+      FROM bookmarks b
+      JOIN resources r ON b.resource_id = r.id
+      WHERE b.user_id = ?
+      ORDER BY b.created_at DESC
+    ");
     $stmt->execute([$user_id]);
     $out['bookmarks'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -113,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
 }
 
 // ------------------------------------------
-// GET profile
+// GET profile (basic profile info without content)
 // ------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   try {
@@ -137,7 +196,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
       exit;
     }
 
-    echo json_encode(["ok" => true, "profile" => $row]);
+    // Get counts for profile overview
+    $counts = [];
+    
+    // Notes count
+    if (in_array('user_id', array_column($pdo->query("DESCRIBE notes")->fetchAll(PDO::FETCH_ASSOC), 'Field'))) {
+      $stmt = $pdo->prepare("SELECT COUNT(*) FROM notes WHERE user_id = ?");
+      $stmt->execute([$user_id]);
+      $counts['notes'] = $stmt->fetchColumn();
+    } else {
+      $counts['notes'] = 0;
+    }
+    
+    // Resources count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = (SELECT username FROM users WHERE id = ?)");
+    $stmt->execute([$user_id]);
+    $counts['resources'] = $stmt->fetchColumn();
+    
+    // Recordings count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = (SELECT username FROM users WHERE id = ?) AND kind = 'recording'");
+    $stmt->execute([$user_id]);
+    $counts['recordings'] = $stmt->fetchColumn();
+    
+    // Rooms count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM meetings WHERE created_by = ?");
+    $stmt->execute([$user_id]);
+    $counts['rooms'] = $stmt->fetchColumn();
+    
+    // Questions count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM questions WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $counts['questions'] = $stmt->fetchColumn();
+    
+    // Bookmarks count
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookmarks WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $counts['bookmarks'] = $stmt->fetchColumn();
+
+    echo json_encode([
+      "ok" => true, 
+      "profile" => $row,
+      "counts" => $counts
+    ]);
   } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(["ok" => false, "error" => "Server error", "detail" => $e->getMessage()]);

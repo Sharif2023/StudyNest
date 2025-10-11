@@ -10,7 +10,8 @@ const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
 const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
 
 /* ====================== Recording Hook ====================== */
-function useRecording(roomId, displayName) {
+/* ====================== Recording Hook ====================== */
+function useRecording(roomId, displayName, room, state) {
   const [recording, setRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState(null);
   const [showSaveOptions, setShowSaveOptions] = useState(false);
@@ -25,7 +26,11 @@ function useRecording(roomId, displayName) {
       let videoStream;
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: {
+            width: 1280,
+            height: 720,
+            frameRate: 30
+          },
           audio: false
         });
       } catch (videoError) {
@@ -39,31 +44,25 @@ function useRecording(roomId, displayName) {
         } catch (screenError) {
           console.warn("Could not access screen for recording:", screenError);
           // If both fail, create a blank video stream as fallback
-          const canvas = document.createElement('canvas');
-          canvas.width = 1280;
-          canvas.height = 720;
-          const context = canvas.getContext('2d');
-          context.fillStyle = '#1f2937'; // dark gray background
-          context.fillRect(0, 0, canvas.width, canvas.height);
-          context.fillStyle = '#ffffff';
-          context.font = '48px Arial';
-          context.textAlign = 'center';
-          context.fillText('Recording Session', canvas.width / 2, canvas.height / 2);
-          context.fillText(roomId, canvas.width / 2, canvas.height / 2 + 60);
-
-          const stream = canvas.captureStream(30);
-          videoStream = stream;
+          videoStream = createFallbackVideoStream(roomId);
         }
       }
 
-      // Get audio from microphone
-      const audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        }
-      });
+      // Get audio from microphone with better error handling
+      let audioStream;
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100,
+          }
+        });
+      } catch (audioError) {
+        console.warn("Could not access microphone:", audioError);
+        // Create silent audio track as fallback
+        audioStream = await createFallbackAudioStream();
+      }
 
       // Combine video and audio streams
       const combinedStream = new MediaStream([
@@ -121,6 +120,46 @@ function useRecording(roomId, displayName) {
     }
   };
 
+  // Add helper functions for fallback streams
+  const createFallbackVideoStream = (roomId) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 720;
+    const context = canvas.getContext('2d');
+
+    const drawFrame = () => {
+      context.fillStyle = '#1f2937';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#ffffff';
+      context.font = '48px Arial';
+      context.textAlign = 'center';
+      context.fillText('Recording Session', canvas.width / 2, canvas.height / 2);
+      context.fillText(roomId, canvas.width / 2, canvas.height / 2 + 60);
+      context.fillText(new Date().toLocaleTimeString(), canvas.width / 2, canvas.height / 2 + 120);
+    };
+
+    drawFrame();
+    const stream = canvas.captureStream(30);
+
+    // Redraw every second to update time
+    setInterval(drawFrame, 1000);
+
+    return stream;
+  };
+
+  const createFallbackAudioStream = async () => {
+    // Create a silent audio track
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const destination = audioContext.createMediaStreamDestination();
+
+    oscillator.frequency.value = 0; // Silent
+    oscillator.connect(destination);
+    oscillator.start();
+
+    return destination.stream;
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
@@ -169,6 +208,7 @@ function useRecording(roomId, displayName) {
         // Save recording info to your backend
         await saveRecordingMetadata(data.secure_url, roomId, displayName);
         alert('Recording saved to StudyNest Cloud successfully!');
+        window.dispatchEvent(new CustomEvent('studynest:recording-added'));
       } else {
         throw new Error('Upload failed: ' + (data.error?.message || 'Unknown error'));
       }
@@ -183,6 +223,9 @@ function useRecording(roomId, displayName) {
 
   const saveRecordingMetadata = async (videoUrl, roomId, userName) => {
     try {
+      // Get room title from available sources - now room and state are available
+      const roomTitle = room?.title || state?.title || `Room ${roomId}`;
+
       const response = await fetch('http://localhost/StudyNest/study-nest/src/api/recordings.php', {
         method: 'POST',
         headers: {
@@ -195,14 +238,23 @@ function useRecording(roomId, displayName) {
           user_name: userName,
           duration: Math.floor(recordedChunksRef.current.length),
           recorded_at: new Date().toISOString(),
+          title: `Recording of ${roomTitle}`,
+          description: `Study session recording from room: ${roomTitle}`,
+          course: room?.course || "General",
+          semester: "Current",
+          kind: "recording",
         }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save recording metadata');
       }
+
+      const result = await response.json();
+      return result;
     } catch (error) {
       console.error('Error saving recording metadata:', error);
+      throw error;
     }
   };
 
@@ -697,7 +749,7 @@ export function StudyRoom() {
     JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
     "Student";
 
-  // Recording functionality
+  // Recording functionality - pass room and state as parameters
   const {
     recording,
     showSaveOptions,
@@ -707,7 +759,7 @@ export function StudyRoom() {
     saveToDevice,
     uploadToCloudinary,
     cancelSave,
-  } = useRecording(roomId, displayName);
+  } = useRecording(roomId, displayName, room, state);
 
   const rtc = useMemo(() => useWebRTC(roomId, displayName), [roomId, displayName]);
   useEffect(() => { rtc.setMic?.(mic); }, [mic, rtc]);
