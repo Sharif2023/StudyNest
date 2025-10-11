@@ -1,181 +1,179 @@
 <?php
 require_once "db.php";
 
-header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header("Access-Control-Allow-Credentials: true");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+// Since db.php already sets CORS headers, we don't need to set them again here
+// Just handle the specific API logic
 
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // disable raw HTML error output
+ini_set('display_errors', 0);
+
+// Custom error handler to return JSON
 set_exception_handler(function ($e) {
     echo json_encode(["ok" => false, "error" => $e->getMessage()]);
     exit;
 });
 
-// ---------- AUTO CREATE TABLE ----------
+// ---------- CREATE TODOS TABLE ----------
 try {
+    // Create the 'todos' table (if not exists)
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS todos (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            student_id VARCHAR(32) NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
             title VARCHAR(255) NOT NULL,
             description TEXT NULL,
-            type ENUM('default','assignment','report','exam','class_test','midterm','final') DEFAULT 'default',
-            status ENUM('pending','in-progress','completed') DEFAULT 'pending',
+            type ENUM('default', 'assignment', 'report', 'exam', 'class_test', 'midterm', 'final') DEFAULT 'default',
+            status ENUM('pending', 'in-progress', 'completed') DEFAULT 'pending',
             due_date DATE NULL,
             due_time TIME NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_student (student_id),
-            FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS notifications (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        student_id VARCHAR(32) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        message TEXT,
-        link VARCHAR(255) NULL,
-        type VARCHAR(64) DEFAULT 'general',
-        reference_id INT NULL,
-        scheduled_at DATETIME NULL,
-        sent_at DATETIME NULL,
-        read_at DATETIME NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_student (student_id),
-        FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
+            INDEX idx_user (user_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
 } catch (Exception $e) {
     echo json_encode(["ok" => false, "error" => "DB init failed: " . $e->getMessage()]);
     exit;
 }
-// ---------------------------------------
-
-// ---------- Reminder Helper ----------
-function createReminderNotification($pdo, $student_id, $todo)
-{
-    // Skip if no due date/time
-    if (empty($todo['due_date']) || empty($todo['due_time'])) return;
-
-    $dueDateTime = strtotime($todo['due_date'] . ' ' . $todo['due_time']);
-    $reminderTime = $dueDateTime - (6 * 60 * 60); // 6 hours before
-
-    if ($reminderTime <= time()) return; // Too late for reminder
-
-    // Check if notification already exists for this task
-    $check = $pdo->prepare("SELECT id FROM notifications WHERE student_id=? AND type='todo_reminder' AND reference_id=?");
-    $check->execute([$student_id, $todo['id']]);
-    if ($check->fetch()) return;
-
-    // Schedule notification
-    $stmt = $pdo->prepare("
-        INSERT INTO notifications (student_id, title, message, type, reference_id, created_at, scheduled_at)
-        VALUES (?, ?, ?, 'todo_reminder', ?, NOW(), FROM_UNIXTIME(?))
-    ");
-    $title = "Upcoming Task: " . $todo['title'];
-    $msg = "Your task '{$todo['title']}' is due soon (in less than 6 hours).";
-    $stmt->execute([$student_id, $title, $msg, $todo['id'], $reminderTime]);
-}
-// ---------------------------------------
 
 $method = $_SERVER["REQUEST_METHOD"];
-$student_id = $_GET["student_id"] ?? null;
+$user_id = $_GET["user_id"] ?? null;
 
-if (!$student_id) {
-    echo json_encode(["ok" => false, "error" => "Missing student_id"]);
+if (!$user_id) {
+    echo json_encode(["ok" => false, "error" => "Missing user_id"]);
+    exit;
+}
+
+// Verify user exists before proceeding
+try {
+    $userCheck = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $userCheck->execute([$user_id]);
+    if (!$userCheck->fetch()) {
+        echo json_encode(["ok" => false, "error" => "User not found with ID: " . $user_id]);
+        exit;
+    }
+} catch (Exception $e) {
+    echo json_encode(["ok" => false, "error" => "User validation failed: " . $e->getMessage()]);
     exit;
 }
 
 switch ($method) {
-    // ----- GET -----
+    // ----- GET ----- 
     case "GET":
-        $stmt = $pdo->prepare("SELECT * FROM todos WHERE student_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$student_id]);
-        echo json_encode(["ok" => true, "todos" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM todos WHERE user_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$user_id]);
+            $todos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(["ok" => true, "todos" => $todos]);
+        } catch (Exception $e) {
+            echo json_encode(["ok" => false, "error" => "Failed to fetch todos: " . $e->getMessage()]);
+        }
         break;
 
     // ----- POST (create new task) -----
     case "POST":
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
 
-        $stmt = $pdo->prepare("
-            INSERT INTO todos (student_id, title, description, type, due_date, due_time)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([
-            $student_id,
-            $data["title"] ?? "Untitled Task",
-            $data["description"] ?? null,
-            $data["type"] ?? "default",
-            $data["due_date"] ?? null,
-            $data["due_time"] ?? null
-        ]);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(["ok" => false, "error" => "Invalid JSON: " . json_last_error_msg()]);
+            break;
+        }
 
-        $newId = $pdo->lastInsertId();
+        if (empty($data["title"])) {
+            echo json_encode(["ok" => false, "error" => "Title is required"]);
+            break;
+        }
 
-        // Schedule reminder notification
-        createReminderNotification($pdo, $student_id, [
-            "id" => $newId,
-            "title" => $data["title"] ?? "Untitled Task",
-            "due_date" => $data["due_date"] ?? null,
-            "due_time" => $data["due_time"] ?? null
-        ]);
-
-        echo json_encode(["ok" => true, "id" => $newId]);
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO todos (user_id, title, description, type, due_date, due_time, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            ");
+            
+            $stmt->execute([
+                $user_id,
+                $data["title"] ?? "Untitled Task",
+                $data["description"] ?? null,
+                $data["type"] ?? "default",
+                $data["due_date"] ?? null,
+                $data["due_time"] ?? null
+            ]);
+            
+            $newId = $pdo->lastInsertId();
+            echo json_encode(["ok" => true, "id" => $newId]);
+        } catch (Exception $e) {
+            echo json_encode(["ok" => false, "error" => "Database error: " . $e->getMessage()]);
+        }
         break;
 
     // ----- PUT (update existing task) -----
     case "PUT":
-        $data = json_decode(file_get_contents("php://input"), true);
-        $stmt = $pdo->prepare("
-            UPDATE todos
-            SET title=?, description=?, type=?, status=?, due_date=?, due_time=?
-            WHERE id=? AND student_id=?
-        ");
-        $stmt->execute([
-            $data["title"],
-            $data["description"],
-            $data["type"],
-            $data["status"],
-            $data["due_date"],
-            $data["due_time"],
-            $data["id"],
-            $student_id
-        ]);
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(["ok" => false, "error" => "Invalid JSON: " . json_last_error_msg()]);
+            break;
+        }
 
-        // Update or create reminder again (in case date/time changed)
-        createReminderNotification($pdo, $student_id, [
-            "id" => $data["id"],
-            "title" => $data["title"],
-            "due_date" => $data["due_date"],
-            "due_time" => $data["due_time"]
-        ]);
+        if (empty($data["id"])) {
+            echo json_encode(["ok" => false, "error" => "Task ID is required for update"]);
+            break;
+        }
 
-        echo json_encode(["ok" => true]);
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE todos 
+                SET title = ?, description = ?, type = ?, status = ?, due_date = ?, due_time = ?
+                WHERE id = ? AND user_id = ?
+            ");
+            
+            $stmt->execute([
+                $data["title"] ?? "Untitled Task",
+                $data["description"] ?? null,
+                $data["type"] ?? "default",
+                $data["status"] ?? "pending",
+                $data["due_date"] ?? null,
+                $data["due_time"] ?? null,
+                $data["id"],
+                $user_id
+            ]);
+            
+            echo json_encode(["ok" => true]);
+        } catch (Exception $e) {
+            echo json_encode(["ok" => false, "error" => "Database error: " . $e->getMessage()]);
+        }
         break;
 
     // ----- DELETE -----
     case "DELETE":
-        $data = json_decode(file_get_contents("php://input"), true);
-        $stmt = $pdo->prepare("DELETE FROM todos WHERE id=? AND student_id=?");
-        $stmt->execute([$data["id"], $student_id]);
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(["ok" => false, "error" => "Invalid JSON: " . json_last_error_msg()]);
+            break;
+        }
 
-        // Clean up any related scheduled reminders
-        $del = $pdo->prepare("DELETE FROM notifications WHERE reference_id=? AND student_id=? AND type='todo_reminder'");
-        $del->execute([$data["id"], $student_id]);
+        if (empty($data["id"])) {
+            echo json_encode(["ok" => false, "error" => "Task ID is required for deletion"]);
+            break;
+        }
 
-        echo json_encode(["ok" => true]);
+        try {
+            // Delete the task
+            $stmt = $pdo->prepare("DELETE FROM todos WHERE id = ? AND user_id = ?");
+            $stmt->execute([$data["id"], $user_id]);
+            
+            echo json_encode(["ok" => true]);
+        } catch (Exception $e) {
+            echo json_encode(["ok" => false, "error" => "Database error: " . $e->getMessage()]);
+        }
         break;
 
     default:
-        echo json_encode(["ok" => false, "error" => "Unsupported method"]);
+        echo json_encode(["ok" => false, "error" => "Unsupported method: " . $method]);
 }
+?>
