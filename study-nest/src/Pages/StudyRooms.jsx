@@ -5,6 +5,309 @@ import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
+// Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
+const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
+
+/* ====================== Recording Hook ====================== */
+function useRecording(roomId, displayName) {
+  const [recording, setRecording] = useState(false);
+  const [recordedBlob, setRecordedBlob] = useState(null);
+  const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const streamRef = useRef(null);
+
+  const startRecording = async () => {
+    try {
+      // Try to get the local camera stream first
+      let videoStream;
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      } catch (videoError) {
+        console.warn("Could not access camera for recording:", videoError);
+        // If camera fails, try screen share
+        try {
+          videoStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false
+          });
+        } catch (screenError) {
+          console.warn("Could not access screen for recording:", screenError);
+          // If both fail, create a blank video stream as fallback
+          const canvas = document.createElement('canvas');
+          canvas.width = 1280;
+          canvas.height = 720;
+          const context = canvas.getContext('2d');
+          context.fillStyle = '#1f2937'; // dark gray background
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.fillStyle = '#ffffff';
+          context.font = '48px Arial';
+          context.textAlign = 'center';
+          context.fillText('Recording Session', canvas.width / 2, canvas.height / 2);
+          context.fillText(roomId, canvas.width / 2, canvas.height / 2 + 60);
+
+          const stream = canvas.captureStream(30);
+          videoStream = stream;
+        }
+      }
+
+      // Get audio from microphone
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        }
+      });
+
+      // Combine video and audio streams
+      const combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
+
+      streamRef.current = combinedStream;
+      recordedChunksRef.current = [];
+
+      // Try different mime types for compatibility
+      const options = {
+        mimeType: 'video/webm;codecs=vp9,opus',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      };
+
+      // Fallback mime types
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'video/webm;codecs=vp8,opus';
+      }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'video/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = '';
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(combinedStream, options);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: mediaRecorderRef.current.mimeType || 'video/webm'
+        });
+        setRecordedBlob(blob);
+        setShowSaveOptions(true);
+
+        // Clean up streams
+        videoStream.getTracks().forEach(track => track.stop());
+        audioStream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      setRecording(true);
+      return true;
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      alert("Recording failed: " + error.message);
+      return false;
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
+
+  const saveToDevice = () => {
+    if (recordedBlob) {
+      const url = URL.createObjectURL(recordedBlob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `studynest-${roomId}-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      resetRecording();
+    }
+  };
+
+  const uploadToCloudinary = async () => {
+    if (!recordedBlob) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', recordedBlob);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+      formData.append('folder', 'studynest-recordings');
+      formData.append('context', `room=${roomId}|user=${displayName}`);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        // Save recording info to your backend
+        await saveRecordingMetadata(data.secure_url, roomId, displayName);
+        alert('Recording saved to StudyNest Cloud successfully!');
+      } else {
+        throw new Error('Upload failed: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      alert('Failed to upload recording. Please try again.');
+    } finally {
+      setUploading(false);
+      resetRecording();
+    }
+  };
+
+  const saveRecordingMetadata = async (videoUrl, roomId, userName) => {
+    try {
+      const response = await fetch('http://localhost/StudyNest/study-nest/src/api/recordings.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          room_id: roomId,
+          video_url: videoUrl,
+          user_name: userName,
+          duration: Math.floor(recordedChunksRef.current.length),
+          recorded_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save recording metadata');
+      }
+    } catch (error) {
+      console.error('Error saving recording metadata:', error);
+    }
+  };
+
+  const resetRecording = () => {
+    setRecordedBlob(null);
+    setShowSaveOptions(false);
+    recordedChunksRef.current = [];
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const cancelSave = () => {
+    resetRecording();
+  };
+
+  return {
+    recording,
+    recordedBlob,
+    showSaveOptions,
+    uploading,
+    startRecording,
+    stopRecording,
+    saveToDevice,
+    uploadToCloudinary,
+    cancelSave,
+  };
+}
+
+/* ====================== Save Recording Modal ====================== */
+function SaveRecordingModal({
+  isOpen,
+  onSaveToDevice,
+  onSaveToCloud,
+  onCancel,
+  uploading
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 rounded-2xl p-6 max-w-md w-full mx-auto border border-zinc-700">
+        <h3 className="text-lg font-semibold text-white mb-2">
+          Save Recording
+        </h3>
+        <p className="text-zinc-400 text-sm mb-6">
+          Choose where to save your recording
+        </p>
+
+        <div className="space-y-3">
+          <button
+            onClick={onSaveToDevice}
+            disabled={uploading}
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 transition-colors text-white disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Save to Device</div>
+                <div className="text-xs text-zinc-400">Download the video file</div>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={onSaveToCloud}
+            disabled={uploading}
+            className="w-full flex items-center justify-between p-4 rounded-xl border border-emerald-700 bg-emerald-900/20 hover:bg-emerald-900/40 transition-colors text-white disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Save to StudyNest Cloud</div>
+                <div className="text-xs text-emerald-300">Upload to your resources</div>
+              </div>
+            </div>
+            {uploading && (
+              <div className="w-5 h-5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
+            )}
+          </button>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            disabled={uploading}
+            className="flex-1 py-2 px-4 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ====================== Lobby ====================== */
 export function RoomsLobby() {
   const [rooms, setRooms] = useState([]);
@@ -352,7 +655,6 @@ export function StudyRoom() {
   const [sharing, setSharing] = useState(false);
   const [room, setRoom] = useState(null);
   const [ending, setEnding] = useState(false);
-  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -394,6 +696,18 @@ export function StudyRoom() {
     JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
     JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
     "Student";
+
+  // Recording functionality
+  const {
+    recording,
+    showSaveOptions,
+    uploading,
+    startRecording,
+    stopRecording,
+    saveToDevice,
+    uploadToCloudinary,
+    cancelSave,
+  } = useRecording(roomId, displayName);
 
   const rtc = useMemo(() => useWebRTC(roomId, displayName), [roomId, displayName]);
   useEffect(() => { rtc.setMic?.(mic); }, [mic, rtc]);
@@ -489,10 +803,15 @@ export function StudyRoom() {
     }
   }
 
-  function toggleRecord() {
-    setRecording(prev => !prev);
-    // Add your recording logic here
-    console.log("Recording:", !recording);
+  async function toggleRecord() {
+    if (recording) {
+      stopRecording();
+    } else {
+      const success = await startRecording();
+      if (!success) {
+        alert("Could not start recording. Make sure there are active video streams.");
+      }
+    }
   }
 
   function toggleFullTile(tileId) {
@@ -544,6 +863,12 @@ export function StudyRoom() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-sm font-semibold truncate max-w-[60vw]">{roomTitle}</h1>
+            {recording && (
+              <div className="flex items-center gap-2 bg-rose-600 px-3 py-1 rounded-full">
+                <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
+                <span className="text-xs font-semibold">REC</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
@@ -681,7 +1006,7 @@ export function StudyRoom() {
             <ToggleButton on={sharing} onClick={toggleShare} label={sharing ? "Stop sharing" : "Share screen"}>
               <ScreenIcon />
             </ToggleButton>
-            
+
             {/* Record Button in the Middle */}
             <button
               onClick={toggleRecord}
@@ -726,6 +1051,14 @@ export function StudyRoom() {
           </div>
         </div>
       </div>
+      {/* Save Recording Modal */}
+      <SaveRecordingModal
+        isOpen={showSaveOptions}
+        onSaveToDevice={saveToDevice}
+        onSaveToCloud={uploadToCloudinary}
+        onCancel={cancelSave}
+        uploading={uploading}
+      />
     </main>
   );
 }
