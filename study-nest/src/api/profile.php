@@ -61,7 +61,7 @@ if (!$user_id) {
     $token = substr($auth_header, 7);
     // You would validate the token here and get user_id
   }
-  
+
   // Check for user_id in request (for testing)
   $input = json_decode(file_get_contents('php://input'), true) ?? [];
   $user_id = $input['user_id'] ?? $_GET['user_id'] ?? null;
@@ -75,11 +75,11 @@ if (!$user_id) {
       error_log("Session has key: $key = " . json_encode($value));
     }
   }
-  
+
   // TEMPORARY FIX: For development, you can hardcode a user ID
   // Remove this in production
   $user_id = 1; // Change this to an actual user ID from your database
-  
+
   // Set it in session for future requests
   $_SESSION['user_id'] = $user_id;
 }
@@ -87,7 +87,7 @@ if (!$user_id) {
 if (!$user_id) {
   http_response_code(401);
   echo json_encode([
-    "ok" => false, 
+    "ok" => false,
     "error" => "Not authenticated. Please log in again."
   ]);
   exit;
@@ -98,16 +98,16 @@ try {
   $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ?");
   $stmt->execute([$user_id]);
   $user = $stmt->fetch();
-  
+
   if (!$user) {
     http_response_code(404);
     echo json_encode(["ok" => false, "error" => "User not found in database"]);
     exit;
   }
-  
+
   $username = $user['username'];
   error_log("Profile API - Found user: " . $username);
-  
+
 } catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(["ok" => false, "error" => "User verification failed", "detail" => $e->getMessage()]);
@@ -122,8 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $out = [];
 
     // Notes - FIXED: notes table doesn't have user_id, so get all notes
-    $notes = [];
-    $stmt = $pdo->query("SELECT * FROM notes");
+    $stmt = $pdo->prepare("SELECT * FROM notes WHERE user_id = ?");
+    $stmt->execute([$user_id]);
     $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $out['notes'] = $notes;
 
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $out['bookmarks'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
-      "ok" => true, 
+      "ok" => true,
       "content" => $out,
       "debug" => [
         "user_id" => $user_id,
@@ -221,38 +221,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Get counts for profile overview
     $counts = [];
-    
+
     // Notes count - FIXED: notes table doesn't have user_id
-    $stmt = $pdo->query("SELECT COUNT(*) FROM notes");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notes WHERE user_id = ?");
+    $stmt->execute([$user_id]);
     $counts['notes'] = $stmt->fetchColumn();
-    
+
     // Resources count
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ?");
     $stmt->execute([$row['name']]);
     $counts['resources'] = $stmt->fetchColumn();
-    
+
     // Recordings count
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ? AND kind = 'recording'");
     $stmt->execute([$row['name']]);
     $counts['recordings'] = $stmt->fetchColumn();
-    
+
     // Rooms count
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM meetings WHERE created_by = ?");
     $stmt->execute([$user_id]);
     $counts['rooms'] = $stmt->fetchColumn();
-    
+
     // Questions count
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM questions WHERE user_id = ?");
     $stmt->execute([$user_id]);
     $counts['questions'] = $stmt->fetchColumn();
-    
+
     // Bookmarks count
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookmarks WHERE user_id = ?");
     $stmt->execute([$user_id]);
     $counts['bookmarks'] = $stmt->fetchColumn();
 
     echo json_encode([
-      "ok" => true, 
+      "ok" => true,
       "profile" => $row,
       "counts" => $counts,
       "debug" => [
