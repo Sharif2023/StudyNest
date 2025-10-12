@@ -43,34 +43,101 @@ export default function Profile() {
   const profile_pic = profile?.profile_picture_url || auth?.profile_picture_url;
   // On mount, refresh profile from backend (session-based)
   useEffect(() => {
-    (async () => {
+  // Check if user is authenticated
+  const checkAuth = async () => {
+    try {
+      const r = await fetch(`${API_BASE}/profile.php`, {
+        credentials: "include",
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (r.status === 401) {
+        console.error("Not authenticated - redirecting to login");
+        // Clear stale data
+        localStorage.removeItem("studynest.profile");
+        localStorage.removeItem("studynest.auth");
+        localStorage.removeItem("studynest.user");
+        // Redirect
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!r.ok) {
+        throw new Error(`HTTP error! status: ${r.status}`);
+      }
+
+      const j = await r.json();
+
+      if (j.ok && j.profile) {
+        // ✅ Save profile data to ALL storage locations
+        setProfile(j.profile);
+        localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+
+        // Update user state
+        const updatedUser = {
+          name: j.profile.name || "Student",
+          email: j.profile.email || "",
+          bio: j.profile.bio || "",
+          profile_picture_url: j.profile.profile_picture_url || "",
+          prefs: user?.prefs || { defaultAnonymous: false, darkMode: false, courseFocus: "" },
+        };
+        setUser(updatedUser);
+        localStorage.setItem("studynest.user", JSON.stringify(updatedUser));
+
+        // Also sync auth storage
+        const currentAuth = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+        if (currentAuth) {
+          const updatedAuth = {
+            ...currentAuth,
+            name: j.profile.name,
+            email: j.profile.email,
+            profile_picture_url: j.profile.profile_picture_url,
+            bio: j.profile.bio
+          };
+          localStorage.setItem("studynest.auth", JSON.stringify(updatedAuth));
+          setAuth(updatedAuth);
+        } else {
+          // If no auth data exists, create it from profile
+          localStorage.setItem("studynest.auth", JSON.stringify({
+            id: j.profile.id,
+            student_id: j.profile.student_id,
+            name: j.profile.name,
+            email: j.profile.email,
+            profile_picture_url: j.profile.profile_picture_url,
+            bio: j.profile.bio
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Profile fetch error:", e);
+    }
+  };
+
+  checkAuth();
+}, []); 
+
+  useEffect(() => {
+    const handleFocus = async () => {
       try {
         const r = await fetch(`${API_BASE}/profile.php`, {
           credentials: "include",
-          headers: {
-            'Content-Type': 'application/json',
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
 
-        if (r.status === 401) {
-          console.error("Authentication failed - Please log in again");
-          return;
-        }
-
-        if (!r.ok) {
-          throw new Error(`HTTP error! status: ${r.status}`);
-        }
-
-        const j = await r.json();
-        const p = j?.ok ? j.profile : j;
-        if (p) {
-          setProfile(p);
-          localStorage.setItem("studynest.profile", JSON.stringify(p));
+        if (r.ok) {
+          const j = await r.json();
+          if (j.ok && j.profile) {
+            setProfile(j.profile);
+            localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+          }
         }
       } catch (e) {
-        console.error("Profile fetch error:", e);
+        console.error("Profile refresh error:", e);
       }
-    })();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Keep your editable local profile (for profile picture/bio/prefs)
@@ -483,7 +550,11 @@ function EditProfile({ user, onChange }) {
   }
 
   async function save() {
-    if (!id) return;
+    if (!id) {
+      alert("No user ID found. Please log in again.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -507,7 +578,7 @@ function EditProfile({ user, onChange }) {
         }
       }
 
-      // Save profile with correct field name
+      // Save profile
       const res = await fetch(`${API_BASE}/profile.php`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -521,25 +592,41 @@ function EditProfile({ user, onChange }) {
       });
 
       const j = await res.json();
-      console.log("profile.php response:", j);
 
       if (j?.ok && j.profile) {
+        // Update all storage locations
         setProfile(j.profile);
         localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
-        window.dispatchEvent(new Event("studynest:profile-updated"));
 
-        onChange({
+        // Update user state
+        const updatedUser = {
           ...user,
           name: j.profile.name,
           email: j.profile.email,
           bio: j.profile.bio,
-          profile_picture_url: finalUrl,
-        });
+          profile_picture_url: j.profile.profile_picture_url,
+        };
+        onChange(updatedUser);
+        localStorage.setItem("studynest.user", JSON.stringify(updatedUser));
+
+        // Update auth if exists
+        const currentAuth = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+        if (currentAuth) {
+          currentAuth.name = j.profile.name;
+          currentAuth.profile_picture_url = j.profile.profile_picture_url;
+          localStorage.setItem("studynest.auth", JSON.stringify(currentAuth));
+        }
+
+        // Dispatch event for other components
+        window.dispatchEvent(new Event("studynest:profile-updated"));
+
+        alert("✅ Profile saved successfully!");
       } else {
-        alert(j?.error || "Failed to save profile");
+        alert("❌ " + (j?.error || "Failed to save profile"));
       }
     } catch (e) {
-      alert("Upload failed: " + e.message);
+      console.error("Save error:", e);
+      alert("❌ Failed to save: " + e.message);
     } finally {
       setSaving(false);
     }
@@ -947,7 +1034,7 @@ function Security({ user, onClear }) {
 /* -------------------- Small Components -------------------- */
 function ProfilePicture({ url, name, size = 40 }) {
   const imageUrl = url && url.startsWith('http') ? url :
-    url ? `http://localhost/StudyNest/study-nest${url}` : null;
+    url ? `http://localhost/StudyNest/study-nest/src/api/profile.php?image=${url}` : null;
 
   return imageUrl ? (
     <img
@@ -1007,8 +1094,33 @@ function loadLocal(key, fallback) {
 function loadUser() {
   try {
     const raw = JSON.parse(localStorage.getItem("studynest.user"));
-    if (raw && typeof raw === "object") return raw;
+    if (raw && typeof raw === "object" && raw.name) {
+      return raw;
+    }
   } catch { }
+
+  // Try to initialize from auth/profile data if available
+  try {
+    const auth = JSON.parse(localStorage.getItem("studynest.auth"));
+    const profile = JSON.parse(localStorage.getItem("studynest.profile"));
+
+    if (profile || auth) {
+      const seed = {
+        name: profile?.name || auth?.name || auth?.username || "Student",
+        email: profile?.email || auth?.email || "",
+        bio: profile?.bio || "",
+        profile_picture_url: profile?.profile_picture_url || auth?.profile_picture_url || "",
+        prefs: { defaultAnonymous: false, darkMode: false, courseFocus: "" },
+      };
+
+      localStorage.setItem("studynest.user", JSON.stringify(seed));
+      return seed;
+    }
+  } catch (e) {
+    console.error("Error loading user from auth:", e);
+  }
+
+  // Default seed
   const seed = {
     name: "Student",
     email: "",
@@ -1016,8 +1128,7 @@ function loadUser() {
     profile_picture_url: "",
     prefs: { defaultAnonymous: false, darkMode: false, courseFocus: "" },
   };
-  try {
-    localStorage.setItem("studynest.user", JSON.stringify(seed));
-  } catch { }
+
+  localStorage.setItem("studynest.user", JSON.stringify(seed));
   return seed;
 }

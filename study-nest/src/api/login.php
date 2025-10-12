@@ -2,6 +2,16 @@
 require __DIR__ . '/db.php'; // provides $pdo + CORS
 
 try {
+    // Configure session with same settings as profile.php
+    session_set_cookie_params([
+        'lifetime' => 86400,
+        'path' => '/',
+        'domain' => $_SERVER['HTTP_HOST'] ?? 'localhost',
+        'secure' => false,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
@@ -16,37 +26,24 @@ try {
         exit;
     }
 
-    // Try NEW schema first (has name, avatar_url). If it fails, fallback to legacy schema.
-    $user = null;
-    $stmt = null;
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT id, student_id, email, name, avatar_url, password_hash, created_at, updated_at
-            FROM users
-            WHERE email = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
-    } catch (Throwable $inner) {
-        // Likely "Unknown column 'name'..." -> use legacy columns
-        $stmt = $pdo->prepare("
-            SELECT id, student_id, email, password_hash, created_at
-            FROM users
-            WHERE email = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
-
-        // Add placeholders so frontend won’t break
-        if ($user) {
-            $user['name'] = null;
-            $user['avatar_url'] = null;
-            $user['updated_at'] = null;
-        }
-    }
+    // Query with correct column names matching your schema
+    $stmt = $pdo->prepare("
+        SELECT 
+            id, 
+            student_id, 
+            email, 
+            username, 
+            profile_picture_url, 
+            bio,
+            password_hash, 
+            created_at, 
+            updated_at
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
 
     // Validate password
     if (!$user || !password_verify($password, $user['password_hash'])) {
@@ -55,11 +52,33 @@ try {
         exit;
     }
 
-    // Session for profile.php
+    // ✅ CRITICAL: Store user_id in session for profile.php
     $_SESSION['user_id'] = (int)$user['id'];
+    $_SESSION['username'] = $user['username'];
+    $_SESSION['email'] = $user['email'];
+    $_SESSION['student_id'] = $user['student_id'];
 
+    // Remove password hash before sending to client
     unset($user['password_hash']);
-    echo json_encode(['ok' => true, 'user' => $user]);
+
+    // Normalize field names for frontend consistency
+    $responseUser = [
+        'id' => $user['id'],
+        'student_id' => $user['student_id'],
+        'email' => $user['email'],
+        'name' => $user['username'], // Map username -> name for frontend
+        'username' => $user['username'],
+        'profile_picture_url' => $user['profile_picture_url'],
+        'bio' => $user['bio'],
+        'created_at' => $user['created_at'],
+        'updated_at' => $user['updated_at']
+    ];
+
+    echo json_encode([
+        'ok' => true, 
+        'user' => $responseUser,
+        'session_id' => session_id() // For debugging
+    ]);
     exit;
 
 } catch (Throwable $e) {
@@ -67,8 +86,7 @@ try {
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        // uncomment next line temporarily to see exact cause during debugging:
-        // 'detail' => $e->getMessage()
+        'detail' => $e->getMessage() // Keep for debugging, remove in production
     ]);
     exit;
 }
