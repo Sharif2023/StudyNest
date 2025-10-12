@@ -67,6 +67,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $user_id = $_SESSION['user_id'] ?? null;
         
+        // Get the actual username from the database to ensure consistency
+        $username = null;
+        if ($user_id) {
+            $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $user_stmt->execute([$user_id]);
+            $user_row = $user_stmt->fetch();
+            $username = $user_row['username'] ?? $data["user_name"] ?? "Unknown";
+        } else {
+            $username = $data["user_name"] ?? "Unknown";
+        }
+        
         // Also save to resources table for ResourceLibrary visibility
         $resource_stmt = $pdo->prepare("
             INSERT INTO resources 
@@ -80,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ":course" => $data["course"] ?? "General",
             ":semester" => $data["semester"] ?? "Current",
             ":description" => $data["description"] ?? "Study session recording",
-            ":author" => $data["user_name"] ?? "Unknown",
+            ":author" => $username,
             ":url" => $data["video_url"]
         ]);
         
@@ -97,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recording_stmt->execute([
             ":room_id" => $data["room_id"],
             ":video_url" => $data["video_url"],
-            ":user_name" => $data["user_name"],
+            ":user_name" => $username,
             ":user_id" => $user_id,
             ":duration" => $data["duration"] ?? 0,
             ":recorded_at" => $data["recorded_at"] ?? date('Y-m-d H:i:s'),
