@@ -162,5 +162,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     exit;
 }
 
+// DELETE - Delete a recording
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    try {
+        $user_id = $_SESSION['user_id'] ?? null;
+        
+        if (!$user_id) {
+            echo json_encode(["status" => "error", "message" => "Not authenticated"]);
+            exit;
+        }
+
+        // Get the recording ID from URL or request body
+        $recording_id = null;
+        
+        // Try to get from URL path (e.g., /recordings.php/123)
+        $path_info = $_SERVER['PATH_INFO'] ?? '';
+        if ($path_info) {
+            $recording_id = trim($path_info, '/');
+        }
+        
+        // Try to get from request body
+        if (!$recording_id) {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $recording_id = $input['id'] ?? null;
+        }
+        
+        // Try to get from query parameter
+        if (!$recording_id) {
+            $recording_id = $_GET['id'] ?? null;
+        }
+        
+        if (!$recording_id) {
+            echo json_encode(["status" => "error", "message" => "Recording ID is required"]);
+            exit;
+        }
+
+        // Get the username for this user to verify ownership
+        $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $user_stmt->execute([$user_id]);
+        $user_row = $user_stmt->fetch();
+        $username = $user_row['username'] ?? null;
+        
+        if (!$username) {
+            echo json_encode(["status" => "error", "message" => "User not found"]);
+            exit;
+        }
+
+        // Verify the recording belongs to this user
+        $check_stmt = $pdo->prepare("
+            SELECT id FROM resources 
+            WHERE id = ? AND kind = 'recording' AND author = ?
+        ");
+        $check_stmt->execute([$recording_id, $username]);
+        $recording = $check_stmt->fetch();
+        
+        if (!$recording) {
+            echo json_encode(["status" => "error", "message" => "Recording not found or you don't have permission to delete it"]);
+            exit;
+        }
+
+        // Delete from resources table (this will cascade to other tables if needed)
+        $delete_stmt = $pdo->prepare("DELETE FROM resources WHERE id = ?");
+        $delete_stmt->execute([$recording_id]);
+        
+        // Also delete from recordings table if it exists
+        $delete_recording_stmt = $pdo->prepare("DELETE FROM recordings WHERE id = ?");
+        $delete_recording_stmt->execute([$recording_id]);
+
+        echo json_encode([
+            "status" => "success", 
+            "message" => "Recording deleted successfully"
+        ]);
+        
+    } catch (Throwable $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(["status" => "error", "message" => "Invalid request method"]);
 ?>
