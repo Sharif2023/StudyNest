@@ -261,7 +261,7 @@ export default function Header({ sidebarWidth = 72 }) {
       "/forum": ["Q&A Forum", "Ask and answer academic questions."],
       "/rooms": ["Study Rooms", "Join or create virtual study spaces."],
       "/search": ["Search & Tags", "Explore notes, forums, and resources."],
-      "/resources": ["Resource Library", "Access and share course materials."],
+      "/resources": ["Shared Resources", "Access and share course materials."],
       "/to-do-list": ["To-Do List", "Organize your academic tasks."],
       "/ai-check": ["AI File Check", "Analyze documents using AI tools."],
       "/ai-usage": ["AI Usage Checker", "Detect AI-written content."],
