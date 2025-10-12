@@ -67,22 +67,10 @@ if (!$user_id) {
   $user_id = $input['user_id'] ?? $_GET['user_id'] ?? null;
 }
 
-// If still no user_id, try to get from your auth system
-if (!$user_id) {
-  // Check if we have any session data that might indicate a logged-in user
-  foreach ($_SESSION as $key => $value) {
-    if (strpos($key, 'user') !== false || strpos($key, 'auth') !== false) {
-      error_log("Session has key: $key = " . json_encode($value));
-    }
-  }
-  
-  // TEMPORARY FIX: For development, you can hardcode a user ID
-  // Remove this in production
-  $user_id = 1; // Change this to an actual user ID from your database
-  
-  // Set it in session for future requests
-  $_SESSION['user_id'] = $user_id;
-}
+// Debug: Log session and authentication info
+error_log("Profile API - User ID: " . ($user_id ?? 'NULL'));
+error_log("Profile API - Session ID: " . session_id());
+error_log("Profile API - Session Data: " . json_encode($_SESSION));
 
 if (!$user_id) {
   http_response_code(401);
@@ -95,6 +83,27 @@ if (!$user_id) {
   exit;
 }
 
+// First, verify the user exists
+try {
+  $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ?");
+  $stmt->execute([$user_id]);
+  $user = $stmt->fetch();
+  
+  if (!$user) {
+    http_response_code(404);
+    echo json_encode(["ok" => false, "error" => "User not found in database"]);
+    exit;
+  }
+  
+  $username = $user['username'];
+  error_log("Profile API - Found user: " . $username);
+  
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(["ok" => false, "error" => "User verification failed", "detail" => $e->getMessage()]);
+  exit;
+}
+
 // ------------------------------------------
 // ✅ GET content route (MUST be before other GET logic)
 // ------------------------------------------
@@ -102,39 +111,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
   try {
     $out = [];
 
-    // Notes
+    // Notes - FIXED: notes table doesn't have user_id, so get all notes
     $notes = [];
-    if (in_array('user_id', array_column($pdo->query("DESCRIBE notes")->fetchAll(PDO::FETCH_ASSOC), 'Field'))) {
-      $stmt = $pdo->prepare("SELECT * FROM notes WHERE user_id = ?");
-      $stmt->execute([$user_id]);
-      $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-      $notes = $pdo->query("SELECT * FROM notes")->fetchAll(PDO::FETCH_ASSOC);
-    }
+    $stmt = $pdo->query("SELECT * FROM notes");
+    $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $out['notes'] = $notes;
 
-    // Resources
+    // Resources - FIXED: Use direct username comparison
     $stmt = $pdo->prepare("
-      SELECT *
-      FROM resources
-      WHERE CONVERT(author USING utf8mb4) COLLATE utf8mb4_unicode_ci
-      IN (
-        SELECT CONVERT(username USING utf8mb4) COLLATE utf8mb4_unicode_ci
-        FROM users WHERE id = ?
-      )
+      SELECT * 
+      FROM resources 
+      WHERE author = ?
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$username]);
     $out['resources'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Recordings (added here)
+    // Recordings
     $stmt = $pdo->prepare("
       SELECT id, title, description, course, semester, created_at, url, kind
       FROM resources 
-      WHERE author = (SELECT username FROM users WHERE id = ?) 
+      WHERE author = ? 
       AND kind = 'recording'
       ORDER BY created_at DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$username]);
     $out['recordings'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Rooms
@@ -163,10 +163,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $stmt->execute([$user_id]);
     $out['bookmarks'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo json_encode(["ok" => true, "content" => $out]);
+    echo json_encode([
+      "ok" => true, 
+      "content" => $out,
+      "debug" => [
+        "user_id" => $user_id,
+        "username" => $username,
+        "notes_count" => count($out['notes']),
+        "resources_count" => count($out['resources']),
+        "recordings_count" => count($out['recordings']),
+        "rooms_count" => count($out['rooms']),
+        "questions_count" => count($out['questions']),
+        "bookmarks_count" => count($out['bookmarks'])
+      ]
+    ]);
   } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(["ok" => false, "error" => $e->getMessage()]);
+    echo json_encode(["ok" => false, "error" => $e->getMessage(), "trace" => $e->getTraceAsString()]);
   }
   exit;
 }
@@ -199,23 +212,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Get counts for profile overview
     $counts = [];
     
-    // Notes count
-    if (in_array('user_id', array_column($pdo->query("DESCRIBE notes")->fetchAll(PDO::FETCH_ASSOC), 'Field'))) {
-      $stmt = $pdo->prepare("SELECT COUNT(*) FROM notes WHERE user_id = ?");
-      $stmt->execute([$user_id]);
-      $counts['notes'] = $stmt->fetchColumn();
-    } else {
-      $counts['notes'] = 0;
-    }
+    // Notes count - FIXED: notes table doesn't have user_id
+    $stmt = $pdo->query("SELECT COUNT(*) FROM notes");
+    $counts['notes'] = $stmt->fetchColumn();
     
     // Resources count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = (SELECT username FROM users WHERE id = ?)");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ?");
+    $stmt->execute([$row['name']]);
     $counts['resources'] = $stmt->fetchColumn();
     
     // Recordings count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = (SELECT username FROM users WHERE id = ?) AND kind = 'recording'");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ? AND kind = 'recording'");
+    $stmt->execute([$row['name']]);
     $counts['recordings'] = $stmt->fetchColumn();
     
     // Rooms count
@@ -236,7 +244,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode([
       "ok" => true, 
       "profile" => $row,
-      "counts" => $counts
+      "counts" => $counts,
+      "debug" => [
+        "user_id" => $user_id,
+        "username" => $row['name']
+      ]
     ]);
   } catch (Throwable $e) {
     http_response_code(500);
