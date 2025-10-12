@@ -63,67 +63,106 @@ switch ($method) {
         break;
 
     case 'POST':
-    // Check if the required POST fields are set
-    if (!isset($_POST['title'], $_POST['course'], $_POST['semester'], $_POST['tags'], $_FILES['file'])) {
-        http_response_code(400); // Bad Request
-        echo json_encode(["status" => "error", "message" => "Missing required fields or file."]);
-        exit();
-    }
-
-    // Handle file upload
-    $file_url = null;
-    if (isset($_FILES['file'])) {
-        $file = $_FILES['file'];
-
-        // Check for upload errors
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "File upload error code: " . $file['error']]);
+        // Check if the required POST fields are set
+        if (!isset($_POST['title'], $_POST['course'], $_POST['semester'], $_POST['tags'], $_FILES['file'])) {
+            http_response_code(400); // Bad Request
+            echo json_encode(["status" => "error", "message" => "Missing required fields or file."]);
             exit();
         }
 
-        // Define a safe upload directory inside your public web root
-        // Using __DIR__ helps create a reliable absolute path
-        $uploadDir = __DIR__ . '/../../../public/uploads/'; 
-        $fileName = uniqid() . '-' . basename($file['name']); // Add uniqid to prevent overwriting files
-        $uploadFile = $uploadDir . $fileName;
+        // Handle file upload
+        $file_url = null;
+        if (isset($_FILES['file'])) {
+            $file = $_FILES['file'];
 
-        // Ensure the uploads directory exists and is writable
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0775, true); 
+            // Check for upload errors
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                http_response_code(500);
+                echo json_encode(["status" => "error", "message" => "File upload error code: " . $file['error']]);
+                exit();
+            }
+
+            // Define a safe upload directory inside your public web root
+            // Using __DIR__ helps create a reliable absolute path
+            $uploadDir = __DIR__ . '/../../../public/uploads/';
+            $fileName = uniqid() . '-' . basename($file['name']); // Add uniqid to prevent overwriting files
+            $uploadFile = $uploadDir . $fileName;
+
+            // Ensure the uploads directory exists and is writable
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0775, true);
+            }
+
+            // Attempt to move the uploaded file
+            if (move_uploaded_file($file['tmp_name'], $uploadFile)) {
+                // Construct the publicly accessible URL
+                $file_url = 'http://' . $_SERVER['HTTP_HOST'] . '/studynest/public/uploads/' . $fileName;
+            } else {
+                http_response_code(500);
+                echo json_encode(["status" => "error", "message" => "Failed to move uploaded file."]);
+                exit();
+            }
         }
 
-        // Attempt to move the uploaded file
-        if (move_uploaded_file($file['tmp_name'], $uploadFile)) {
-            // Construct the publicly accessible URL
-            $file_url = 'http://' . $_SERVER['HTTP_HOST'] . '/studynest/public/uploads/' . $fileName;
+        // Assign variables from the $_POST array
+        $title = $_POST['title'];
+        $course = $_POST['course'];
+        $semester = $_POST['semester'];
+        $tags = $_POST['tags'];
+        $description = isset($_POST['description']) ? $_POST['description'] : ''; // Description is optional
+
+        // Get user_id from session or request (you'll need to implement proper authentication)
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : null;
+
+        // Prepare SQL query to insert the note into the database
+        $stmt = $conn->prepare("INSERT INTO notes (title, course, semester, tags, description, file_url) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssss", $title, $course, $semester, $tags, $description, $file_url);
+
+        if ($stmt->execute()) {
+            $note_id = $stmt->insert_id;
+
+            // Award 20 points to the user if user_id is provided
+            if ($user_id) {
+                $points_awarded = 20;
+
+                // Update user's points in the users table
+                $update_points_sql = "UPDATE users SET points = COALESCE(points, 0) + ? WHERE id = ?";
+                $update_stmt = $conn->prepare($update_points_sql);
+                $update_stmt->bind_param("ii", $points_awarded, $user_id);
+
+                if ($update_stmt->execute()) {
+                    // Points updated successfully
+                    $update_stmt->close();
+
+                    echo json_encode([
+                        "status" => "success",
+                        "message" => "New note added successfully. +20 points awarded!",
+                        "file_url" => $file_url,
+                        "points_awarded" => $points_awarded
+                    ]);
+                } else {
+                    // Note was saved but points update failed
+                    $update_stmt->close();
+                    echo json_encode([
+                        "status" => "success",
+                        "message" => "New note added successfully, but points could not be awarded.",
+                        "file_url" => $file_url
+                    ]);
+                }
+            } else {
+                // No user_id provided, just save the note
+                echo json_encode([
+                    "status" => "success",
+                    "message" => "New note added successfully.",
+                    "file_url" => $file_url
+                ]);
+            }
         } else {
             http_response_code(500);
-            echo json_encode(["status" => "error", "message" => "Failed to move uploaded file."]);
-            exit();
+            echo json_encode(["status" => "error", "message" => "Database insertion failed: " . $stmt->error]);
         }
-    }
-
-    // Assign variables from the $_POST array
-    $title = $_POST['title'];
-    $course = $_POST['course'];
-    $semester = $_POST['semester'];
-    $tags = $_POST['tags'];
-    $description = isset($_POST['description']) ? $_POST['description'] : ''; // Description is optional
-
-    // Prepare SQL query to insert the note into the database
-    $stmt = $conn->prepare("INSERT INTO notes (title, course, semester, tags, description, file_url) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssss", $title, $course, $semester, $tags, $description, $file_url);
-
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "New note added successfully.", "file_url" => $file_url]);
-    } else {
-        http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Database insertion failed: " . $stmt->error]);
-    }
-    $stmt->close();
-    break;
-
+        $stmt->close();
+        break;
 
     case 'PUT':
         // Update existing note

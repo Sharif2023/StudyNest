@@ -70,6 +70,7 @@ export default function NotesRepository() {
   }, [notes, query, course, semester, tag]);
 
   // ✅ UPDATED: Handle file upload to the PHP backend
+  // In the onUpload function in NotesRepository.jsx
   const onUpload = async (payload) => {
     const { file, title, course, semester, tags, description } = payload;
     const formData = new FormData();
@@ -80,6 +81,12 @@ export default function NotesRepository() {
     formData.append('tags', tags.join(', '));
     formData.append('description', description);
 
+    // Add user_id from localStorage
+    const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+    if (auth?.id) {
+      formData.append('user_id', auth.id);
+    }
+
     try {
       const response = await fetch('http://localhost/studynest/study-nest/src/api/notes.php', {
         method: 'POST',
@@ -88,6 +95,20 @@ export default function NotesRepository() {
 
       const data = await response.json();
       if (data.status === 'success') {
+        // Update points in localStorage if points were awarded
+        if (data.points_awarded && auth?.id) {
+          const updatedAuth = {
+            ...auth,
+            points: (auth.points || 0) + data.points_awarded
+          };
+          localStorage.setItem('studynest.auth', JSON.stringify(updatedAuth));
+
+          // Trigger points update in LeftNav
+          window.dispatchEvent(new CustomEvent('studynest:points-updated', {
+            detail: { points: updatedAuth.points }
+          }));
+        }
+
         alert(data.message);
         fetchNotes(); // Re-fetch all notes to update the UI with the new data
       } else {
@@ -130,7 +151,7 @@ export default function NotesRepository() {
         setAnonymous={setAnonymous}
         sidebarWidth={sidebarWidth}
       />
-      
+
       {/* Header */}
       <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
