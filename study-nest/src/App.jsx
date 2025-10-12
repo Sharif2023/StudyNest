@@ -19,6 +19,7 @@ import AdminDashboard from './pages/AdminDashboard.jsx';
 import Messages from "./pages/Messages";
 import Groups from "./Pages/Groups";
 import GroupChat from "./Pages/GroupChat";
+import PointsLeaderboard from "./Pages/PointsLeaderboard";
 
 
 function App() {
@@ -46,6 +47,7 @@ function App() {
         <Route path="/messages" element={<Messages />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/group/:id" element={<GroupChat />} />
+        <Route path="/points-leaderboard" element={<PointsLeaderboard />} />
       </Routes>
     </BrowserRouter>
   );

@@ -204,10 +204,20 @@ export default function LeftNav({
               </div>
             </Link>
 
-            {/* Points row unchanged */}
-            <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200">
-              Points <span className="font-semibold">{points.toLocaleString()}</span>
-            </div>
+            {/* Clickable Points row */}
+            <Link
+              to="/points-leaderboard"
+              className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 hover:bg-slate-800/70 hover:border-cyan-500/30 transition cursor-pointer group"
+              title="View Points Leaderboard"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1l3 6 6 .75-4.12 4.62L16.95 19 12 16.25 7.05 19l1.17-6.63L3 7.75 9 7z" />
+              </svg>
+              Points <span className="font-semibold text-amber-300">{points.toLocaleString()}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 ml-auto text-slate-400 group-hover:text-cyan-400 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
         )}
 
@@ -238,9 +248,6 @@ export default function LeftNav({
             <NavItem to="/to-do-list" label="To-Do List" expanded={navOpen}
               icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="5" y1="8" x2="19" y2="8" /><circle cx="5" cy="8" r="1" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="1" /><line x1="5" y1="16" x2="19" y2="16" /><circle cx="5" cy="16" r="1" /></svg>}
             />
-            {/* <NavItem to="/groups" label="Group Chats" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M13 8H7" /><path d="M17 12H7" /></svg>}
-            /> */}
             <NavItem
               to="#"
               label="Paraphasing & Summarizing"
