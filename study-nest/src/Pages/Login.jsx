@@ -14,51 +14,54 @@ export default function Login() {
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  async function onSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Step 1: Send credentials to the PHP backend
-      const res = await fetch(`${API_BASE}/login.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // IMPORTANT: The `credentials: "include"` setting ensures that
-        // the browser sends cookies with this request. This is how the
-        // PHP session ID is passed to the server, and how the
-        // server establishes the session.
-        credentials: "include",
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-        }),
-      });
+  // In your onSubmit function in Login.jsx, after successful login:
+async function onSubmit(e) {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/login.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+      }),
+    });
 
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      // Step 2: Persist user data in localStorage (for client-side use)
-      // The PHP session is already set on the server, this is just for
-      // convenience on the frontend.
-      localStorage.setItem("studynest.auth", JSON.stringify(data.user));
-
-      // Fetch canonical profile data for the client-side cache
-      try {
-        const pres = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
-        const pj = await pres.json();
-        const p = pj?.ok ? pj.profile : pj;
-        if (p) localStorage.setItem("studynest.profile", JSON.stringify(p));
-      } catch { /* non-fatal */ }
-
-      // Step 3: Navigate to the home page on success
-      navigate("/home");
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Login failed");
     }
+
+    // Store user data with updated points
+    localStorage.setItem("studynest.auth", JSON.stringify(data.user));
+
+    // Show points earned notification
+    if (data.points_earned > 0) {
+      alert(`Welcome back! You earned ${data.points_earned} points for your login!`);
+    }
+
+    // Dispatch points update event for LeftNav
+    window.dispatchEvent(new CustomEvent('studynest:points-updated', {
+      detail: { points: data.user.points }
+    }));
+
+    // Fetch canonical profile data
+    try {
+      const pres = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
+      const pj = await pres.json();
+      const p = pj?.ok ? pj.profile : pj;
+      if (p) localStorage.setItem("studynest.profile", JSON.stringify(p));
+    } catch { /* non-fatal */ }
+
+    navigate("/home");
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white h-fit w-full">

@@ -36,6 +36,7 @@ try {
             profile_picture_url, 
             bio,
             password_hash, 
+            points,
             created_at, 
             updated_at
         FROM users
@@ -51,6 +52,25 @@ try {
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials.']);
         exit;
     }
+
+    // ✅ Calculate login streak and points
+    $pointsEarned = calculateLoginPoints($pdo, $user['id']);
+    
+    // ✅ Update user's total points
+    $newPoints = $user['points'] + $pointsEarned;
+    $updateStmt = $pdo->prepare("UPDATE users SET points = ?, updated_at = NOW() WHERE id = ?");
+    $updateStmt->execute([$newPoints, $user['id']]);
+
+    // ✅ Record points in history
+    $historyStmt = $pdo->prepare("
+        INSERT INTO points_history (user_id, points, action_type, description, created_at) 
+        VALUES (?, ?, 'login_streak', ?, NOW())
+    ");
+    $historyStmt->execute([
+        $user['id'], 
+        $pointsEarned, 
+        "Login streak reward: {$pointsEarned} points"
+    ]);
 
     // ✅ CRITICAL: Store user_id in session for profile.php
     $_SESSION['user_id'] = (int)$user['id'];
@@ -70,6 +90,8 @@ try {
         'username' => $user['username'],
         'profile_picture_url' => $user['profile_picture_url'],
         'bio' => $user['bio'],
+        'points' => $newPoints, // Send updated points
+        'points_earned' => $pointsEarned, // Points earned this login
         'created_at' => $user['created_at'],
         'updated_at' => $user['updated_at']
     ];
@@ -77,6 +99,7 @@ try {
     echo json_encode([
         'ok' => true, 
         'user' => $responseUser,
+        'points_earned' => $pointsEarned,
         'session_id' => session_id() // For debugging
     ]);
     exit;
@@ -90,3 +113,85 @@ try {
     ]);
     exit;
 }
+
+/**
+ * Calculate login streak points
+ */
+function calculateLoginPoints($pdo, $userId) {
+    // Get last login date
+    $lastLoginStmt = $pdo->prepare("
+        SELECT created_at 
+        FROM points_history 
+        WHERE user_id = ? AND action_type = 'login_streak' 
+        ORDER BY created_at DESC 
+        LIMIT 1
+    ");
+    $lastLoginStmt->execute([$userId]);
+    $lastLogin = $lastLoginStmt->fetch();
+    
+    $currentDate = new DateTime();
+    
+    // If no previous login, this is first login - give base points
+    if (!$lastLogin) {
+        return 5; // Base points for first login
+    }
+    
+    $lastLoginDate = new DateTime($lastLogin['created_at']);
+    $interval = $currentDate->diff($lastLoginDate);
+    $daysSinceLastLogin = $interval->days;
+    
+    // Check if login is consecutive
+    if ($daysSinceLastLogin === 1) {
+        // Consecutive login - increment streak
+        return getStreakPoints($pdo, $userId);
+    } elseif ($daysSinceLastLogin === 0) {
+        // Same day login - no additional points
+        return 0;
+    } else {
+        // Streak broken - reset to base points
+        resetLoginStreak($pdo, $userId);
+        return 5; // Base points for new streak
+    }
+}
+
+/**
+ * Get points based on current streak
+ */
+function getStreakPoints($pdo, $userId) {
+    // Get current streak count from recent consecutive logins
+    $streakStmt = $pdo->prepare("
+        SELECT COUNT(*) as streak_count
+        FROM (
+            SELECT DATE(created_at) as login_date
+            FROM points_history 
+            WHERE user_id = ? AND action_type = 'login_streak'
+            GROUP BY DATE(created_at)
+            ORDER BY login_date DESC
+            LIMIT 7
+        ) recent_logins
+    ");
+    $streakStmt->execute([$userId]);
+    $result = $streakStmt->fetch();
+    $currentStreak = $result['streak_count'] + 1; // +1 for current login
+    
+    // Calculate points based on streak
+    if ($currentStreak >= 20) {
+        return 20;
+    } elseif ($currentStreak >= 7) {
+        return 12;
+    } elseif ($currentStreak >= 3) {
+        return 8;
+    } else {
+        return 5;
+    }
+}
+
+/**
+ * Reset login streak (optional - for tracking purposes)
+ */
+function resetLoginStreak($pdo, $userId) {
+    // You might want to track streak resets in a separate table
+    // For now, we'll just return base points
+    return 5;
+}
+?>
