@@ -29,24 +29,23 @@ export default function NotesRepository() {
 
   // ✅ Function to fetch notes from the API
   const fetchNotes = async () => {
-    try {
-      const response = await fetch('http://localhost/studynest/study-nest/src/api/notes.php');
-      const data = await response.json();
-      if (data.status === 'success' && Array.isArray(data.notes)) {
-        // The backend returns tags as a comma-separated string, so we split it into an array
-        const formattedNotes = data.notes.map(note => ({
-          ...note,
-          tags: note.tags ? note.tags.split(',').map(tag => tag.trim()) : []
-        })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Sort by newest
-        setNotes(formattedNotes);
-      } else {
-        setNotes([]); // Clear notes if API returns an error or no notes
-      }
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-      setNotes([]); // Also clear notes on network error
+  try {
+    const response = await fetch('http://localhost/studynest/study-nest/src/api/notes.php');
+    const data = await response.json();
+    if (data.status === 'success' && Array.isArray(data.notes)) {
+      const formattedNotes = data.notes.map(note => ({
+        ...note,
+        tags: note.tags ? note.tags.split(',').map(tag => tag.trim()) : []
+      }));
+      setNotes(formattedNotes);
+    } else {
+      setNotes([]);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching notes:', error);
+    setNotes([]);
+  }
+};
 
   // ✅ useEffect to run fetchNotes() once when the component mounts
   useEffect(() => {
@@ -235,8 +234,8 @@ function Select({ label, value, onChange, options }) {
   );
 };
 
-// ✅ UPDATED: NoteCard now works with the database schema
-function NoteCard({ note }) {
+// ✅ UPDATED: NoteCard now displays uploader information
+function NoteCard({ note, onPreview }) {
   // Infer file type from the URL extension
   const isPdf = note.file_url.toLowerCase().endsWith('.pdf');
   const isImage = /\.(jpg|jpeg|png|gif)$/i.test(note.file_url);
@@ -259,6 +258,23 @@ function NoteCard({ note }) {
         <p className="mt-1 text-sm text-zinc-600"><strong>{note.course}</strong> • {note.semester}</p>
         <p className="mt-2 line-clamp-2 text-sm text-zinc-500">{note.description}</p>
       </div>
+
+      {/* Uploader information - NEW SECTION */}
+      {note.username && (
+        <div className="mt-3 flex items-center gap-2">
+          {(
+            <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
+              <span className="text-xs font-medium text-emerald-800">
+                {note.username.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="text-xs text-zinc-600">Uploaded by {note.username}</span>
+          {note.student_id && (
+            <span className="text-xs text-zinc-400">({note.student_id})</span>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-1">
         {note.tags.map(tag => (

@@ -22,7 +22,7 @@ if ($conn->connect_error) {
     exit();
 }
 
-// SQL to create the table if it doesn't exist (the table structure you provided)
+// SQL to create the table if it doesn't exist (UPDATED with user_id)
 $sql = "CREATE TABLE IF NOT EXISTS notes (
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -31,8 +31,10 @@ $sql = "CREATE TABLE IF NOT EXISTS notes (
     tags TEXT NOT NULL,
     description TEXT,
     file_url VARCHAR(255) NOT NULL,
+    user_id INT(10) UNSIGNED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE RESTRICT
 )";
 
 if (!$conn->query($sql)) {
@@ -45,8 +47,13 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Fetch all notes
-        $result = $conn->query("SELECT * FROM notes");
+        // Fetch all notes with user information
+        $result = $conn->query("
+            SELECT n.*, u.username, u.student_id, u.profile_picture_url 
+            FROM notes n 
+            LEFT JOIN users u ON n.user_id = u.id 
+            ORDER BY n.created_at DESC
+        ");
         if ($result) {
             if ($result->num_rows > 0) {
                 $notes = [];
@@ -83,9 +90,8 @@ switch ($method) {
             }
 
             // Define a safe upload directory inside your public web root
-            // Using __DIR__ helps create a reliable absolute path
             $uploadDir = __DIR__ . '/../../../public/uploads/';
-            $fileName = uniqid() . '-' . basename($file['name']); // Add uniqid to prevent overwriting files
+            $fileName = uniqid() . '-' . basename($file['name']);
             $uploadFile = $uploadDir . $fileName;
 
             // Ensure the uploads directory exists and is writable
@@ -109,14 +115,14 @@ switch ($method) {
         $course = $_POST['course'];
         $semester = $_POST['semester'];
         $tags = $_POST['tags'];
-        $description = isset($_POST['description']) ? $_POST['description'] : ''; // Description is optional
+        $description = isset($_POST['description']) ? $_POST['description'] : '';
 
-        // Get user_id from session or request (you'll need to implement proper authentication)
+        // Get user_id from request
         $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : null;
 
-        // Prepare SQL query to insert the note into the database
-        $stmt = $conn->prepare("INSERT INTO notes (title, course, semester, tags, description, file_url) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssss", $title, $course, $semester, $tags, $description, $file_url);
+        // Prepare SQL query to insert the note into the database (UPDATED with user_id)
+        $stmt = $conn->prepare("INSERT INTO notes (title, course, semester, tags, description, file_url, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssssi", $title, $course, $semester, $tags, $description, $file_url, $user_id);
 
         if ($stmt->execute()) {
             $note_id = $stmt->insert_id;
