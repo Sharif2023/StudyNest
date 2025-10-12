@@ -859,24 +859,52 @@ function MyContent() {
   const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [], recordings: [] });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchContent() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/profile.php?content=1`, {
-          credentials: "include",
-        });
-        const json = await res.json();
-        if (json.ok && json.content) setData(json.content);
-        else console.warn("Failed to load content:", json);
-      } catch (err) {
-        console.error("Error loading content:", err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchContent = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/profile.php?content=1`, {
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (json.ok && json.content) setData(json.content);
+      else console.warn("Failed to load content:", json);
+    } catch (err) {
+      console.error("Error loading content:", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchContent();
   }, []);
+
+  // Delete recording function
+  const deleteRecording = async (id) => {
+    if (!confirm('Are you sure you want to delete this recording? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/recordings.php?id=${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        // Refresh the content
+        await fetchContent();
+        alert('Recording deleted successfully!');
+      } else {
+        alert('Failed to delete recording: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error deleting recording:', error);
+      alert('Failed to delete recording. Please try again.');
+    }
+  };
 
   if (loading) {
     return (
@@ -890,14 +918,16 @@ function MyContent() {
     <section className="space-y-6">
       <ListCard title="My Notes" empty="No notes yet" items={data.notes} type="notes" />
       <ListCard title="My Resources" empty="No resources yet" items={data.resources} type="resources" />
-      <ListCard title="My Recordings" empty="No recordings yet" items={data.recordings} type="resources?kind=recording" />
+      <ListCard title="My Recordings" empty="No recordings yet" items={data.recordings} type="resources?kind=recording" onDeleteRecording={deleteRecording} />
       <ListCard title="My Questions" empty="No questions yet" items={data.questions} type="forum" />
       <ListCard title="My Rooms" empty="No rooms yet" items={data.rooms} type="rooms" />
     </section>
   );
 }
 
-function ListCard({ title, empty, items, type }) {
+function ListCard({ title, empty, items, type, onDeleteRecording }) {
+  const isRecordings = title === "My Recordings";
+  
   return (
     <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
       <div className="mb-3 flex items-center justify-between">
@@ -914,11 +944,24 @@ function ListCard({ title, empty, items, type }) {
         <ul className="grid gap-3 sm:grid-cols-2">
           {items.map((it) => (
             <li key={it.id} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:bg-slate-900 dark:border-slate-800">
-              <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={it.title}>
-                {it.title}
-              </div>
-              <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
-                {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate" title={it.title}>
+                    {it.title}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                    {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
+                  </div>
+                </div>
+                {isRecordings && onDeleteRecording && (
+                  <button
+                    onClick={() => onDeleteRecording(it.id)}
+                    className="shrink-0 rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                    title="Delete recording"
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
             </li>
           ))}

@@ -183,6 +183,33 @@ export default function App() {
 
   const flag = (id) => updateResource(id, { flagged: 1 });
 
+  // Delete recording function
+  const deleteRecording = async (id) => {
+    if (!confirm('Are you sure you want to delete this recording? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost/StudyNest/study-nest/src/api/recordings.php?id=${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        // Remove the item from the local state
+        setItems(prevItems => prevItems.filter(item => item.id !== id));
+        alert('Recording deleted successfully!');
+      } else {
+        alert('Failed to delete recording: ' + (data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error deleting recording:', error);
+      alert('Failed to delete recording. Please try again.');
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
       <LeftNav
@@ -241,6 +268,7 @@ export default function App() {
                   onVote={vote}
                   onBookmark={toggleBookmark}
                   onFlag={flag}
+                  onDelete={deleteRecording}
                 />
               </li>
             ))}
@@ -291,13 +319,20 @@ function Select({ label, value, onChange, options }) {
   );
 }
 
-function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
+function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete }) {
   const isFile = item.src_type === "file";
   const isRecording = item.kind === "recording";
   const url = item.url || "";
   const isPdf = url.toLowerCase().endsWith(".pdf");
   const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   const isVideo = isRecording || url.match(/\.(mp4|webm|mov)$/i);
+
+  // Get current user info to check if this is their recording
+  const currentUser = JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
+                     JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
+                     "Unknown";
+  
+  const isOwner = item.author === currentUser;
 
   return (
     <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition">
@@ -470,6 +505,15 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag }) {
           </button>
         </div>
         <div className="space-x-2">
+          {isRecording && isOwner && onDelete && (
+            <button
+              onClick={() => onDelete(item.id)}
+              className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100"
+              title="Delete recording"
+            >
+              🗑️ Delete
+            </button>
+          )}
           <button
             onClick={() => onFlag(item.id)}
             className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
