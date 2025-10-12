@@ -269,6 +269,7 @@ export default function Header({ sidebarWidth = 72 }) {
       "/messages": ["Messages", "Chat with classmates."],
       "/groups": ["Study Groups", "Collaborate and share ideas."],
       "/profile": ["Your Profile", "Manage your info and settings."],
+      "/points-leaderboard": ["Points Leaderboard", "See how you rank among other students"],
     };
 
     const [title, subtitle] = Object.entries(map).find(([key]) => path.startsWith(key))?.[1] || [
