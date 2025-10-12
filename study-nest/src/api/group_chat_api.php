@@ -370,4 +370,3 @@ switch ($action) {
             ]
         ]);
 }
-
