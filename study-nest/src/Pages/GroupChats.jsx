@@ -374,4 +374,3 @@ export default function GroupChats() {
     </main>
   );
 }
-
