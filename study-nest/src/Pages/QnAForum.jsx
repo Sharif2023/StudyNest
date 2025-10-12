@@ -30,6 +30,44 @@ export default function QnAForum() {
   const EXPANDED_W = 248;
   const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
+  //  Points system: +10 for question, +2 for answer, +5 for accepted answer
+  const syncUserPoints = async () => {
+    try {
+      const response = await fetch(API_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(localStorage.getItem("token") && {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          }),
+        },
+        body: JSON.stringify({
+          action: "get_user_points"
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        // Update localStorage
+        const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+        const updatedAuth = { ...auth, points: data.points };
+        localStorage.setItem('studynest.auth', JSON.stringify(updatedAuth));
+        
+        // Dispatch event to update UI
+        window.dispatchEvent(new CustomEvent('studynest:points-updated', { 
+          detail: { points: data.points } 
+        }));
+        
+        return data.points;
+      }
+    } catch (error) {
+      console.error("Error syncing points:", error);
+    }
+    return null;
+  };
+
   // 🔹 Fetch all questions
   const fetchQuestions = () => {
     fetch(API_ENDPOINT, {
@@ -123,7 +161,10 @@ export default function QnAForum() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success") fetchQuestions();
+        if (data.status === "success") {
+          fetchQuestions();
+          syncUserPoints();
+        }
         else {
           setQuestions((prev) => prev.filter((x) => x.id !== tempId));
           alert("Error: " + data.message);
@@ -169,7 +210,10 @@ export default function QnAForum() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success") fetchQuestions();
+        if (data.status === "success") {
+          fetchQuestions();
+          syncUserPoints();
+        }
         else {
           setQuestions((prev) =>
             prev.map((q) =>
@@ -338,7 +382,11 @@ export default function QnAForum() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status !== "success") console.error("Accept error:", data.message);
+        if (data.status !== "success") {
+          syncUserPoints();
+        } else {
+          console.error("Accept error:", data.message);
+        }
       })
       .catch((err) => console.error(err));
   };
