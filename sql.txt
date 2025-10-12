@@ -202,3 +202,18 @@ CREATE TABLE group_messages (
   CONSTRAINT fk_msg_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
   CONSTRAINT fk_msg_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+
+
+-----------Points table
+
+CREATE TABLE IF NOT EXISTS points_history (
+    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT(10) UNSIGNED NOT NULL,
+    points INT(11) NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    reference_id INT(11) NULL,
+    description TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE RESTRICT ON DELETE CASCADE
+);

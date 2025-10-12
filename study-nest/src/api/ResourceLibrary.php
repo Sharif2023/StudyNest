@@ -199,7 +199,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ":url" => $url,
         ]);
 
-        echo json_encode(["status" => "success", "message" => "Resource added successfully"]);
+        $resource_id = $pdo->lastInsertId();
+        
+        // Award 25 points to the user if logged in
+        if (!empty($_SESSION['user_id'])) {
+            $user_id = $_SESSION['user_id'];
+            $points_awarded = 25;
+            
+            // Update user's points in the users table
+            $update_points_sql = "UPDATE users SET points = COALESCE(points, 0) + ? WHERE id = ?";
+            $update_stmt = $pdo->prepare($update_points_sql);
+            $update_stmt->execute([$points_awarded, $user_id]);
+            
+            // Record in points_history table
+            $history_sql = "INSERT INTO points_history (user_id, points, action_type, reference_id, description) VALUES (?, ?, 'resource_upload', ?, ?)";
+            $history_stmt = $pdo->prepare($history_sql);
+            $history_stmt->execute([
+                $user_id, 
+                $points_awarded, 
+                $resource_id, 
+                "Awarded {$points_awarded} points for uploading resource: " . $data["title"]
+            ]);
+            
+            echo json_encode([
+                "status" => "success", 
+                "message" => "Resource added successfully. +{$points_awarded} points awarded!", 
+                "points_awarded" => $points_awarded
+            ]);
+        } else {
+            // No user logged in, just save the resource
+            echo json_encode([
+                "status" => "success", 
+                "message" => "Resource added successfully."
+            ]);
+        }
     } catch (Throwable $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }

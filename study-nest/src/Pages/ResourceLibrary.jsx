@@ -524,40 +524,57 @@ function CreateModal({ onClose, onCreate }) {
 
   const disabled = (useLink ? !link.trim() : !file) || !title.trim() || !course.trim() || !semester.trim();
 
-  const submit = async () => {
-    const form = new FormData();
-    form.append("src_type", useLink ? "link" : "file");
-    form.append("title", title.trim());
-    form.append("kind", kind);
-    form.append("course", course.trim());
-    form.append("semester", semester.trim());
-    form.append("tags", tags.trim());
-    form.append("description", description.trim());
-    form.append("author", anonymous ? "Anonymous" : "");
-    if (useLink) {
-      form.append("url", link.trim());
-    } else if (file) {
-      form.append("file", file);
-    }
+  // In the submit function in CreateModal component in ResourceLibrary.jsx
+const submit = async () => {
+  const form = new FormData();
+  form.append("src_type", useLink ? "link" : "file");
+  form.append("title", title.trim());
+  form.append("kind", kind);
+  form.append("course", course.trim());
+  form.append("semester", semester.trim());
+  form.append("tags", tags.trim());
+  form.append("description", description.trim());
+  form.append("author", anonymous ? "Anonymous" : "");
+  if (useLink) {
+    form.append("url", link.trim());
+  } else if (file) {
+    form.append("file", file);
+  }
 
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const json = await res.json();
-      if (json.status === "success") {
-        alert("✅ Resource added successfully!");
-        window.location.reload();
-      } else {
-        alert("❌ " + (json.message || "Upload failed"));
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    const json = await res.json();
+    if (json.status === "success") {
+      // Update points in localStorage if points were awarded
+      if (json.points_awarded) {
+        const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+        if (auth?.id) {
+          const updatedAuth = {
+            ...auth,
+            points: (auth.points || 0) + json.points_awarded
+          };
+          localStorage.setItem('studynest.auth', JSON.stringify(updatedAuth));
+          
+          // Trigger points update in LeftNav
+          window.dispatchEvent(new CustomEvent('studynest:points-updated', {
+            detail: { points: updatedAuth.points }
+          }));
+        }
       }
-    } catch (err) {
-      alert("❌ " + err.message);
+      
+      alert("✅ " + json.message);
+      window.location.reload();
+    } else {
+      alert("❌ " + (json.message || "Upload failed"));
     }
-  };
-
+  } catch (err) {
+    alert("❌ " + err.message);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-40 bg-black/50 p-4" onClick={onClose}>
