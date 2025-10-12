@@ -504,19 +504,40 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
             {item.bookmarked ? "🔖 Saved" : "🔖 Save"}
           </button>
         </div>
-        <div className="space-x-2">
+        <div className="flex items-center gap-2">
           {isRecording && isOwner && onDelete && (
             <button
-              onClick={() => onDelete(item.id)}
-              className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100"
-              title="Delete recording"
+            onClick={() => onDelete(item.id)}
+            className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center"
+            title="Delete recording"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              aria-labelledby="trashTitle"
+              role="img"
             >
-              🗑️ Delete
-            </button>
+              <title id="trashTitle">Delete</title>
+              <rect x="3.5" y="3.5" width="17" height="2" rx="1" fill="#E53E3E" />
+              <path
+                d="M6 7.5h12l-1 12.5a2 2 0 0 1-2 1.9H9a2 2 0 0 1-2-1.9L6 7.5z"
+                fill="#E53E3E"
+              />
+              <rect x="9" y="1.5" width="6" height="2" rx="1" fill="#C53030" />
+              <g stroke="#FFF" strokeWidth="1" strokeLinecap="round" opacity="0.85">
+                <line x1="9.5" y1="10.5" x2="9.5" y2="16" />
+                <line x1="12" y1="10.5" x2="12" y2="16" />
+                <line x1="14.5" y1="10.5" x2="14.5" y2="16" />
+              </g>
+            </svg>
+          </button>
+          
           )}
           <button
             onClick={() => onFlag(item.id)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
           >
             Report
           </button>
@@ -525,7 +546,7 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
             target="_blank"
             rel="noopener noreferrer"
             download={item.name}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
           >
             Download
           </a>

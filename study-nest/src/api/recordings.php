@@ -221,6 +221,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
             exit;
         }
 
+        // Get the video URL before deleting from database
+        $url_stmt = $pdo->prepare("SELECT url FROM resources WHERE id = ? AND kind = 'recording'");
+        $url_stmt->execute([$recording_id]);
+        $video_data = $url_stmt->fetch();
+        
+        if ($video_data && $video_data['url']) {
+            $video_url = $video_data['url'];
+            
+            // Extract public_id from Cloudinary URL for deletion
+            if (strpos($video_url, 'cloudinary.com') !== false) {
+                // Parse Cloudinary URL to get public_id
+                // Format: https://res.cloudinary.com/{cloud_name}/video/upload/{public_id}.{format}
+                $parsed_url = parse_url($video_url);
+                $path_parts = explode('/', trim($parsed_url['path'], '/'));
+                
+                // Find the video/upload part and get the public_id
+                $upload_index = array_search('upload', $path_parts);
+                if ($upload_index !== false && isset($path_parts[$upload_index + 1])) {
+                    $public_id = $path_parts[$upload_index + 1];
+                    // Remove file extension if present
+                    $public_id = preg_replace('/\.[^.]*$/', '', $public_id);
+                    
+                    // Load Cloudinary configuration
+                    $cloudinary_config = require_once __DIR__ . '/cloudinary_config.php';
+                    $cloud_name = $cloudinary_config['cloud_name'];
+                    $api_key = $cloudinary_config['api_key'];
+                    $api_secret = $cloudinary_config['api_secret'];
+                    
+                    // Check if API credentials are configured
+                    if ($api_key === 'your_api_key_here' || $api_secret === 'your_api_secret_here') {
+                        error_log("Cloudinary API credentials not configured. Please update cloudinary_config.php");
+                        // Continue with database deletion even if Cloudinary credentials are not configured
+                    } else {
+                        // Generate signature for authentication
+                        $timestamp = time();
+                        $string_to_sign = "public_id={$public_id}&timestamp={$timestamp}{$api_secret}";
+                        $signature = sha1($string_to_sign);
+                    
+                    // Make API call to delete from Cloudinary
+                    $delete_url = "https://api.cloudinary.com/v1_1/{$cloud_name}/resources/video/upload/{$public_id}";
+                    $delete_data = [
+                        'public_id' => $public_id,
+                        'timestamp' => $timestamp,
+                        'api_key' => $api_key,
+                        'signature' => $signature
+                    ];
+                    
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $delete_url);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($delete_data));
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    
+                    $cloudinary_response = curl_exec($ch);
+                    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    
+                    // Log the response for debugging
+                    error_log("Cloudinary delete response: " . $cloudinary_response);
+                    
+                    if ($http_code !== 200) {
+                        error_log("Failed to delete from Cloudinary. HTTP Code: " . $http_code);
+                        // Continue with database deletion even if Cloudinary deletion fails
+                    }
+                    }
+                }
+            }
+        }
+
         // Delete from resources table (this will cascade to other tables if needed)
         $delete_stmt = $pdo->prepare("DELETE FROM resources WHERE id = ?");
         $delete_stmt->execute([$recording_id]);
@@ -231,7 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
         echo json_encode([
             "status" => "success", 
-            "message" => "Recording deleted successfully"
+            "message" => "Recording deleted successfully from database and cloud storage"
         ]);
         
     } catch (Throwable $e) {
