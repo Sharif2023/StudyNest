@@ -162,7 +162,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
   $questions = [];
   $result_q = $conn->query("
-    SELECT q.*, u.username AS author_username,
+    SELECT q.*, u.username AS author_username, q.user_id AS question_owner_id,
            (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id) as answer_count
     FROM questions q
     LEFT JOIN users u ON q.user_id = u.id
@@ -177,15 +177,17 @@ if ($method === 'GET') {
     $row['anonymous'] = (bool) $row['anonymous'];
     $row['answers'] = [];
     $row['createdAt'] = $row['created_at'];
-    unset($row['created_at']);
+    $row['questionOwnerId'] = (int) $row['question_owner_id']; // Ensure it's an integer
+    unset($row['created_at'], $row['question_owner_id']);
     if ($row['author_username'] && !$row['anonymous'])
       $row['author'] = $row['author_username'];
     unset($row['author_username']);
     $questions[$row['id']] = $row;
   }
 
+  // Also update the answers query to include user_id
   $result_a = $conn->query("
-    SELECT a.*, u.username AS author_username
+    SELECT a.*, u.username AS author_username, a.user_id AS answer_user_id
     FROM answers a
     LEFT JOIN users u ON a.user_id = u.id
     ORDER BY a.created_at ASC
@@ -197,7 +199,8 @@ if ($method === 'GET') {
     if (isset($questions[$row['question_id']])) {
       $row['isAccepted'] = (bool) $row['is_accepted'];
       $row['createdAt'] = $row['created_at'];
-      unset($row['is_accepted'], $row['created_at']);
+      $row['userId'] = (int) $row['answer_user_id']; // Add user ID for answers too
+      unset($row['is_accepted'], $row['created_at'], $row['answer_user_id']);
       if ($row['author_username'])
         $row['author'] = $row['author_username'];
       unset($row['author_username']);
@@ -310,6 +313,19 @@ if ($method === 'POST') {
     case 'accept_answer': {
       $conn->begin_transaction();
       try {
+        // First, verify that the current user owns the question
+        $verifyStmt = $conn->prepare("SELECT user_id FROM questions WHERE id = ?");
+        $verifyStmt->bind_param("i", $data['question_id']);
+        $verifyStmt->execute();
+        $verifyResult = $verifyStmt->get_result();
+        $questionOwner = $verifyResult->fetch_assoc();
+
+        // Check if current user is the question owner
+        if (!$questionOwner || $questionOwner['user_id'] != $logged_in_user_id) {
+          send_response('error', 'Only the question owner can accept answers.');
+          return;
+        }
+
         $stmt1 = $conn->prepare("UPDATE answers SET is_accepted = 0 WHERE question_id = ?");
         $stmt1->bind_param("i", $data['question_id']);
         $stmt1->execute();

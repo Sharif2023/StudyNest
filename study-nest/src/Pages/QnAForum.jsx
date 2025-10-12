@@ -46,20 +46,20 @@ export default function QnAForum() {
           action: "get_user_points"
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === "success") {
         // Update localStorage
         const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
         const updatedAuth = { ...auth, points: data.points };
         localStorage.setItem('studynest.auth', JSON.stringify(updatedAuth));
-        
+
         // Dispatch event to update UI
-        window.dispatchEvent(new CustomEvent('studynest:points-updated', { 
-          detail: { points: data.points } 
+        window.dispatchEvent(new CustomEvent('studynest:points-updated', {
+          detail: { points: data.points }
         }));
-        
+
         return data.points;
       }
     } catch (error) {
@@ -633,9 +633,40 @@ function AskQuestionModal({ onClose, onCreate }) {
   );
 }
 
+const getCurrentUserId = () => {
+  try {
+    const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+    return auth.id || null;
+  } catch {
+    return null;
+  }
+};
+
 function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerReview, onAccept }) {
   const [answer, setAnswer] = useState("");
   const [anon, setAnon] = useState(false);
+
+  // Get current user ID - make sure this matches your auth structure
+  const getCurrentUserId = () => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+      console.log('Auth object:', auth); // Debug log
+      // Try different possible locations for user ID
+      return auth.id || auth.userId || auth.user_id || null;
+    } catch (error) {
+      console.error('Error getting user ID:', error);
+      return null;
+    }
+  };
+
+  const currentUserId = getCurrentUserId();
+
+  // Check if current user is the question owner - use loose comparison for safety
+  const isQuestionOwner = currentUserId && question && question.questionOwnerId != null &&
+    question.questionOwnerId.toString() === currentUserId.toString();
+
+  console.log('Debug - Current User:', currentUserId, 'Question Owner:', question?.questionOwnerId, 'Is Owner:', isQuestionOwner);
+
   if (!question) return null;
 
   const submitAnswer = () => {
@@ -649,6 +680,7 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
     <div className="fixed inset-0 z-40 flex">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative ml-auto h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl ring-1 ring-zinc-200">
+        {/* Header remains the same */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3">
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Close">
@@ -671,6 +703,9 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
             <span>{timeAgo(question.createdAt)}</span>
             <span>•</span>
             <span className="rounded-full bg-zinc-100 px-2 py-0.5">{question.answers.length} answers</span>
+            {isQuestionOwner && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-800 text-xs">Your question</span>
+            )}
           </div>
           <p className="mt-4 whitespace-pre-wrap text-sm text-zinc-800">{question.body}</p>
         </div>
@@ -721,12 +756,32 @@ function QuestionDrawer({ question, onClose, onAddAnswer, onVoteAnswer, onPeerRe
                     <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">{a.body}</p>
 
                     <div className="mt-3 flex items-center gap-2 text-xs">
-                      <button onClick={() => onPeerReview(question.id, a.id)} className="rounded-full border border-zinc-300 px-3 py-1 font-semibold text-zinc-700 hover:bg-white">
+                      <button
+                        onClick={() => onPeerReview(question.id, a.id)}
+                        className="rounded-full border border-zinc-300 px-3 py-1 font-semibold text-zinc-700 hover:bg-white"
+                      >
                         Mark Helpful ({a.helpful})
                       </button>
-                      <button onClick={() => onAccept(question.id, a.id)} className="rounded-full border border-zinc-300 px-3 py-1 font-semibold text-zinc-700 hover:bg-white">
-                        Accept Answer
-                      </button>
+
+                      {/* Only show Accept Answer button to question owner and if answer is not already accepted */}
+                      {isQuestionOwner && !a.isAccepted && (
+                        <button
+                          onClick={() => onAccept(question.id, a.id)}
+                          className="rounded-full border border-green-600 bg-green-600 px-3 py-1 font-semibold text-white hover:bg-green-700"
+                        >
+                          Accept Answer
+                        </button>
+                      )}
+
+                      {/* Show undo accept button if answer is accepted and user is question owner */}
+                      {isQuestionOwner && a.isAccepted && (
+                        <button
+                          onClick={() => onAccept(question.id, null)} // Pass null to unaccept
+                          className="rounded-full border border-red-600 bg-red-600 px-3 py-1 font-semibold text-white hover:bg-red-700"
+                        >
+                          Unaccept Answer
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
