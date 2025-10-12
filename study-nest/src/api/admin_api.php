@@ -221,44 +221,158 @@ switch ($action) {
     /* ---------- Content ---------- */
     case 'list_content': {
         $q = trim($_GET['q'] ?? '');
-        if ($q === '') {
-            $union = "
+
+        try {
+            if ($q === '') {
+                // Get resources
+                $resources = $pdo->query("
                 SELECT 'Resource' AS type, id, title, author,
                        CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
-                       created_at FROM resources
-                UNION ALL
-                SELECT 'Note' AS type, id, title, NULL AS author,
-                       'Active' AS status, created_at FROM notes
-                UNION ALL
-                SELECT 'Q&A' AS type, id, title, author,
-                       'Active' AS status, created_at FROM questions
-                UNION ALL
-                SELECT 'Answer' AS type, id,
-                       LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
-                       author, 'Active' AS status, created_at FROM answers
-            ";
-            $stmt = $pdo->query("SELECT * FROM ($union) t ORDER BY created_at DESC LIMIT 500");
-        } else {
-            $like = "%$q%";
-            $union = "
+                       created_at 
+                FROM resources 
+                ORDER BY created_at DESC 
+                LIMIT 200
+            ")->fetchAll();
+
+                // Get notes with username
+                $notes = $pdo->query("
+                SELECT 'Note' AS type, n.id, n.title, 
+                       COALESCE(u.username, 'Unknown') AS author,
+                       'Active' AS status, n.created_at 
+                FROM notes n 
+                LEFT JOIN users u ON n.user_id = u.id 
+                ORDER BY n.created_at DESC 
+                LIMIT 100
+            ")->fetchAll();
+
+                // Get questions - handle author field properly
+                $questions = $pdo->query("
+                SELECT 'Q&A' AS type, q.id, q.title, 
+                       CASE 
+                           WHEN q.author IS NULL OR q.author = '' OR q.author = 'You' THEN COALESCE(u.username, 'Unknown')
+                           ELSE q.author 
+                       END AS author,
+                       'Active' AS status, q.created_at 
+                FROM questions q 
+                LEFT JOIN users u ON q.user_id = u.id 
+                ORDER BY q.created_at DESC 
+                LIMIT 100
+            ")->fetchAll();
+
+                // Get answers - handle author field properly
+                $answers = $pdo->query("
+                SELECT 'Answer' AS type, a.id,
+                       LEFT(REPLACE(REPLACE(a.body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
+                       CASE 
+                           WHEN a.author IS NULL OR a.author = '' OR a.author = 'You' THEN COALESCE(u.username, 'Unknown')
+                           ELSE a.author 
+                       END AS author,
+                       'Active' AS status, a.created_at 
+                FROM answers a 
+                LEFT JOIN users u ON a.user_id = u.id 
+                ORDER BY a.created_at DESC 
+                LIMIT 100
+            ")->fetchAll();
+
+                // Combine all results
+                $content = array_merge($resources, $notes, $questions, $answers);
+
+                // Sort by creation date
+                usort($content, function ($a, $b) {
+                    return strtotime($b['created_at']) - strtotime($a['created_at']);
+                });
+
+                // Limit to 500 total
+                $content = array_slice($content, 0, 500);
+
+            } else {
+                $like = "%$q%";
+
+                // Get resources with search
+                $stmt = $pdo->prepare("
                 SELECT 'Resource' AS type, id, title, author,
                        CASE WHEN flagged=1 THEN 'Reported' ELSE 'Active' END AS status,
-                       created_at FROM resources WHERE (title LIKE ? OR author LIKE ?)
-                UNION ALL
-                SELECT 'Note' AS type, id, title, NULL AS author,
-                       'Active' AS status, created_at FROM notes WHERE (title LIKE ?)
-                UNION ALL
-                SELECT 'Q&A' AS type, id, title, author,
-                       'Active' AS status, created_at FROM questions WHERE (title LIKE ? OR author LIKE ?)
-                UNION ALL
-                SELECT 'Answer' AS type, id,
-                       LEFT(REPLACE(REPLACE(body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
-                       author, 'Active' AS status, created_at FROM answers WHERE (author LIKE ? OR body LIKE ?)
-            ";
-            $stmt = $pdo->prepare("SELECT * FROM ($union) t ORDER BY created_at DESC LIMIT 500");
-            $stmt->execute([$like, $like, $like, $like, $like, $like, $like]);
+                       created_at 
+                FROM resources 
+                WHERE (title LIKE ? OR author LIKE ?)
+                ORDER BY created_at DESC 
+                LIMIT 200
+            ");
+                $stmt->execute([$like, $like]);
+                $resources = $stmt->fetchAll();
+
+                // Get notes with search and username
+                $stmt = $pdo->prepare("
+                SELECT 'Note' AS type, n.id, n.title, 
+                       COALESCE(u.username, 'Unknown') AS author,
+                       'Active' AS status, n.created_at 
+                FROM notes n 
+                LEFT JOIN users u ON n.user_id = u.id 
+                WHERE n.title LIKE ?
+                ORDER BY n.created_at DESC 
+                LIMIT 100
+            ");
+                $stmt->execute([$like]);
+                $notes = $stmt->fetchAll();
+
+                // Get questions with search - handle author field properly
+                $stmt = $pdo->prepare("
+                SELECT 'Q&A' AS type, q.id, q.title, 
+                       CASE 
+                           WHEN q.author IS NULL OR q.author = '' OR q.author = 'You' THEN COALESCE(u.username, 'Unknown')
+                           ELSE q.author 
+                       END AS author,
+                       'Active' AS status, q.created_at 
+                FROM questions q 
+                LEFT JOIN users u ON q.user_id = u.id 
+                WHERE (q.title LIKE ? OR q.author LIKE ?)
+                ORDER BY q.created_at DESC 
+                LIMIT 100
+            ");
+                $stmt->execute([$like, $like]);
+                $questions = $stmt->fetchAll();
+
+                // Get answers with search - handle author field properly
+                $stmt = $pdo->prepare("
+                SELECT 'Answer' AS type, a.id,
+                       LEFT(REPLACE(REPLACE(a.body, CHAR(10),' '), CHAR(13),' '), 200) AS title,
+                       CASE 
+                           WHEN a.author IS NULL OR a.author = '' OR a.author = 'You' THEN COALESCE(u.username, 'Unknown')
+                           ELSE a.author 
+                       END AS author,
+                       'Active' AS status, a.created_at 
+                FROM answers a 
+                LEFT JOIN users u ON a.user_id = u.id 
+                WHERE (a.author LIKE ? OR a.body LIKE ?)
+                ORDER BY a.created_at DESC 
+                LIMIT 100
+            ");
+                $stmt->execute([$like, $like]);
+                $answers = $stmt->fetchAll();
+
+                // Combine all results
+                $content = array_merge($resources, $notes, $questions, $answers);
+
+                // Sort by creation date
+                usort($content, function ($a, $b) {
+                    return strtotime($b['created_at']) - strtotime($a['created_at']);
+                });
+
+                // Limit to 500 total
+                $content = array_slice($content, 0, 500);
+            }
+
+            j(['ok' => true, 'content' => $content]);
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+            j([
+                'ok' => false,
+                'error' => 'content_query_failed',
+                'detail' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
-        j(['ok' => true, 'content' => $stmt->fetchAll()]);
     }
 
     case 'toggle_content_status': {

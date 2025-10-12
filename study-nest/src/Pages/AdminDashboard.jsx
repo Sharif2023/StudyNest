@@ -399,14 +399,29 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
-                {filteredContent.map(item => (
+                {filteredContent && filteredContent.map(item => (
                   <tr key={`${item.type}-${item.id}`} className="text-sm text-zinc-800">
-                    <td className="px-6 py-4">{item.type}</td>
-                    <td className="px-6 py-4">{item.title}</td>
-                    <td className="px-6 py-4">{item.author ?? "-"}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${item.status === "Reported" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
-                        {item.status}
+                      <Badge tone={item.type === 'Resource' ? 'accent' : 'neutral'}>
+                        {item.type}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 max-w-xs truncate" title={item.title}>
+                      {item.title}
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.author ? (
+                        <span className="font-medium">{item.author}</span>
+                      ) : (
+                        <span className="text-zinc-400 italic">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${item.status === "Reported"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-emerald-100 text-emerald-800"
+                        }`}>
+                        {item.status || 'Active'}
                       </span>
                     </td>
                     <td className="px-6 py-4 space-x-3">
@@ -414,21 +429,34 @@ export default function AdminDashboard() {
                         onClick={() => toggleContentStatus(item)}
                         disabled={item.type !== "Resource"}
                         title={item.type !== "Resource" ? "Only Resources support flag/unflag" : ""}
-                        className={`text-sm ${item.type === "Resource" ? "text-blue-600 hover:underline" : "text-zinc-400 cursor-not-allowed"}`}
+                        className={`text-sm ${item.type === "Resource"
+                          ? "text-blue-600 hover:underline"
+                          : "text-zinc-400 cursor-not-allowed"
+                          }`}
                       >
-                        {item.status === "Active" ? "Flag" : "Unflag"}
+                        {item.status === "Reported" ? "Unflag" : "Flag"}
                       </button>
-                      <button onClick={() => deleteContent(item)} className="text-sm text-red-600 hover:underline">Delete</button>
+                      <button
+                        onClick={() => deleteContent(item)}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
-                {filteredContent.length === 0 && (
-                  <tr><td className="px-6 py-6 text-sm text-zinc-500" colSpan={5}>No content found.</td></tr>
+                {(!filteredContent || filteredContent.length === 0) && (
+                  <tr>
+                    <td className="px-6 py-6 text-sm text-zinc-500 text-center" colSpan={5}>
+                      No content found.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         );
+
       case "groups":
         return (
           <div className="space-y-6">
