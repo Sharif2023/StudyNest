@@ -102,6 +102,31 @@ export default function LeftNav({
     };
   }, []);
 
+  // In LeftNav.jsx, replace the hardcoded points with dynamic points
+  const [points, setPoints] = useState(0);
+
+  // Add this useEffect to sync points
+  useEffect(() => {
+    const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+    if (auth?.points) {
+      setPoints(auth.points);
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    const handlePointsUpdate = (event) => {
+      if (event.detail?.points !== undefined) {
+        setPoints(event.detail.points);
+      }
+    };
+
+    window.addEventListener('studynest:points-updated', handlePointsUpdate);
+
+    return () => {
+      window.removeEventListener('studynest:points-updated', handlePointsUpdate);
+    };
+  }, []);
+
   const toggleMoreVisibility = () => setMoreVisible((v) => !v);
 
   const displayName = profile?.name || auth?.name || "Student";
@@ -178,10 +203,10 @@ export default function LeftNav({
                 </div>
               </div>
             </Link>
-            
+
             {/* Points row unchanged */}
             <div className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200">
-              Points <span className="font-semibold">1,245</span>
+              Points <span className="font-semibold">{points.toLocaleString()}</span>
             </div>
           </div>
         )}
