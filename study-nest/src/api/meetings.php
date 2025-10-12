@@ -21,27 +21,35 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 // ---------- Helpers ----------
-function json_out($arr, $code = 200) {
+function json_out($arr, $code = 200)
+{
   http_response_code($code);
   echo json_encode($arr, JSON_UNESCAPED_SLASHES);
   exit;
 }
-function body_json() {
+function body_json()
+{
   $raw = file_get_contents('php://input');
-  if (!$raw) return [];
+  if (!$raw)
+    return [];
   $j = json_decode($raw, true);
   return is_array($j) ? $j : [];
 }
-function user_id() {
-  return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+function user_id()
+{
+  return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 }
-function uid_short($bytes = 6) {
+function uid_short($bytes = 6)
+{
   return substr(bin2hex(random_bytes($bytes)), 0, $bytes * 2);
 }
-function normalize_datetime_local($s) {
-  if (!$s) return null;
-  $s = str_replace('T', ' ', trim((string)$s));
-  if (preg_match('/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/', $s)) $s .= ':00';
+function normalize_datetime_local($s)
+{
+  if (!$s)
+    return null;
+  $s = str_replace('T', ' ', trim((string) $s));
+  if (preg_match('/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/', $s))
+    $s .= ':00';
   try {
     $dt = new DateTime($s);
     return $dt->format('Y-m-d H:i:s');
@@ -50,14 +58,16 @@ function normalize_datetime_local($s) {
   }
 }
 // Safe for PHP 7+: case-insensitive “ends with”
-function path_ends_with($path, $suffix) {
+function path_ends_with($path, $suffix)
+{
   $path = strtolower(trim($path));
   $suffix = strtolower($suffix);
   return substr($path, -strlen($suffix)) === $suffix;
 }
 
 // ---------- Schema ----------
-function ensure_schema(PDO $pdo) {
+function ensure_schema(PDO $pdo)
+{
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS meetings (
       id              VARCHAR(16)  PRIMARY KEY,
@@ -121,8 +131,10 @@ function ensure_schema(PDO $pdo) {
 }
 
 // ---------- Helpers for courses ----------
-function import_courses_from_csv(PDO $pdo, $filePath) {
-  if (!file_exists($filePath)) throw new Exception("CSV file not found: $filePath");
+function import_courses_from_csv(PDO $pdo, $filePath)
+{
+  if (!file_exists($filePath))
+    throw new Exception("CSV file not found: $filePath");
   $pdo->exec("TRUNCATE tmp_courses");
   if (($handle = fopen($filePath, "r")) !== false) {
     fgetcsv($handle);
@@ -132,7 +144,8 @@ function import_courses_from_csv(PDO $pdo, $filePath) {
     ");
     while (($row = fgetcsv($handle)) !== false) {
       $row = array_map('trim', $row);
-      if (!$row[0]) continue;
+      if (!$row[0])
+        continue;
       $ins->execute($row);
     }
     fclose($handle);
@@ -143,8 +156,10 @@ function import_courses_from_csv(PDO $pdo, $filePath) {
     FROM tmp_courses
   ");
 }
-function fetch_course_snapshot(PDO $pdo, $course_code) {
-  if (!$course_code) return [null, null];
+function fetch_course_snapshot(PDO $pdo, $course_code)
+{
+  if (!$course_code)
+    return [null, null];
   $st = $pdo->prepare("SELECT course_title, course_thumbnail FROM courses WHERE course_code = ? LIMIT 1");
   $st->execute([$course_code]);
   $row = $st->fetch(PDO::FETCH_ASSOC);
@@ -154,7 +169,7 @@ function fetch_course_snapshot(PDO $pdo, $course_code) {
 // ---------- Routes ----------
 try {
   ensure_schema($pdo);
-  $path   = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+  $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
   $method = $_SERVER['REQUEST_METHOD'];
   error_log("🧩 Request path: $path");
 
@@ -164,10 +179,11 @@ try {
       $st = $pdo->prepare("SELECT * FROM meetings WHERE id = ? LIMIT 1");
       $st->execute([$_GET['id']]);
       $room = $st->fetch(PDO::FETCH_ASSOC);
-      if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
+      if (!$room)
+        json_out(['ok' => false, 'error' => 'not_found'], 404);
       if (!$room['course_title'] || !$room['course_thumbnail']) {
         [$ctitle, $cthumb] = fetch_course_snapshot($pdo, $room['course']);
-        $room['course_title']     = $room['course_title']     ?: $ctitle;
+        $room['course_title'] = $room['course_title'] ?: $ctitle;
         $room['course_thumbnail'] = $room['course_thumbnail'] ?: $cthumb;
       }
       $p = $pdo->prepare("SELECT display_name, user_id, joined_at
@@ -191,8 +207,10 @@ try {
     foreach ($rows as &$r) {
       if (!$r['course_title'] || !$r['course_thumbnail']) {
         [$ctitle, $cthumb] = fetch_course_snapshot($pdo, $r['course']);
-        if (!$r['course_title'])     $r['course_title'] = $ctitle;
-        if (!$r['course_thumbnail']) $r['course_thumbnail'] = $cthumb;
+        if (!$r['course_title'])
+          $r['course_title'] = $ctitle;
+        if (!$r['course_thumbnail'])
+          $r['course_thumbnail'] = $cthumb;
       }
     }
     json_out(['ok' => true, 'rooms' => $rows]);
@@ -200,38 +218,60 @@ try {
 
   // POST create
   if ($method === 'POST' && basename($path) === 'meetings.php') {
-    $u      = user_id();
-    $b      = body_json();
-    $title  = trim((string)($b['title'] ?? 'Quick Study Room'));
-    $course = trim((string)($b['course'] ?? ''));
-    $name   = trim((string)($b['display_name'] ?? ''));
+    $u = user_id();
+    $b = body_json();
+    $title = trim((string) ($b['title'] ?? 'Quick Study Room'));
+    $course = trim((string) ($b['course'] ?? ''));
+    $name = trim((string) ($b['display_name'] ?? ''));
     $starts = normalize_datetime_local($b['starts_at'] ?? null);
     $status = $starts ? 'scheduled' : 'live';
     [$course_title, $course_thumb] = fetch_course_snapshot($pdo, $course);
     $id = uid_short(6);
+
     $ins = $pdo->prepare("
       INSERT INTO meetings (id, title, course, course_title, course_thumbnail, created_by, status, starts_at, participants)
       VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, 1)
     ");
     $ins->execute([$id, $title ?: 'Quick Study Room', $course, $course_title, $course_thumb, $u, $status, $starts]);
+
     $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name, session_id)
                          VALUES (?, ?, NULLIF(?, ''), ?)");
     $pp->execute([$id, $u, $name, session_id()]);
-    json_out(['ok' => true, 'id' => $id, 'status' => $status]);
+
+    // Award 30 points for creating a meeting (only for logged-in users)
+    if ($u) {
+      $points = 30;
+      $pdo->prepare("UPDATE users SET points = points + ? WHERE id = ?")->execute([$points, $u]);
+      $pdo->prepare("INSERT INTO points_history (user_id, points, action_type, reference_id, description) 
+                       VALUES (?, ?, 'meeting_created', ?, ?)")
+        ->execute([$u, $points, $id, "Created meeting: " . ($title ?: 'Quick Study Room')]);
+
+      // Get updated points total to return to frontend
+      $st = $pdo->prepare("SELECT points FROM users WHERE id = ?");
+      $st->execute([$u]);
+      $newPoints = $st->fetchColumn();
+
+      json_out(['ok' => true, 'id' => $id, 'status' => $status, 'pointsAwarded' => $points, 'newPoints' => $newPoints]);
+    } else {
+      json_out(['ok' => true, 'id' => $id, 'status' => $status, 'pointsAwarded' => 0]);
+    }
   }
 
   // POST join
   if ($method === 'POST' && path_ends_with($path, '/meetings.php/join')) {
     $b = body_json();
     $id = $b['id'] ?? null;
-    $name = trim((string)($b['display_name'] ?? ''));
-    if (!$id) json_out(['ok' => false, 'error' => 'missing_id'], 400);
+    $name = trim((string) ($b['display_name'] ?? ''));
+    if (!$id)
+      json_out(['ok' => false, 'error' => 'missing_id'], 400);
 
     $chk = $pdo->prepare("SELECT id, status FROM meetings WHERE id=? LIMIT 1");
     $chk->execute([$id]);
     $room = $chk->fetch(PDO::FETCH_ASSOC);
-    if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
-    if ($room['status'] === 'ended') json_out(['ok' => false, 'error' => 'already_ended'], 409);
+    if (!$room)
+      json_out(['ok' => false, 'error' => 'not_found'], 404);
+    if ($room['status'] === 'ended')
+      json_out(['ok' => false, 'error' => 'already_ended'], 409);
 
     $u = user_id();
     $sess = session_id();
@@ -240,20 +280,51 @@ try {
                         AND ((user_id IS NOT NULL AND user_id=?) OR (user_id IS NULL AND session_id=?))
                         LIMIT 1");
     $q->execute([$id, $u, $sess]);
+
     if (!$q->fetchColumn()) {
       $pp = $pdo->prepare("INSERT INTO meeting_participants (meeting_id, user_id, display_name, session_id)
                            VALUES (?, ?, NULLIF(?,''), ?)");
       $pp->execute([$id, $u, $name, $sess]);
       $pdo->prepare("UPDATE meetings SET participants=participants+1 WHERE id=?")->execute([$id]);
+
+      // Award 15 points for joining a meeting (only for logged-in users)
+      if ($u) {
+        // Check if points were already awarded for this meeting
+        $pointsCheck = $pdo->prepare("SELECT 1 FROM points_history 
+                                          WHERE user_id = ? AND action_type = 'meeting_joined' AND reference_id = ?");
+        $pointsCheck->execute([$u, $id]);
+        $alreadyAwarded = $pointsCheck->fetchColumn();
+
+        if (!$alreadyAwarded) {
+          $points = 15;
+          $pdo->prepare("UPDATE users SET points = points + ? WHERE id = ?")->execute([$points, $u]);
+          $pdo->prepare("INSERT INTO points_history (user_id, points, action_type, reference_id, description) 
+                               VALUES (?, ?, 'meeting_joined', ?, ?)")
+            ->execute([$u, $points, $id, "Joined meeting: " . $id]);
+
+          // Get updated points total to return to frontend
+          $st = $pdo->prepare("SELECT points FROM users WHERE id = ?");
+          $st->execute([$u]);
+          $newPoints = $st->fetchColumn();
+
+          json_out(['ok' => true, 'pointsAwarded' => $points, 'newPoints' => $newPoints]);
+        } else {
+          json_out(['ok' => true, 'pointsAwarded' => 0]);
+        }
+      } else {
+        json_out(['ok' => true, 'pointsAwarded' => 0]);
+      }
+    } else {
+      json_out(['ok' => true, 'pointsAwarded' => 0]);
     }
-    json_out(['ok' => true]);
   }
 
   // POST leave
   if ($method === 'POST' && path_ends_with($path, '/meetings.php/leave')) {
     $b = body_json();
     $id = $b['id'] ?? null;
-    if (!$id) json_out(['ok' => false, 'error' => 'missing_id'], 400);
+    if (!$id)
+      json_out(['ok' => false, 'error' => 'missing_id'], 400);
     $u = user_id();
     $sess = session_id();
     if ($u) {
@@ -275,15 +346,18 @@ try {
   if ($method === 'POST' && path_ends_with($path, '/meetings.php/end')) {
     $b = body_json();
     $id = $b['id'] ?? null;
-    if (!$id) json_out(['ok' => false, 'error' => 'missing_id'], 400);
+    if (!$id)
+      json_out(['ok' => false, 'error' => 'missing_id'], 400);
     $st = $pdo->prepare("SELECT id, created_by, status FROM meetings WHERE id=? LIMIT 1");
     $st->execute([$id]);
     $room = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$room) json_out(['ok' => false, 'error' => 'not_found'], 404);
+    if (!$room)
+      json_out(['ok' => false, 'error' => 'not_found'], 404);
     $uid = user_id();
-    if ($room['created_by'] !== null && (int)$room['created_by'] !== (int)$uid)
+    if ($room['created_by'] !== null && (int) $room['created_by'] !== (int) $uid)
       json_out(['ok' => false, 'error' => 'You Are Not Host'], 403);
-    if ($room['status'] === 'ended') json_out(['ok' => true]);
+    if ($room['status'] === 'ended')
+      json_out(['ok' => true]);
     $pdo->prepare("UPDATE meetings SET status='ended', ends_at=NOW() WHERE id=?")->execute([$id]);
     json_out(['ok' => true]);
   }

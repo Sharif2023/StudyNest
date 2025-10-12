@@ -151,6 +151,9 @@ export default function NewMeetingForm() {
       });
       const j = await res.json();
       if (j.ok && j.id) {
+        window.dispatchEvent(new CustomEvent('studynest:points-updated', {
+            detail: { points: j.newPoints } // You'll need to return newPoints from API
+        }));
         navigate(`/rooms/${j.id}`, { state: { title: payload.title } });
       } else {
         setErr(j.error || "Failed to create meeting");
@@ -161,6 +164,36 @@ export default function NewMeetingForm() {
       setLoading(false);
     }
   }
+  // In LeftNav.jsx, enhance the points update listener
+useEffect(() => {
+    const handlePointsUpdate = (event) => {
+        if (event.detail?.points !== undefined) {
+            setPoints(event.detail.points);
+        }
+    };
+
+    window.addEventListener('studynest:points-updated', handlePointsUpdate);
+
+    return () => {
+        window.removeEventListener('studynest:points-updated', handlePointsUpdate);
+    };
+}, []);
+
+// Also add this to sync with localStorage changes
+useEffect(() => {
+    const onStorage = (e) => {
+        if (e.key === 'studynest.auth') {
+            try {
+                const authData = JSON.parse(e.newValue);
+                if (authData?.points !== undefined) {
+                    setPoints(authData.points);
+                }
+            } catch { }
+        }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+}, []);
 
   const steps = [
     { id: 1, label: "Program" },
