@@ -47,84 +47,140 @@ const ProgressBar = ({ value = 0 }) => (
   </div>
 );
 
+// Add this function to calculate streak and points
+const calculateStreakAndPoints = () => {
+  const STREAK_DATA_KEY = 'studynest_streak_data';
+  const today = new Date().toDateString();
+
+  // Get or initialize streak data from localStorage
+  const storedData = localStorage.getItem(STREAK_DATA_KEY);
+  let streakData = storedData ? JSON.parse(storedData) : {
+    lastLogin: null,
+    currentStreak: 0,
+    totalPoints: 0
+  };
+
+  const lastLogin = streakData.lastLogin ? new Date(streakData.lastLogin).toDateString() : null;
+
+  // Check if user already logged in today
+  if (lastLogin === today) {
+    return streakData; // Return current data without updating
+  }
+
+  // Calculate days since last login
+  let daysSinceLastLogin = 0;
+  if (lastLogin) {
+    const lastLoginDate = new Date(lastLogin);
+    const todayDate = new Date(today);
+    const timeDiff = todayDate.getTime() - lastLoginDate.getTime();
+    daysSinceLastLogin = Math.floor(timeDiff / (1000 * 3600 * 24));
+  }
+
+  let pointsEarned = 5; // Base points
+  let newStreak = 1; // Default to 1 if no previous login
+
+  if (lastLogin) {
+    if (daysSinceLastLogin === 1) {
+      // Consecutive login - continue streak
+      newStreak = streakData.currentStreak + 1;
+
+      // Calculate points based on streak length
+      if (newStreak >= 20) {
+        pointsEarned = 20;
+      } else if (newStreak >= 7) {
+        pointsEarned = 12;
+      } else if (newStreak >= 3) {
+        pointsEarned = 8;
+      }
+    } else if (daysSinceLastLogin > 1) {
+      // Streak broken - reset to base points
+      newStreak = 1;
+      pointsEarned = 5; // Base points for broken streak
+    }
+  }
+
+  // Update streak data
+  const updatedData = {
+    lastLogin: new Date().toISOString(),
+    currentStreak: newStreak,
+    totalPoints: streakData.totalPoints + pointsEarned,
+    pointsEarnedToday: pointsEarned
+  };
+
+  // Save to localStorage
+  localStorage.setItem(STREAK_DATA_KEY, JSON.stringify(updatedData));
+
+  return updatedData;
+};
+
+const StudyStreakCard = () => {
+  const [streakData, setStreakData] = useState({
+    currentStreak: 0,
+    totalPoints: 0,
+    pointsEarnedToday: 0
+  });
+
+  useEffect(() => {
+    // Calculate streak and points on component mount
+    const data = calculateStreakAndPoints();
+    setStreakData(data);
+  }, []);
+
+  const getStreakMessage = () => {
+    const { currentStreak, pointsEarnedToday } = streakData;
+
+    if (currentStreak === 0) return "Start your streak!";
+    if (currentStreak === 1) return "First day! Keep going!";
+    if (currentStreak === 2) return "One more day for bonus!";
+    if (currentStreak >= 3 && currentStreak < 7) return "3-day streak! +8 pts";
+    if (currentStreak >= 7 && currentStreak < 20) return "7-day streak! +12 pts";
+    if (currentStreak >= 20) return "20-day streak! +20 pts";
+    return "Keep it going!";
+  };
+
+  const calculateProgress = () => {
+    const { currentStreak } = streakData;
+
+    // Progress towards next milestone
+    if (currentStreak < 3) return (currentStreak / 3) * 100;
+    if (currentStreak < 7) return ((currentStreak - 2) / 5) * 100; // 3 to 7 days
+    if (currentStreak < 20) return ((currentStreak - 6) / 13) * 100; // 7 to 20 days
+    return 100; // Max milestone reached
+  };
+
+  return (
+    <Card className="p-4">
+      <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">
+        Study Streak
+      </h3>
+      <div className="flex items-center gap-3">
+        <div className="text-3xl">🔥</div>
+        <div>
+          <div className="text-2xl font-semibold">{streakData.currentStreak} days</div>
+          <div className="text-xs text-slate-400">
+            {getStreakMessage()} • +{streakData.pointsEarnedToday} pts today
+          </div>
+        </div>
+      </div>
+      <div className="mt-3">
+        <ProgressBar value={calculateProgress()} />
+      </div>
+      <div className="mt-2 text-xs text-slate-400">
+        Total Points: {streakData.totalPoints}
+      </div>
+
+      {/* Milestone indicators */}
+      <div className="mt-3 flex justify-between text-xs text-slate-500">
+        <span className={streakData.currentStreak >= 3 ? "text-amber-300" : ""}>3d</span>
+        <span className={streakData.currentStreak >= 7 ? "text-amber-300" : ""}>7d</span>
+        <span className={streakData.currentStreak >= 20 ? "text-amber-300" : ""}>20d</span>
+      </div>
+    </Card>
+  );
+};
+
 const formatTime = (t) =>
   new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-const mockCourses = [
-  {
-    id: 1,
-    title: "Algorithms I: Greedy & DP",
-    code: "CSE 220",
-    instructor: "Dr. Rahman",
-    viewers: 128,
-    tags: ["Data Structures", "DP"],
-    status: "live",
-    startedAt: Date.now() - 12 * 60 * 1000,
-    thumbnail:
-      "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1400&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    title: "Signals & Systems – LTI Review",
-    code: "EEE 205",
-    instructor: "Prof. Nabila",
-    viewers: 76,
-    tags: ["EEE"],
-    status: "live",
-    startedAt: Date.now() - 5 * 60 * 1000,
-    thumbnail:
-      "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1400&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    title: "DBMS Indexing & Query Plans",
-    code: "CSE 310",
-    instructor: "Dr. Hasan",
-    tags: ["DBMS"],
-    status: "upcoming",
-    startAt: Date.now() + 24 * 60 * 1000,
-    thumbnail:
-      "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=1400&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    title: "Calculus II: Series Masterclass",
-    code: "MAT 202",
-    instructor: "Dr. Shams",
-    tags: ["Calculus"],
-    status: "upcoming",
-    startAt: Date.now() + 4 * 60 * 60 * 1000,
-    thumbnail:
-      "https://images.unsplash.com/photo-1529101091764-c3526daf38fe?q=80&w=1400&auto=format&fit=crop",
-  },
-];
-
-const qaList = [
-  {
-    id: 11,
-    course: "CSE 220",
-    question: "Proof that activity selection is greedy-optimal?",
-    votes: 12,
-    answers: 3,
-    tag: "Greedy",
-  },
-  {
-    id: 12,
-    course: "EEE 205",
-    question: "Why does convolution flip one signal?",
-    votes: 9,
-    answers: 2,
-    tag: "Signals",
-  },
-  {
-    id: 13,
-    course: "CSE 310",
-    question: "Clustered vs Non-clustered index trade-offs",
-    votes: 15,
-    answers: 6,
-    tag: "DBMS",
-  },
-];
 
 const getDayAndDate = (dateString) => {
   const date = new Date(dateString);
@@ -985,21 +1041,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <Pomodoro />
 
-                <Card className="p-4">
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase mb-3">
-                    Study Streak
-                  </h3>
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">🔥</div>
-                    <div>
-                      <div className="text-2xl font-semibold">12 days</div>
-                      <div className="text-xs text-slate-400">Keep it going! +20 pts/day</div>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <ProgressBar value={57} />
-                  </div>
-                </Card>
+                <StudyStreakCard />
 
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-3">
