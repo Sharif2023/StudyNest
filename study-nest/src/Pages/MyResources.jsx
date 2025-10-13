@@ -4,6 +4,7 @@ import { useLocation, Link } from "react-router-dom";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+import MyResourceUpload from "../Components/MyResourceUpload";
 
 /**
  * StudyNest — My Resources (Personal Library)
@@ -22,7 +23,6 @@ const RES_LIBRARY_API = `${API_ROOT}/ResourceLibrary.php`;
 function isPdfLike(url = "", mime = "") {
   if (!url && !mime) return false;
   if (mime?.toLowerCase().includes("pdf")) return true;
-  // allow querystrings/fragments
   return /\.pdf($|[?#])/i.test(url);
 }
 
@@ -382,7 +382,8 @@ export default function MyResources() {
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
 
       {uploadOpen && (
-        <UploadModal
+        <MyResourceUpload
+          apiUrl={RES_LIBRARY_API}
           onClose={() => setUploadOpen(false)}
           onCreated={async (message, points) => {
             if (points) bumpLocalPoints(points);
@@ -395,254 +396,6 @@ export default function MyResources() {
   );
 }
 
-/* ----------------- Upload Modal (scroll-safe) ----------------- */
-function UploadModal({ onClose, onCreated }) {
-  const [mode, setMode] = useState("file"); // 'file' | 'link'
-  const [file, setFile] = useState(null);
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [course, setCourse] = useState("");
-  const [semester, setSemester] = useState("");
-  const [kind, setKind] = useState("other");
-  const [tags, setTags] = useState("");
-  const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState("private"); // default private → appears under My Resources
-  const [submitting, setSubmitting] = useState(false);
-
-  const canSubmit =
-    title.trim() !== "" &&
-    course.trim() !== "" &&
-    semester.trim() !== "" &&
-    (mode === "file" ? !!file : url.trim() !== "");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    setSubmitting(true);
-    try {
-      const form = new FormData();
-      form.append("title", title.trim());
-      form.append("course", course.trim());
-      form.append("semester", semester.trim());
-      form.append("kind", kind);
-      form.append("tags", tags);
-      form.append("description", description);
-      form.append("visibility", visibility);
-      form.append("src_type", mode);
-
-      if (mode === "file") {
-        form.append("file", file);
-      } else {
-        form.append("url", url.trim());
-      }
-
-      const r = await fetch(RES_LIBRARY_API, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const j = await r.json();
-
-      if (j?.status === "success") {
-        onClose?.();
-        onCreated?.(j.message, j.points_awarded || 0);
-      } else {
-        alert("❌ " + (j?.message || "Failed to create resource"));
-      }
-    } catch (err) {
-      console.error(err);
-      alert("❌ " + (err.message || "Upload failed"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-4 flex items-center justify-center" onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Sticky header to keep close button visible */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add a Resource</h3>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-slate-800"
-            aria-label="Close"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          {/* File vs Link toggle */}
-          <div className="inline-flex rounded-lg bg-zinc-100 p-1 dark:bg-slate-800">
-            {[
-              ["file", "File upload"],
-              ["link", "External link"],
-            ].map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setMode(val)}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${
-                  mode === val ? "bg-white dark:bg-slate-900 shadow" : "text-zinc-600 dark:text-zinc-300"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {mode === "file" ? (
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">File</label>
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-cyan-700"
-              />
-              <p className="text-xs text-zinc-500">
-                Images, videos, PDFs, docs, slides, spreadsheets, zips, etc. will be stored on Cloudinary.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">URL</label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/resource"
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              />
-            </div>
-          )}
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Title *</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="e.g., Week 3 Slides"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Course *</label>
-              <input
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-                placeholder="e.g., CS101"
-                required
-              />
-            </div>
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Semester *</label>
-              <input
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-                placeholder="e.g., Fall 2025"
-                required
-              />
-            </div>
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              >
-                {["other", "book", "slide", "past paper", "study guide", "recording"].map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tags</label>
-            <input
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="Comma-separated, e.g., algebra,midterm"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Description</label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="Optional notes for your future self (or others if public)"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Visibility</label>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="private"
-                  checked={visibility === "private"}
-                  onChange={() => setVisibility("private")}
-                />
-                <span>Private (My Resources)</span>
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="public"
-                  checked={visibility === "public"}
-                  onChange={() => setVisibility("public")}
-                />
-                <span>Public (Shared Resources)</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:bg-slate-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!canSubmit || submitting}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
-                canSubmit && !submitting
-                  ? "bg-cyan-600 hover:bg-cyan-700"
-                  : "bg-cyan-400 cursor-not-allowed"
-              }`}
-            >
-              {submitting ? "Uploading…" : mode === "file" ? "Upload" : "Save"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ----------------- UI Bits ----------------- */
 function Select({ label, value, onChange, options }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm">
@@ -697,7 +450,6 @@ function Card({
         ) : image ? (
           <img src={url} alt={item.title} className="h-full w-full object-contain rounded-t-2xl" />
         ) : pdf ? (
-          // Avoid embedding PDF in tiny card (causes "load error" on some browsers)
           <div className="flex flex-col items-center text-zinc-400">
             <FileIcon className="h-10 w-10" />
             <span className="mt-1 text-xs font-medium">PDF</span>
@@ -728,30 +480,12 @@ function Card({
           >
             {item.title || "(Untitled)"}
           </span>
-          {isSharedFlag && (
-            <span className="rounded-md bg-emerald-50 text-emerald-700 text-[11px] px-1.5 py-0.5 border border-emerald-200">
-              Shared
-            </span>
-          )}
-          {item.src_type === "file" && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-zinc-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-            </svg>
-          )}
         </div>
 
         {item.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {item.description}
-          </p>
+          <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{item.description}</p>
         )}
 
-        {/* direct open for non-previewables */}
         {item.src_type === "file" && !image && !pdf && (
           <div className="mt-2">
             <a
@@ -779,16 +513,10 @@ function Card({
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-          {item.kind && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.kind}</span>
-          )}
-          {item.course && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.course}</span>
-          )}
+          {item.kind && <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.kind}</span>}
+          {item.course && <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.course}</span>}
           {item.semester && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">
-              {item.semester}
-            </span>
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.semester}</span>
           )}
           {(item.course || item.semester) && <span>•</span>}
           <span>by {item.author || "You"}</span>
@@ -902,8 +630,6 @@ function EmptyState({ tab }) {
 function PreviewModal({ file, onClose }) {
   const pdf = isPdfLike(file.url, file.mime);
   const image = isImageUrl(file.url, file.mime);
-
-  // For inline preview: use the original secure_url. Do NOT add fl_inline (invalid flag).
   const previewUrl = file.url;
 
   return (
