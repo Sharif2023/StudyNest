@@ -209,12 +209,6 @@ const getDayAndDate = (dateString) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const leaderboard = [
-  { id: "s1", name: "Ayesha", points: 1280, streak: 17 },
-  { id: "s2", name: "Siam", points: 1100, streak: 15 },
-  { id: "s3", name: "Tanvir", points: 960, streak: 11 },
-];
-
 function CourseCard({ c, joinTo }) {
   const isLive = c.status === "live";
   const progress = isLive
@@ -1195,24 +1189,37 @@ export default function Home() {
       {/* Chatbot Floating Button */}
       <div
         onClick={toggleChatbot}
+        role="button"
+        aria-label="Open chatbot"
         style={{
           position: 'fixed',
           bottom: '16px',
           right: '16px',
-          zIndex: '9999',
+          zIndex: 9999,
           width: '60px',
           height: '60px',
-          backgroundColor: '#007bff',
-          color: '#ffffff',
           borderRadius: '50%',
+          overflow: 'hidden',           // ensures the GIF is clipped to a circle
+          boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+          cursor: 'pointer',
+          backgroundColor: '#ffffff',   // white bezel so the GIF pops
+          border: '2px solid #007bff',  // subtle brand ring
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-          cursor: 'pointer',
         }}
       >
-        <span>💬</span>
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/c/cb/WhatsApp-BOT-Image-2_2.gif"
+          alt="Chatbot"
+          loading="lazy"
+          style={{
+            width: '185%',
+            height: '185%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
       </div>
 
       {/* Chatbot Modal */}
@@ -1235,27 +1242,19 @@ export default function Home() {
             animation: 'fadeIn 0.3s ease-out',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              color: '#333',
-            }}
-          >
-            <span style={{ fontSize: '20px', fontWeight: '700', color: '#007bff' }}>
-              Ask me Buddy!
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/c/cb/WhatsApp-BOT-Image-2_2.gif"
+                alt="Bot"
+                style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
+              />
+              <span style={{ fontSize: '20px', fontWeight: 700, color: '#007bff' }}>Ask me Buddy!</span>
+            </div>
             <button
               onClick={toggleChatbot}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: '#888',
-                fontSize: '22px',
-                cursor: 'pointer',
-                transition: 'color 0.2s ease',
-              }}
+              aria-label="Close chatbot"
+              style={{ background: 'transparent', border: 'none', color: '#888', fontSize: '22px', cursor: 'pointer', transition: 'color .2s' }}
               onMouseEnter={(e) => (e.target.style.color = '#ff6347')}
               onMouseLeave={(e) => (e.target.style.color = '#888')}
             >

@@ -53,11 +53,11 @@ export function useWebRTC(roomId, displayName) {
     desiredMicOn: true,
 
     // Emitters
-    streamsCb: () => {},
-    participantsCb: () => {},
-    chatCb: () => {},
-    speakingCb: () => {},
-    statsCb: () => {},
+    streamsCb: () => { },
+    participantsCb: () => { },
+    chatCb: () => { },
+    speakingCb: () => { },
+    statsCb: () => { },
 
     // VAD
     audioCtx: null,
@@ -221,7 +221,7 @@ export function useWebRTC(roomId, displayName) {
   }
 
   function sendWS(obj) {
-    try { state.ws?.readyState === 1 && state.ws.send(JSON.stringify(obj)); } catch {}
+    try { state.ws?.readyState === 1 && state.ws.send(JSON.stringify(obj)); } catch { }
   }
 
   /* ================= Local media ================= */
@@ -234,7 +234,7 @@ export function useWebRTC(roomId, displayName) {
         video: false,
       });
       mic.getAudioTracks().forEach(t => (t.enabled = !!state.desiredMicOn));
-      try { hookSpeakingDetection(mic); } catch {}
+      try { hookSpeakingDetection(mic); } catch { }
       state.localMicStream = mic;
       return mic;
     } catch (e) {
@@ -277,7 +277,7 @@ export function useWebRTC(roomId, displayName) {
         audio: true,
       });
       const v = share.getVideoTracks()[0];
-      try { v && (v.contentHint = "text"); } catch {}
+      try { v && (v.contentHint = "text"); } catch { }
 
       share.getTracks().forEach(t => t.addEventListener("ended", () => stopScreenInternal(true)));
       state.localScreenStream = share;
@@ -311,8 +311,8 @@ export function useWebRTC(roomId, displayName) {
 
   function cleanupPeer(pid) {
     const p = state.peers.get(pid); if (!p) return;
-    try { p.dc?.close?.(); } catch {}
-    try { p.pc?.close?.(); } catch {}
+    try { p.dc?.close?.(); } catch { }
+    try { p.pc?.close?.(); } catch { }
     state.peers.delete(pid);
   }
 
@@ -327,8 +327,8 @@ export function useWebRTC(roomId, displayName) {
     p.polite = state.me && pid && (state.me < pid ? false : true);
 
     // fixed MID order: 0=audio, 1=cam, 2=screen
-    p.tx.audio  = pc.addTransceiver("audio", { direction: "sendrecv" });
-    p.tx.video  = pc.addTransceiver("video", { direction: "sendrecv" });
+    p.tx.audio = pc.addTransceiver("audio", { direction: "sendrecv" });
+    p.tx.video = pc.addTransceiver("video", { direction: "sendrecv" });
     p.tx.screen = pc.addTransceiver("video", { direction: "sendrecv" });
 
     await ensureLocalMediaReady();
@@ -401,7 +401,7 @@ export function useWebRTC(roomId, displayName) {
 
       // remote audio → speaking detection
       if (track.kind === "audio") {
-        try { hookSpeakingDetection(stream, pid); } catch {}
+        try { hookSpeakingDetection(stream, pid); } catch { }
       }
 
       track.onended = () => {
@@ -415,7 +415,7 @@ export function useWebRTC(roomId, displayName) {
     };
 
     // proactively create DC on one side
-    try { wireDC(pid, pc.createDataChannel("chat", { ordered: true })); } catch {}
+    try { wireDC(pid, pc.createDataChannel("chat", { ordered: true })); } catch { }
 
     p.pc = pc;
     state.peers.set(pid, p);
@@ -426,19 +426,19 @@ export function useWebRTC(roomId, displayName) {
     // AUDIO first (from mic stream)
     const a = state.localMicStream?.getAudioTracks?.()[0] || null;
     if (a) {
-      try { await p.tx.audio.sender.replaceTrack(a); } catch {}
+      try { await p.tx.audio.sender.replaceTrack(a); } catch { }
     }
 
     // CAMERA video (if exists)
     const v = state.localCamStream?.getVideoTracks?.()[0] || null;
     if (v) {
-      try { await p.tx.video.sender.replaceTrack(v); p.senders.cam = p.tx.video.sender; } catch {}
+      try { await p.tx.video.sender.replaceTrack(v); p.senders.cam = p.tx.video.sender; } catch { }
     }
 
     // SCREEN video (if exists)
     const s = state.localScreenStream?.getVideoTracks?.()[0] || null;
     if (s) {
-      try { await p.tx.screen.sender.replaceTrack(s); p.senders.screen = p.tx.screen.sender; } catch {}
+      try { await p.tx.screen.sender.replaceTrack(s); p.senders.screen = p.tx.screen.sender; } catch { }
     }
   }
 
@@ -471,11 +471,11 @@ export function useWebRTC(roomId, displayName) {
   /* ================= Share control ================= */
   async function stopScreenInternal(/* fromEndedEvent = false */) {
     if (state.localScreenStream) {
-      try { state.localScreenStream.getTracks().forEach(t => t.stop()); } catch {}
+      try { state.localScreenStream.getTracks().forEach(t => t.stop()); } catch { }
       state.localScreenStream = null;
     }
     for (const [, p] of state.peers) {
-      if (p.tx?.screen?.sender) { try { await p.tx.screen.sender.replaceTrack(null); } catch {} }
+      if (p.tx?.screen?.sender) { try { await p.tx.screen.sender.replaceTrack(null); } catch { } }
     }
     emitStreams();
 
@@ -538,7 +538,7 @@ export function useWebRTC(roomId, displayName) {
         for (const [, p] of state.peers) { await bindLocalTracksToPeer(p); }
       }
     });
-  } catch {}
+  } catch { }
 
   /* ================= Public API ================= */
   return {
@@ -551,7 +551,7 @@ export function useWebRTC(roomId, displayName) {
           credentials: "include",
           body: JSON.stringify({ id: roomId, display_name: displayName || "Student" }),
         });
-      } catch {}
+      } catch { }
 
       await ensureLocalMediaReady();
 
@@ -566,17 +566,17 @@ export function useWebRTC(roomId, displayName) {
               if (report.type === "outbound-rtp" && report.kind === "video") { bytes = report.bytesSent; ts = report.timestamp; }
             });
             emitStatsForPeer(pid, { rtt, bytes, ts });
-          } catch {}
+          } catch { }
         }
       }, 2000);
     },
 
     disconnect() {
-      try { state.ws?.close(); } catch {}
+      try { state.ws?.close(); } catch { }
       for (const [pid] of state.peers) cleanupPeer(pid);
-      try { state.localMicStream?.getTracks().forEach(t => t.stop()); } catch {}
-      try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch {}
-      try { state.localScreenStream?.getTracks().forEach(t => t.stop()); } catch {}
+      try { state.localMicStream?.getTracks().forEach(t => t.stop()); } catch { }
+      try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch { }
+      try { state.localScreenStream?.getTracks().forEach(t => t.stop()); } catch { }
       state.localMicStream = null;
       state.localCamStream = null;
       state.localScreenStream = null;
@@ -589,7 +589,7 @@ export function useWebRTC(roomId, displayName) {
           credentials: "include",
           body: JSON.stringify({ id: roomId }),
         });
-      } catch {}
+      } catch { }
     },
 
     async getLocalStream() {
@@ -601,8 +601,8 @@ export function useWebRTC(roomId, displayName) {
 
     setMic(on) {
       state.desiredMicOn = !!on;
-      try { state.localMicStream?.getAudioTracks?.().forEach(t => (t.enabled = !!on)); } catch {}
-      try { state.localCamStream?.getAudioTracks?.().forEach(t => (t.enabled = !!on)); } catch {}
+      try { state.localMicStream?.getAudioTracks?.().forEach(t => (t.enabled = !!on)); } catch { }
+      try { state.localCamStream?.getAudioTracks?.().forEach(t => (t.enabled = !!on)); } catch { }
       const hasAudio =
         (state.localMicStream && state.localMicStream.getAudioTracks().length > 0) ||
         (state.localCamStream && state.localCamStream.getAudioTracks().length > 0);
@@ -622,7 +622,7 @@ export function useWebRTC(roomId, displayName) {
     sendChat(payload) {
       const msg = { type: "chat", ...payload, self: undefined };
       for (const [, p] of state.peers) {
-        if (p.dcOpen) { try { p.dc.send(JSON.stringify(msg)); } catch {} }
+        if (p.dcOpen) { try { p.dc.send(JSON.stringify(msg)); } catch { } }
         else { p.dcQueue?.push?.(JSON.stringify(msg)); }
       }
       sendWS(msg);
@@ -645,7 +645,7 @@ export function useWebRTC(roomId, displayName) {
           p.makingOffer = true;
           await p.pc.setLocalDescription(await p.pc.createOffer());
           sendWS({ type: "offer", to: pid, sdp: p.pc.localDescription });
-        } catch {}
+        } catch { }
         finally { p.makingOffer = false; }
       }
     },
