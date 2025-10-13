@@ -1085,6 +1085,42 @@ export default function Home() {
                       className="absolute inset-0 w-full h-full rounded-2xl"
                       allow="camera; microphone; display-capture"
                     />
+
+                    {/* Overlay controls */}
+                    <div className="absolute top-3 right-3 z-10 pointer-events-none">
+                      <div className="flex gap-2 pointer-events-auto">
+                        <Link to={`/rooms/${activeRoom.id}`}>
+                          <Button size="sm" className="!px-3 !py-1.5">Expand</Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="soft"
+                          className="!px-3 !py-1.5"
+                          onClick={async () => {
+                            try {
+                              await fetch(
+                                "http://localhost/StudyNest/study-nest/src/api/meetings.php/leave",
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  credentials: "include",
+                                  body: JSON.stringify({ id: activeRoom.id }),
+                                }
+                              );
+                            } catch (e) {
+                              console.warn("Mini leave failed", e);
+                            } finally {
+                              localStorage.removeItem("activeRoom");
+                              setActiveRoom(null);
+                              // also tell the iframe (if it’s still alive)
+                              window.postMessage({ type: "studynest:mini-leave" }, "*");
+                            }
+                          }}
+                        >
+                          Leave
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <StudyRoom anonymous={anonymous} activeRoom={null} />
