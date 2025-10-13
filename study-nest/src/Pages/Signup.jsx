@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -150,6 +150,7 @@ export default function Signup() {
                     <label
                       htmlFor="email"
                       className="absolute -top-2 left-3 bg-white px-2 text-xs font-semibold text-zinc-500"
+
                     >
                       Email
                     </label>
@@ -158,6 +159,14 @@ export default function Signup() {
                       name="email"
                       type="email"
                       required
+                      pattern="[a-zA-Z]+[0-9]+@([a-zA-Z]+)\.uiu\.ac\.bd"
+                      title="Use a UIU email like: abc123@cse.uiu.ac.bd"
+                      onInvalid={(e) =>
+                        e.currentTarget.setCustomValidity(
+                          "Please enter a UIU email like abc123@dept.uiu.ac.bd"
+                        )
+                      }
+                      onInput={(e) => e.currentTarget.setCustomValidity("")}
                       placeholder="yourid@uiu.ac.bd"
                       value={form.email}
                       onChange={onChange}
