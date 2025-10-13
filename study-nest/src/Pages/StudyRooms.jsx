@@ -9,6 +9,8 @@ import Footer from "../Components/Footer";
 const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
 const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
 
+const MINIMIZE_KEY = "studynest.minimizeRoom";
+
 /* ====================== Recording Hook ====================== */
 /* ====================== Recording Hook ====================== */
 function useRecording(roomId, displayName, room, state) {
@@ -694,7 +696,9 @@ function TileFooter({ title, mutedBadge = false, handUp = false, onFullscreen })
 export function StudyRoom() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const { state, search } = useLocation();
+  const params = new URLSearchParams(search);
+  const isEmbed = params.get("embed") === "1";
 
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
@@ -787,7 +791,17 @@ export function StudyRoom() {
       const stream = await rtc.getLocalStream();
       rtc.connect();
     })();
-    return () => rtc.disconnect();
+    return () => {
+      const minId = localStorage.getItem(MINIMIZE_KEY);
+      if (minId === roomId) {
+        // we're minimizing: keep the meeting alive for the Home mini TV
+        localStorage.removeItem(MINIMIZE_KEY);
+        try { rtc.setMic?.(false); } catch { }
+        // do NOT call rtc.disconnect() here
+        return;
+      }
+      rtc.disconnect();
+    };
   }, [rtc]);
 
   useEffect(() => {
@@ -903,12 +917,16 @@ export function StudyRoom() {
             <button
               onClick={() => {
                 if (room && room.status === "live") {
-                  localStorage.setItem("activeRoom", JSON.stringify(room));
+                  // ensure Home has what it needs
+                  const active = { ...(room || {}), id: roomId, status: "live" };
+                  localStorage.setItem("activeRoom", JSON.stringify(active));
                 }
+                // mark this navigation as a minimize so cleanup won't call disconnect()
+                localStorage.setItem(MINIMIZE_KEY, roomId);
+
                 // Go home and tell it which room to embed
                 navigate(`/home?room=${roomId}`);
               }}
-
               className="rounded-md p-2 hover:bg-zinc-800"
               aria-label="Back"
             >
@@ -923,43 +941,52 @@ export function StudyRoom() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
-              Copy invite
-            </button>
-            {isCreator && (
-              <button
-                onClick={endMeeting}
-                disabled={ending}
-                className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-              >
-                {ending ? "Ending…" : "End meeting"}
-              </button>
+            {!isEmbed && (
+              <>
+                <button onClick={copyInvite} className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800">
+                  Copy invite
+                </button>
+                {isCreator && (
+                  <button
+                    onClick={endMeeting}
+                    disabled={ending}
+                    className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {ending ? "Ending…" : "End meeting"}
+                  </button>
+                )}
+              </>
             )}
+
+            {/* Leave behaves differently in embed */}
             <button
               onClick={async () => {
                 try {
-                  // Notify backend
                   await fetch(`http://localhost/StudyNest/study-nest/src/api/meetings.php/leave`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify({ id: roomId }),
                   });
-
-                  // Remove local activeRoom so homepage is blank again
-                  localStorage.removeItem("activeRoom");
-
-                  // Navigate back home
-                  navigate("/home", { replace: true });
                 } catch (err) {
                   console.error("Leave failed", err);
-                  navigate("/home", { replace: true });
+                } finally {
+                  localStorage.removeItem("activeRoom");
+                  if (isEmbed) {
+                    // tell Home to blank the mini player
+                    window.parent?.postMessage({ type: "studynest:mini-leave" }, "*");
+                    // stop any media in this iframe
+                    try { rtc?.disconnect?.(); } catch { }
+                  } else {
+                    navigate("/home", { replace: true });
+                  }
                 }
               }}
               className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800"
             >
               Leave
             </button>
+
           </div>
         </div>
       </div>

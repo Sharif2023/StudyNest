@@ -447,10 +447,26 @@ function StudyRoom({ anonymous, activeRoom }) {
                 <Button
                   variant="soft"
                   size="md"
-                  onClick={() => {
-                    localStorage.removeItem("activeRoom");
-                    // Signal Home() to clear immediately without reload
-                    window.dispatchEvent(new Event("activeRoomCleared"));
+                  onClick={async () => {
+                    try {
+                      if (activeRoom?.id) {
+                        await fetch(
+                          "http://localhost/StudyNest/study-nest/src/api/meetings.php/leave",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ id: activeRoom.id }),
+                          }
+                        );
+                      }
+                    } catch (e) {
+                      console.warn("Mini TV leave failed", e);
+                    } finally {
+                      localStorage.removeItem("activeRoom");
+                      // Signal Home() to clear immediately
+                      window.dispatchEvent(new Event("activeRoomCleared"));
+                    }
                   }}
                 >
                   Leave
@@ -864,6 +880,17 @@ export default function Home() {
     fetchLeaderboard();
   }, []);
 
+  useEffect(() => {
+    function onEmbedMessage(e) {
+      if (!e?.data) return;
+      if (e.data.type === "studynest:mini-leave") {
+        localStorage.removeItem("activeRoom");
+        setActiveRoom(null);
+      }
+    }
+    window.addEventListener("message", onEmbedMessage);
+    return () => window.removeEventListener("message", onEmbedMessage);
+  }, []);
 
   return (
     <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
@@ -1053,11 +1080,11 @@ export default function Home() {
                 {activeRoom ? (
                   <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
                     <iframe
-                      src={`http://localhost:5173/rooms/${activeRoom.id}`}
-                      title="Live Study Room"
+                      src={`/rooms/${activeRoom.id}?embed=1`}
+                      title="Live Study Room (Mini)"
                       className="absolute inset-0 w-full h-full rounded-2xl"
                       allow="camera; microphone; display-capture"
-                    ></iframe>
+                    />
                   </div>
                 ) : (
                   <StudyRoom anonymous={anonymous} activeRoom={null} />
