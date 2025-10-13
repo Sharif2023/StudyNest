@@ -17,7 +17,7 @@ import Footer from "../Components/Footer";
  */
 
 // Define the API endpoint URL. You MUST replace this with your server's URL.
-const API_URL = 'http://localhost/studynest/study-nest/src/api/ResourceLibrary.php';
+const API_URL = 'http://localhost/StudyNest/study-nest/src/api/ResourceLibrary.php';
 
 
 export default function App() {

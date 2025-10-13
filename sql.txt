@@ -16,22 +16,30 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS resources (
-id int(6) unsigned NOT NULL AUTO_INCREMENT,
-title varchar(255) NOT NULL,
-kind varchar(50) NOT NULL,
-course varchar(50) NOT NULL,
-semester varchar(50) NOT NULL,
-tags text DEFAULT NULL,
-description text DEFAULT NULL,
-author varchar(100) NOT NULL,
-votes int(11) DEFAULT 0,
-bookmarks int(11) DEFAULT 0,
-flagged tinyint(1) DEFAULT 0,
-src_type varchar(20) NOT NULL,
-url varchar(255) NOT NULL,
-created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-PRIMARY KEY (id)
+  id                       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id                  INT UNSIGNED NULL,
+  title                    VARCHAR(255) NOT NULL,
+  kind                     VARCHAR(64) NULL,
+  course                   VARCHAR(64) NULL,
+  semester                 VARCHAR(64) NULL,
+  tags                     VARCHAR(512) NULL,
+  description              TEXT NULL,
+  author                   VARCHAR(128) NULL,
+  src_type                 VARCHAR(20) NULL,
+  url                      TEXT NULL,
+  votes                    INT NOT NULL DEFAULT 0,
+  bookmarks                INT NOT NULL DEFAULT 0,
+  flagged                  TINYINT(1) NOT NULL DEFAULT 0,
+  visibility               ENUM('public','private') NOT NULL DEFAULT 'public',
+  shared_from_recording_id INT UNSIGNED NULL,
+  shared_at                DATETIME NULL,
+  created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_kind (kind),
+  KEY idx_course_semester (course, semester),
+  KEY idx_visibility_kind_created (visibility, kind, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 CREATE TABLE IF NOT EXISTS notes (
 id int(11) unsigned NOT NULL AUTO_INCREMENT,
