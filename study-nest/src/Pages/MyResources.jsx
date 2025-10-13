@@ -9,13 +9,37 @@ import Footer from "../Components/Footer";
  * StudyNest — My Resources (Personal Library)
  * - Shows ONLY the signed-in user's content
  * - Data source: profile.php?content=1 (notes, resources, recordings, etc.)
- * - Includes search, filters, preview, delete (for recordings), and Share→Shared feed
- * - Full shell: LeftNav + Header + Footer
+ * - Includes search, filters, preview, delete (rec + resource), and Share→Shared feed
+ * - Upload modal (file → backend → Cloudinary, or external link)
+ * - Shell: LeftNav + Header + Footer
  */
 
 const API_ROOT = "http://localhost/StudyNest/study-nest/src/api";
-const API_BASE = API_ROOT; // keep your old name if you want
+const API_BASE = API_ROOT;
 const RES_LIBRARY_API = `${API_ROOT}/ResourceLibrary.php`;
+
+/* ----------------- Helpers for Cloudinary URLs & file types ----------------- */
+function isPdfLike(url = "", mime = "") {
+  if (!url && !mime) return false;
+  if (mime?.toLowerCase().includes("pdf")) return true;
+  // allow querystrings/fragments
+  return /\.pdf($|[?#])/i.test(url);
+}
+
+function isImageUrl(url = "", mime = "") {
+  if (mime?.startsWith("image/")) return true;
+  return /\.(jpg|jpeg|png|gif|webp)(?:$|[?#])/i.test(url || "");
+}
+
+function isCloudinary(url = "") {
+  return /(^https?:)?\/\/res\.cloudinary\.com\//i.test(url || "");
+}
+
+/** Force “download” (content-disposition attachment) and keep filename if present */
+function cloudinaryDownload(url = "") {
+  if (!isCloudinary(url)) return url;
+  return url.replace(/\/upload\/(?!fl_)/, "/upload/fl_attachment/");
+}
 
 export default function MyResources() {
   // LeftNav shell
@@ -41,6 +65,9 @@ export default function MyResources() {
   const [sort, setSort] = useState("New");
   const [preview, setPreview] = useState(null); // { url, name, mime? }
 
+  // Upload modal state
+  const [uploadOpen, setUploadOpen] = useState(false);
+
   // Open correct tab via URL params: ?tab=recordings or legacy ?kind=recording
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -50,11 +77,11 @@ export default function MyResources() {
     else if (tabParam === "resources") setTab("resources");
   }, [location.search]);
 
-  // Current user name (to check ownership)
-  const currentUser =
-    JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
-    JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
-    "Unknown";
+  // Current user (for ownership checks). Try id + name.
+  const auth = JSON.parse(localStorage.getItem("studynest.auth") || "null") || {};
+  const profile = JSON.parse(localStorage.getItem("studynest.profile") || "null") || {};
+  const currentUser = profile?.name || auth?.name || "Unknown";
+  const currentUserId = Number(auth?.id || 0);
 
   const fetchMine = async () => {
     setLoading(true);
@@ -64,7 +91,6 @@ export default function MyResources() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       if (!j?.ok || !j?.content) throw new Error("Invalid content response");
-      // Expect: content.resources (my uploads), content.recordings (my recordings)
       setContent({
         resources: Array.isArray(j.content.resources) ? j.content.resources : [],
         recordings: Array.isArray(j.content.recordings) ? j.content.recordings : [],
@@ -122,7 +148,6 @@ export default function MyResources() {
     if (sort === "Top") list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     if (sort === "A-Z")
       list.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
-
     return list;
   }, [rawItems, q, type, course, semester, tag, sort]);
 
@@ -146,12 +171,13 @@ export default function MyResources() {
     }
   };
 
-  const shareRecording = async (id) => {
+  // delete a personal resource (non-recording)
+  const deleteResource = async (id) => {
+    if (!window.confirm("Delete this resource? This cannot be undone.")) return;
     try {
       const form = new FormData();
-      form.append("action", "share_recording");
-      form.append("recording_id", id);
-
+      form.append("action", "delete_resource");
+      form.append("resource_id", id);
       const r = await fetch(RES_LIBRARY_API, {
         method: "POST",
         credentials: "include",
@@ -159,17 +185,29 @@ export default function MyResources() {
       });
       const j = await r.json();
       if (j?.status === "success") {
-        // Update points in localStorage if provided
-        if (j.points_awarded) {
-          const auth = JSON.parse(localStorage.getItem("studynest.auth") || "{}");
-          if (auth?.id) {
-            const updated = { ...auth, points: (auth.points || 0) + j.points_awarded };
-            localStorage.setItem("studynest.auth", JSON.stringify(updated));
-            window.dispatchEvent(
-              new CustomEvent("studynest:points-updated", { detail: { points: updated.points } })
-            );
-          }
-        }
+        await fetchMine();
+        alert("✅ Resource deleted");
+      } else {
+        alert("❌ " + (j?.message || "Failed to delete resource"));
+      }
+    } catch (e) {
+      alert("❌ " + e.message);
+    }
+  };
+
+  const shareRecording = async (id) => {
+    try {
+      const form = new FormData();
+      form.append("action", "share_recording");
+      form.append("recording_id", id);
+      const r = await fetch(RES_LIBRARY_API, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const j = await r.json();
+      if (j?.status === "success") {
+        if (j.points_awarded) bumpLocalPoints(j.points_awarded);
         alert("✅ " + (j.message || "Shared to Shared Resources"));
       } else {
         alert("❌ " + (j?.message || "Share failed"));
@@ -179,13 +217,12 @@ export default function MyResources() {
     }
   };
 
-  // NEW: share a personal (non-recording) resource to the Shared feed
+  // Share a personal (non-recording) resource to the Shared feed
   const shareResource = async (id) => {
     try {
       const form = new FormData();
       form.append("action", "share_resource");
       form.append("resource_id", id);
-
       const r = await fetch(RES_LIBRARY_API, {
         method: "POST",
         credentials: "include",
@@ -193,17 +230,7 @@ export default function MyResources() {
       });
       const j = await r.json();
       if (j?.status === "success") {
-        if (j.points_awarded) {
-          const auth = JSON.parse(localStorage.getItem("studynest.auth") || "{}");
-          if (auth?.id) {
-            const updated = { ...auth, points: (auth.points || 0) + j.points_awarded };
-            localStorage.setItem("studynest.auth", JSON.stringify(updated));
-            window.dispatchEvent(
-              new CustomEvent("studynest:points-updated", { detail: { points: updated.points } })
-            );
-          }
-        }
-        // Refresh to reflect any "shared" flag the backend may return via profile.php
+        if (j.points_awarded) bumpLocalPoints(j.points_awarded);
         await fetchMine();
         alert("✅ " + (j.message || "Shared to Shared Resources"));
       } else {
@@ -213,6 +240,15 @@ export default function MyResources() {
       alert("❌ " + e.message);
     }
   };
+
+  function bumpLocalPoints(pts) {
+    const auth = JSON.parse(localStorage.getItem("studynest.auth") || "{}");
+    if (auth?.id) {
+      const updated = { ...auth, points: (auth.points || 0) + pts };
+      localStorage.setItem("studynest.auth", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("studynest:points-updated", { detail: { points: updated.points } }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-200 to-cyan-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
@@ -224,10 +260,8 @@ export default function MyResources() {
         sidebarWidth={sidebarWidth}
       />
 
-      {/* Keep Header consistent with other pages */}
       <Header navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={sidebarWidth} />
 
-      {/* Main content with the same left padding + transition as others */}
       <main
         className="pt-6 pb-10"
         style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}
@@ -243,13 +277,22 @@ export default function MyResources() {
                   feed when you’re ready.
                 </p>
               </div>
-              <Link
-                to="/resources"
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
-                title="Browse Shared resources"
-              >
-                Shared Resources →
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setUploadOpen(true)}
+                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+                  title="Upload a file or save a link"
+                >
+                  + Upload
+                </button>
+                <Link
+                  to="/resources"
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
+                  title="Browse Shared resources"
+                >
+                  Shared Resources →
+                </Link>
+              </div>
             </div>
 
             <div className="mt-4 inline-flex rounded-xl bg-zinc-100 p-1 dark:bg-slate-800/70">
@@ -320,9 +363,11 @@ export default function MyResources() {
                         })
                       }
                       onDeleteRecording={deleteRecording}
+                      onDeleteResource={deleteResource}
                       onShareRecording={shareRecording}
                       onShareResource={shareResource}
                       currentUser={currentUser}
+                      currentUserId={currentUserId}
                     />
                   </li>
                 ))}
@@ -332,10 +377,267 @@ export default function MyResources() {
         </section>
       </main>
 
-      {/* Footer should sit outside main, aligned with sidebar */}
       <Footer sidebarWidth={sidebarWidth} />
 
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
+
+      {uploadOpen && (
+        <UploadModal
+          onClose={() => setUploadOpen(false)}
+          onCreated={async (message, points) => {
+            if (points) bumpLocalPoints(points);
+            await fetchMine();
+            alert(message || "✅ Resource created");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ----------------- Upload Modal (scroll-safe) ----------------- */
+function UploadModal({ onClose, onCreated }) {
+  const [mode, setMode] = useState("file"); // 'file' | 'link'
+  const [file, setFile] = useState(null);
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [course, setCourse] = useState("");
+  const [semester, setSemester] = useState("");
+  const [kind, setKind] = useState("other");
+  const [tags, setTags] = useState("");
+  const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState("private"); // default private → appears under My Resources
+  const [submitting, setSubmitting] = useState(false);
+
+  const canSubmit =
+    title.trim() !== "" &&
+    course.trim() !== "" &&
+    semester.trim() !== "" &&
+    (mode === "file" ? !!file : url.trim() !== "");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+    try {
+      const form = new FormData();
+      form.append("title", title.trim());
+      form.append("course", course.trim());
+      form.append("semester", semester.trim());
+      form.append("kind", kind);
+      form.append("tags", tags);
+      form.append("description", description);
+      form.append("visibility", visibility);
+      form.append("src_type", mode);
+
+      if (mode === "file") {
+        form.append("file", file);
+      } else {
+        form.append("url", url.trim());
+      }
+
+      const r = await fetch(RES_LIBRARY_API, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const j = await r.json();
+
+      if (j?.status === "success") {
+        onClose?.();
+        onCreated?.(j.message, j.points_awarded || 0);
+      } else {
+        alert("❌ " + (j?.message || "Failed to create resource"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ " + (err.message || "Upload failed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 p-4 flex items-center justify-center" onClick={onClose}>
+      <div
+        className="mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sticky header to keep close button visible */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add a Resource</h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-slate-800"
+            aria-label="Close"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+          {/* File vs Link toggle */}
+          <div className="inline-flex rounded-lg bg-zinc-100 p-1 dark:bg-slate-800">
+            {[
+              ["file", "File upload"],
+              ["link", "External link"],
+            ].map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setMode(val)}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${
+                  mode === val ? "bg-white dark:bg-slate-900 shadow" : "text-zinc-600 dark:text-zinc-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {mode === "file" ? (
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">File</label>
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-cyan-700"
+              />
+              <p className="text-xs text-zinc-500">
+                Images, videos, PDFs, docs, slides, spreadsheets, zips, etc. will be stored on Cloudinary.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">URL</label>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com/resource"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              />
+            </div>
+          )}
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Title *</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              placeholder="e.g., Week 3 Slides"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Course *</label>
+              <input
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+                placeholder="e.g., CS101"
+                required
+              />
+            </div>
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Semester *</label>
+              <input
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+                placeholder="e.g., Fall 2025"
+                required
+              />
+            </div>
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</label>
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              >
+                {["other", "book", "slide", "past paper", "study guide", "recording"].map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tags</label>
+            <input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              placeholder="Comma-separated, e.g., algebra,midterm"
+            />
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Description</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              placeholder="Optional notes for your future self (or others if public)"
+            />
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Visibility</label>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="private"
+                  checked={visibility === "private"}
+                  onChange={() => setVisibility("private")}
+                />
+                <span>Private (My Resources)</span>
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="public"
+                  checked={visibility === "public"}
+                  onChange={() => setVisibility("public")}
+                />
+                <span>Public (Shared Resources)</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit || submitting}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
+                canSubmit && !submitting
+                  ? "bg-cyan-600 hover:bg-cyan-700"
+                  : "bg-cyan-400 cursor-not-allowed"
+              }`}
+            >
+              {submitting ? "Uploading…" : mode === "file" ? "Upload" : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -365,15 +667,23 @@ function Card({
   tab,
   onPreview,
   onDeleteRecording,
+  onDeleteResource,
   onShareRecording,
   onShareResource,
   currentUser,
+  currentUserId,
 }) {
   const isRecording = tab === "recordings";
   const url = item.url || "";
-  const isPdf = url.toLowerCase().endsWith(".pdf");
-  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-  const isOwner = item.author === currentUser || item.owner === currentUser;
+  const pdf = isPdfLike(url, item.mime);
+  const image = isImageUrl(url, item.mime);
+
+  // Consider both name + id for ownership
+  const isOwnerByName = item.author === currentUser || item.owner === currentUser;
+  const isOwnerById = Number(item.user_id || 0) === Number(currentUserId || -1);
+  const isOwner = isOwnerById || isOwnerByName;
+
+  const isSharedFlag = item.shared === true || item.visibility === "public";
 
   return (
     <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition dark:bg-slate-900 dark:ring-slate-800">
@@ -384,10 +694,14 @@ function Card({
             <VideoIcon className="h-10 w-10" />
             <span className="mt-1 text-xs font-medium">Recording</span>
           </div>
-        ) : isImage ? (
+        ) : image ? (
           <img src={url} alt={item.title} className="h-full w-full object-contain rounded-t-2xl" />
-        ) : isPdf ? (
-          <iframe src={url} title={item.title} className="h-full w-full border-none" />
+        ) : pdf ? (
+          // Avoid embedding PDF in tiny card (causes "load error" on some browsers)
+          <div className="flex flex-col items-center text-zinc-400">
+            <FileIcon className="h-10 w-10" />
+            <span className="mt-1 text-xs font-medium">PDF</span>
+          </div>
         ) : (
           <div className="flex flex-col items-center text-zinc-400">
             <FileIcon className="h-10 w-10" />
@@ -400,7 +714,7 @@ function Card({
           className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
         >
           <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">
-            {isRecording ? "Play" : isPdf || isImage ? "Preview" : "Open"}
+            {isRecording ? "Play" : image || pdf ? "Preview" : "Open"}
           </span>
         </button>
       </div>
@@ -414,7 +728,7 @@ function Card({
           >
             {item.title || "(Untitled)"}
           </span>
-          {item.shared && (
+          {isSharedFlag && (
             <span className="rounded-md bg-emerald-50 text-emerald-700 text-[11px] px-1.5 py-0.5 border border-emerald-200">
               Shared
             </span>
@@ -438,7 +752,7 @@ function Card({
         )}
 
         {/* direct open for non-previewables */}
-        {item.src_type === "file" && !isPdf && !isImage && (
+        {item.src_type === "file" && !image && !pdf && (
           <div className="mt-2">
             <a
               href={url}
@@ -522,24 +836,33 @@ function Card({
           {!isRecording && isOwner && onShareResource && (
             <button
               onClick={() => onShareResource(item.id)}
-              disabled={item.shared === true}
+              disabled={isSharedFlag === true}
               className={`rounded-md border px-2 py-1 font-medium transition-colors ${
-                item.shared
+                isSharedFlag
                   ? "border-zinc-200 bg-zinc-50 text-zinc-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800"
                   : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
               }`}
-              title={item.shared ? "Already shared" : "Share to Shared Resources"}
+              title={isSharedFlag ? "Already shared" : "Share to Shared Resources"}
             >
-              {item.shared ? "Shared" : "Share"}
+              {isSharedFlag ? "Shared" : "Share"}
             </button>
           )}
 
-          {!isRecording && item.url && (
+          {!isRecording && isOwner && onDeleteResource && (
+            <button
+              onClick={() => onDeleteResource(item.id)}
+              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 font-medium text-red-700 hover:bg-red-100 transition-colors"
+              title="Delete resource"
+            >
+              Delete
+            </button>
+          )}
+
+          {!isRecording && url && (
             <a
-              href={item.url}
+              href={isPdfLike(url, item.mime) ? cloudinaryDownload(url) : url}
               target="_blank"
               rel="noopener noreferrer"
-              download={item.name}
               className="rounded-md border border-zinc-200 bg-white px-2 py-1 font-medium text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-200 dark:hover:bg-slate-800"
             >
               Download
@@ -560,7 +883,7 @@ function EmptyState({ tab }) {
         <h3 className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{label}</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {tab === "resources"
-            ? "Upload resources from the Shared Resources page."
+            ? "Upload resources with the button above."
             : "Your room recordings will appear here after sessions end."}
         </p>
         {tab === "resources" && (
@@ -577,15 +900,20 @@ function EmptyState({ tab }) {
 }
 
 function PreviewModal({ file, onClose }) {
-  const isPdf = file.mime?.includes("pdf") || /\.pdf($|\?)/i.test(file.url || "");
-  const isImage = file.mime?.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.url || "");
+  const pdf = isPdfLike(file.url, file.mime);
+  const image = isImageUrl(file.url, file.mime);
+
+  // For inline preview: use the original secure_url. Do NOT add fl_inline (invalid flag).
+  const previewUrl = file.url;
+
   return (
     <div className="fixed inset-0 z-40 bg-black/70 p-4" onClick={onClose}>
       <div
-        className="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900"
+        className="mx-auto max-w-5xl max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-slate-800">
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{file.name}</h3>
           <button
             onClick={onClose}
@@ -595,28 +923,53 @@ function PreviewModal({ file, onClose }) {
             <XIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-3">
-          {isImage ? (
+
+        {/* Body */}
+        <div className="p-3">
+          {image ? (
             <img
-              src={file.url}
+              src={previewUrl}
               alt={file.name}
-              className="max-h-[70vh] w-full object-contain rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
+              className="max-h-[78vh] w-full object-contain rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
             />
-          ) : isPdf ? (
-            <iframe
-              title="preview"
-              src={file.url}
-              className="h-[70vh] w-full rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
-            />
+          ) : pdf ? (
+            <object
+              data={previewUrl + "#toolbar=1"}
+              type="application/pdf"
+              className="h-[78vh] w-full rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
+            >
+              <div className="grid place-items-center h-[78vh] text-sm text-zinc-600 dark:text-zinc-300">
+                Unable to preview this PDF here.
+                <div className="mt-3 space-x-2">
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800 dark:bg-slate-800 dark:hover:bg-slate-700"
+                  >
+                    Open in new tab
+                  </a>
+                  <a
+                    href={cloudinaryDownload(file.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl border border-zinc-300 bg-white px-4 py-2 font-semibold text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:bg-slate-800"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            </object>
           ) : (
             <div className="grid place-items-center rounded-lg border border-dashed border-zinc-300 dark:border-slate-700 p-10 text-center text-sm text-zinc-600 dark:text-zinc-300">
               Preview not supported. Use download instead.
               <a
                 href={file.url}
-                download
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-3 inline-flex rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800 dark:bg-slate-800 dark:hover:bg-slate-700"
               >
-                Download
+                Open / Download
               </a>
             </div>
           )}
