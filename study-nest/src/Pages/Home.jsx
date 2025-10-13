@@ -1023,7 +1023,7 @@ export default function Home() {
 
             {/* Right column */}
             <div className="order-1 xl:order-2 xl:col-span-7 space-y-6">
-              <div className="xl:sticky xl:top-[84px]">
+              <div>
                 {activeRoom ? (
                   <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-lg">
                     <iframe
