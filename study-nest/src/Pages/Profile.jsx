@@ -43,78 +43,78 @@ export default function Profile() {
   const profile_pic = profile?.profile_picture_url || auth?.profile_picture_url;
   // On mount, refresh profile from backend (session-based)
   useEffect(() => {
-  // Check if user is authenticated
-  const checkAuth = async () => {
-    try {
-      const r = await fetch(`${API_BASE}/profile.php`, {
-        credentials: "include",
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/profile.php`, {
+          credentials: "include",
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-      if (r.status === 401) {
-        console.error("Not authenticated - redirecting to login");
-        // Clear stale data
-        localStorage.removeItem("studynest.profile");
-        localStorage.removeItem("studynest.auth");
-        localStorage.removeItem("studynest.user");
-        // Redirect
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!r.ok) {
-        throw new Error(`HTTP error! status: ${r.status}`);
-      }
-
-      const j = await r.json();
-
-      if (j.ok && j.profile) {
-        // ✅ Save profile data to ALL storage locations
-        setProfile(j.profile);
-        localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
-
-        // Update user state
-        const updatedUser = {
-          name: j.profile.name || "Student",
-          email: j.profile.email || "",
-          bio: j.profile.bio || "",
-          profile_picture_url: j.profile.profile_picture_url || "",
-          prefs: user?.prefs || { defaultAnonymous: false, darkMode: false, courseFocus: "" },
-        };
-        setUser(updatedUser);
-        localStorage.setItem("studynest.user", JSON.stringify(updatedUser));
-
-        // Also sync auth storage
-        const currentAuth = JSON.parse(localStorage.getItem("studynest.auth") || "null");
-        if (currentAuth) {
-          const updatedAuth = {
-            ...currentAuth,
-            name: j.profile.name,
-            email: j.profile.email,
-            profile_picture_url: j.profile.profile_picture_url,
-            bio: j.profile.bio
-          };
-          localStorage.setItem("studynest.auth", JSON.stringify(updatedAuth));
-          setAuth(updatedAuth);
-        } else {
-          // If no auth data exists, create it from profile
-          localStorage.setItem("studynest.auth", JSON.stringify({
-            id: j.profile.id,
-            student_id: j.profile.student_id,
-            name: j.profile.name,
-            email: j.profile.email,
-            profile_picture_url: j.profile.profile_picture_url,
-            bio: j.profile.bio
-          }));
+        if (r.status === 401) {
+          console.error("Not authenticated - redirecting to login");
+          // Clear stale data
+          localStorage.removeItem("studynest.profile");
+          localStorage.removeItem("studynest.auth");
+          localStorage.removeItem("studynest.user");
+          // Redirect
+          window.location.href = "/login";
+          return;
         }
-      }
-    } catch (e) {
-      console.error("Profile fetch error:", e);
-    }
-  };
 
-  checkAuth();
-}, []); 
+        if (!r.ok) {
+          throw new Error(`HTTP error! status: ${r.status}`);
+        }
+
+        const j = await r.json();
+
+        if (j.ok && j.profile) {
+          // ✅ Save profile data to ALL storage locations
+          setProfile(j.profile);
+          localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
+
+          // Update user state
+          const updatedUser = {
+            name: j.profile.name || "Student",
+            email: j.profile.email || "",
+            bio: j.profile.bio || "",
+            profile_picture_url: j.profile.profile_picture_url || "",
+            prefs: user?.prefs || { defaultAnonymous: false, darkMode: false, courseFocus: "" },
+          };
+          setUser(updatedUser);
+          localStorage.setItem("studynest.user", JSON.stringify(updatedUser));
+
+          // Also sync auth storage
+          const currentAuth = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+          if (currentAuth) {
+            const updatedAuth = {
+              ...currentAuth,
+              name: j.profile.name,
+              email: j.profile.email,
+              profile_picture_url: j.profile.profile_picture_url,
+              bio: j.profile.bio
+            };
+            localStorage.setItem("studynest.auth", JSON.stringify(updatedAuth));
+            setAuth(updatedAuth);
+          } else {
+            // If no auth data exists, create it from profile
+            localStorage.setItem("studynest.auth", JSON.stringify({
+              id: j.profile.id,
+              student_id: j.profile.student_id,
+              name: j.profile.name,
+              email: j.profile.email,
+              profile_picture_url: j.profile.profile_picture_url,
+              bio: j.profile.bio
+            }));
+          }
+        }
+      } catch (e) {
+        console.error("Profile fetch error:", e);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const handleFocus = async () => {
@@ -426,12 +426,12 @@ function Overview({ user, displayName }) {
         <StatCard
           label="My Resources"
           value={resources}
-          link="/resources"
+          link="/myresource"
         />
         <StatCard
           label="My Recordings"
           value={recordings}
-          link="/resources?kind=recording"
+          link="/myresource?tab=recordings"
         />
         <StatCard
           label="My Rooms"
@@ -856,6 +856,7 @@ function Bookmarks() {
 
 function MyContent() {
   const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+  const RES_API = "http://localhost/study-nest/src/api/ResourceLibrary.php";
   const [data, setData] = useState({ notes: [], resources: [], rooms: [], questions: [], recordings: [] });
   const [loading, setLoading] = useState(true);
 
@@ -906,6 +907,39 @@ function MyContent() {
     }
   };
 
+  // Share recording -> publishes a copy into Shared Resources
+  const shareRecording = async (id) => {
+    try {
+      const form = new FormData();
+      form.append("action", "share_recording");
+      form.append("recording_id", id);
+
+      const res = await fetch(RES_API, {
+        method: "POST",
+        credentials: "include",
+        body: form
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        // Reflect points locally if returned
+        if (json.points_awarded) {
+          const auth = JSON.parse(localStorage.getItem("studynest.auth") || "{}");
+          if (auth?.id) {
+            const updated = { ...auth, points: (auth.points || 0) + json.points_awarded };
+            localStorage.setItem("studynest.auth", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("studynest:points-updated", { detail: { points: updated.points } }));
+          }
+        }
+        alert("✅ " + (json.message || "Shared to Shared Resources"));
+      } else {
+        alert("❌ " + (json.message || "Failed to share"));
+      }
+    } catch (e) {
+      console.error("Share failed:", e);
+      alert("❌ " + e.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 text-center text-sm text-zinc-500 dark:bg-slate-900 dark:ring-white/10">
@@ -918,16 +952,20 @@ function MyContent() {
     <section className="space-y-6">
       <ListCard title="My Notes" empty="No notes yet" items={data.notes} type="notes" />
       <ListCard title="My Resources" empty="No resources yet" items={data.resources} type="resources" />
-      <ListCard title="My Recordings" empty="No recordings yet" items={data.recordings} type="resources?kind=recording" onDeleteRecording={deleteRecording} />
+      <ListCard title="My Recordings" empty="No recordings yet" items={data.recordings} type="myresource?tab=recordings" onDeleteRecording={deleteRecording} onShareRecording={shareRecording} />
       <ListCard title="My Questions" empty="No questions yet" items={data.questions} type="forum" />
       <ListCard title="My Rooms" empty="No rooms yet" items={data.rooms} type="rooms" />
     </section>
   );
 }
 
-function ListCard({ title, empty, items, type, onDeleteRecording }) {
+function ListCard({ title, empty, items, type, onDeleteRecording, onShareRecording }) {
   const isRecordings = title === "My Recordings";
-  
+  const currentUser =
+    JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
+    JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
+    "Unknown";
+
   return (
     <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-white/10">
       <div className="mb-3 flex items-center justify-between">
@@ -953,14 +991,27 @@ function ListCard({ title, empty, items, type, onDeleteRecording }) {
                     {(it.tags || "—")} • {safeDate(it.created_at || it.updated_at)}
                   </div>
                 </div>
-                {isRecordings && onDeleteRecording && (
-                  <button
-                    onClick={() => onDeleteRecording(it.id)}
-                    className="shrink-0 rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
-                    title="Delete recording"
-                  >
-                    🗑️
-                  </button>
+                {isRecordings && (
+                  <div className="flex items-center gap-1">
+                    {/* Share only if owner */}
+                    {onShareRecording && (it.author === currentUser || (it.owner === currentUser)) && (
+                      <button
+                        onClick={() => onShareRecording(it.id)}
+                        className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        title="Share to Shared Resources"
+                      >
+                        Share
+                      </button>
+                    )}
+                    {onDeleteRecording && (it.author === currentUser || (it.owner === currentUser)) && (
+                      <button onClick={() => onDeleteRecording(it.id)}
+                        className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+                        title="Delete recording"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </li>

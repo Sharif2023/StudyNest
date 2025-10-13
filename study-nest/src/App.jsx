@@ -11,6 +11,7 @@ import { RoomsLobby, StudyRoom, NewRoomRedirect } from "./Pages/StudyRooms";
 import NewMeetingForm from "./Pages/NewMeetingForm";
 import TagSearch from "./Pages/TagSearch";
 import ResourceLibrary from "./Pages/ResourceLibrary";
+import MyResources from "./Pages/MyResources";
 import TodoList from "./Pages/TodoList";
 import AIFileCheck from "./Pages/AIFileCheck";
 import AIUsageChecker from "./Pages/AIUsageChecker";
@@ -39,6 +40,7 @@ function App() {
         <Route path="/rooms/newform" element={<NewMeetingForm />} />
         <Route path="/search" element={<TagSearch />} />
         <Route path="/resources" element={<ResourceLibrary />} />
+        <Route path="/myresource" element={<MyResources />} />
         <Route path="/to-do-list" element={<TodoList />} />
         <Route path="/ai-check" element={<AIFileCheck />} />
         <Route path="/ai-usage" element={<AIUsageChecker />} />
