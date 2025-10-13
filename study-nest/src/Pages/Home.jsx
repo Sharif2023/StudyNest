@@ -1159,16 +1159,17 @@ export default function Home() {
             position: 'fixed',
             bottom: '80px',
             right: '16px',
-            zIndex: '9999',
+            zIndex: 9999,
             width: '350px',
             maxWidth: '90%',
             backgroundColor: '#ffffff',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            borderRadius: '12px',
-            padding: '20px',
+            borderRadius: '16px',
+            boxShadow: '0 6px 18px rgba(0, 0, 0, 0.12)',
+            padding: '24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: '20px',
+            animation: 'fadeIn 0.3s ease-out',
           }}
         >
           <div
@@ -1179,39 +1180,55 @@ export default function Home() {
               color: '#333',
             }}
           >
-            <span style={{ fontSize: '18px', fontWeight: '600' }}>Ask me Buddy!</span>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: '#007bff' }}>
+              Ask me Buddy!
+            </span>
             <button
               onClick={toggleChatbot}
               style={{
                 backgroundColor: 'transparent',
                 border: 'none',
                 color: '#888',
-                fontSize: '20px',
+                fontSize: '22px',
                 cursor: 'pointer',
+                transition: 'color 0.2s ease',
               }}
+              onMouseEnter={(e) => (e.target.style.color = '#ff6347')}
+              onMouseLeave={(e) => (e.target.style.color = '#888')}
             >
-              X
+              &times;
             </button>
           </div>
-          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+
+          <div
+            style={{
+              maxHeight: '300px',
+              overflowY: 'auto',
+              marginBottom: '16px',
+              paddingRight: '8px',
+            }}
+          >
             {messages.map((msg, index) => (
               <div
                 key={index}
                 style={{
                   textAlign: msg.sender === 'user' ? 'right' : 'left',
-                  padding: '8px',
-                  marginBottom: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '10px',
                   backgroundColor: msg.sender === 'user' ? '#007bff' : '#f1f1f1',
                   color: msg.sender === 'user' ? '#ffffff' : '#333',
-                  borderRadius: '12px',
+                  borderRadius: '18px',
                   maxWidth: '70%',
                   marginLeft: msg.sender === 'user' ? 'auto' : '0',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                  fontSize: '16px',
                 }}
               >
                 {msg.message}
               </div>
             ))}
           </div>
+
           <input
             type="text"
             value={inputMessage}
@@ -1219,15 +1236,34 @@ export default function Home() {
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             style={{
               width: '100%',
-              padding: '12px',
-              borderRadius: '8px',
+              padding: '14px',
+              borderRadius: '12px',
               border: '1px solid #ddd',
-              fontSize: '14px',
+              fontSize: '16px',
               color: '#333',
+              transition: 'border 0.3s ease, box-shadow 0.3s ease',
             }}
+            onFocus={(e) => (e.target.style.boxShadow = '0 0 8px rgba(0, 123, 255, 0.6)')}
+            onBlur={(e) => (e.target.style.boxShadow = 'none')}
           />
         </div>
       )}
+
+      {/* Add CSS Animations */}
+      <style>
+        {`
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `}
+      </style>
 
       {/* Footer */}
       <Footer sidebarWidth={SIDEBAR_W} />
