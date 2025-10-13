@@ -839,6 +839,32 @@ export default function Home() {
       .map(mapMeetingToCard);
   }, [rooms]);
 
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch('http://localhost/StudyNest/study-nest/src/api/getLeaderboard.php', {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.leaderboard) {
+            setLeaderboard(data.leaderboard); // Assuming the API returns a list of leaderboard users
+          }
+        } else {
+          console.error('Error fetching leaderboard data');
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
+
+
   return (
     <div className="min-h-screen text-slate-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
       <ScrollStyles />
