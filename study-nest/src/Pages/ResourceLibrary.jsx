@@ -600,6 +600,7 @@ const submit = async () => {
   form.append("tags", tags.trim());
   form.append("description", description.trim());
   form.append("author", anonymous ? "Anonymous" : "");
+  form.append("visibility", "public");
   if (useLink) {
     form.append("url", link.trim());
   } else if (file) {
