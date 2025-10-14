@@ -246,7 +246,7 @@ export default function App() {
           </div>
           <Select label="Type" value={type} onChange={setType} options={types} />
           <Select label="Course" value={course} onChange={setCourse} options={courses} />
-            <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
+          <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
           <Select label="Tag" value={tag} onChange={setTag} options={tags} />
           <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
           <span className="hidden md:block h-6 w-px bg-zinc-300/70 mx-1" />
@@ -362,94 +362,158 @@ function ResourceCard({
   const isOwnerByName = item.author === currentUser;
   const isOwner = isOwnerById || isOwnerByName;
 
+  // Color coding for different resource types
+  const getTypeColor = (type) => {
+    const colors = {
+      recording: "bg-purple-100 text-purple-800 border-purple-200",
+      document: "bg-blue-100 text-blue-800 border-blue-200",
+      link: "bg-amber-100 text-amber-800 border-amber-200",
+      file: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      default: "bg-zinc-100 text-zinc-800 border-zinc-200"
+    };
+    return colors[type?.toLowerCase()] || colors.default;
+  };
+
   return (
-    <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition">
-      {/* Preview area */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-zinc-50 grid place-items-center">
+    <article className="group flex flex-col rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/60 hover:shadow-lg hover:ring-zinc-300 transition-all duration-300 overflow-hidden">
+      {/* Preview area with improved styling */}
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-slate-50 to-zinc-100 grid place-items-center">
         {isRecording ? (
-          <div className="flex flex-col items-center text-zinc-400">
-            <VideoIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">Recording</span>
+          <div className="flex flex-col items-center text-purple-500">
+            <div className="relative">
+              <VideoIcon className="h-12 w-12" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full animate-pulse"></div>
+            </div>
+            <span className="mt-2 text-sm font-medium text-zinc-700">Recording</span>
           </div>
         ) : isFile && isImage ? (
-          <img src={url} alt={item.title} className="h-full w-full object-contain rounded-t-2xl" />
+          <img
+            src={url}
+            alt={item.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
         ) : isFile && isPdf ? (
-          <iframe src={url} title={item.title} className="h-full w-full border-none" />
+          <div className="flex flex-col items-center text-red-500">
+            <FileIcon className="h-12 w-12" />
+            <span className="mt-2 text-sm font-medium text-zinc-700">PDF Document</span>
+          </div>
         ) : isFile ? (
-          <div className="flex flex-col items-center text-zinc-400">
-            <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">File</span>
+          <div className="flex flex-col items-center text-emerald-500">
+            <FileIcon className="h-12 w-12" />
+            <span className="mt-2 text-sm font-medium text-zinc-700">File</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center text-zinc-400">
-            <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">External link</span>
+          <div className="flex flex-col items-center text-amber-500">
+            <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span className="mt-2 text-sm font-medium text-zinc-700">External Link</span>
           </div>
         )}
 
+        {/* Preview overlay */}
         <button
           onClick={onPreview}
-          className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
+          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 text-white backdrop-blur-0 group-hover:backdrop-blur-sm transition-all duration-300 opacity-0 group-hover:opacity-100"
         >
-          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">
-            {isRecording ? "Play" : isFile ? "Preview" : "Open"}
+          <span className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold ring-1 ring-white/40 backdrop-blur">
+            {isRecording ? "🎬 Play" : isFile ? "👁️ Preview" : "🔗 Open"}
           </span>
         </button>
+
+        {/* Type badge */}
+        <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border ${getTypeColor(item.kind)}`}>
+          {item.kind}
+        </div>
+
+        {/* Bookmark indicator */}
+        {item.bookmarked && (
+          <div className="absolute top-3 right-3 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center shadow-lg">
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+            </svg>
+          </div>
+        )}
       </div>
 
-      {/* Info */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-lg font-semibold text-zinc-900" title={item.title}>
+      {/* Content area */}
+      <div className="flex-1 p-5">
+        {/* Title with improved typography */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <h3 className="text-lg font-bold text-zinc-900 leading-tight line-clamp-2 flex-1" title={item.title}>
             {item.title}
-          </span>
+          </h3>
           {isFile && (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-zinc-400 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
             </svg>
           )}
         </div>
 
-        {item.description && <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{item.description}</p>}
+        {/* Description */}
+        {item.description && (
+          <p className="text-sm text-zinc-600 leading-relaxed line-clamp-3 mb-4">
+            {item.description}
+          </p>
+        )}
 
+        {/* Action links */}
         {isFile && !isPdf && !isImage && (
-          <div className="mt-2">
+          <div className="mb-4">
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V3m0 9l-3-3m3 3l3-3" />
               </svg>
-              View / Download File
+              Download File
             </a>
           </div>
         )}
 
         {item.src_type === "link" && url && (
-          <div className="mt-2">
+          <div className="mb-4">
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+              className="inline-flex items-center gap-2 text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100"
             >
-              🌐 Visit Link
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Visit Link
             </a>
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
-          <span>•</span>
-          <span>by {item.author}</span>
+        {/* Metadata chips */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+            </svg>
+            {item.course}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {item.semester}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {item.author}
+          </span>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1">
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5">
           {(item.tags || "")
             .split(",")
             .map((t) => t.trim())
@@ -457,7 +521,7 @@ function ResourceCard({
             .map((t) => (
               <span
                 key={t}
-                className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200"
+                className="inline-flex items-center px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-700 text-xs font-medium border border-cyan-200 hover:border-cyan-300 transition-colors"
               >
                 #{t}
               </span>
@@ -465,63 +529,89 @@ function ResourceCard({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 text-xs">
-        <div className="flex items-center gap-2">
+      {/* Enhanced actions footer */}
+      <div className="flex items-center justify-between border-t border-zinc-100 px-5 py-4 bg-zinc-50/50">
+        <div className="flex items-center gap-1">
+          {/* Vote buttons */}
           <button
             onClick={() => onVote(item.id, +1)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-400 transition-colors"
           >
-            ▲ {item.votes}
+            <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            <span className="min-w-[1.5rem] text-center">{item.votes}</span>
           </button>
           <button
             onClick={() => onVote(item.id, -1)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50"
+            className="rounded-lg border border-zinc-300 bg-white p-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-400 transition-colors"
           >
-            ▼
+            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </button>
+
+          {/* Bookmark button */}
           <button
             onClick={() => onBookmark(item.id)}
-            className={`rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 ${
-              item.bookmarked ? "text-emerald-600" : ""
-            }`}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${item.bookmarked
+                ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                : "bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-50 hover:border-zinc-400"
+              }`}
           >
-            {item.bookmarked ? "🔖 Saved" : "🔖 Save"}
+            <svg className={`w-4 h-4 ${item.bookmarked ? "text-amber-500" : "text-zinc-500"}`} fill={item.bookmarked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            {item.bookmarked ? "Saved" : "Save"}
           </button>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-1">
+          {/* Owner actions */}
           {isRecording && isOwner && onDelete && (
             <button
               onClick={() => onDelete(item.id)}
-              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors flex items-center gap-1.5"
               title="Delete recording"
             >
               <TrashIcon />
+              <span className="hidden sm:inline">Delete</span>
             </button>
           )}
           {!isRecording && isOwner && onDeleteResource && (
             <button
               onClick={() => onDeleteResource(item.id)}
-              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
-              title="Delete resource"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
             >
-              Delete
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              {/* Delete */}
             </button>
           )}
+
+          {/* Standard actions */}
           <button
             onClick={() => onFlag(item.id)}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center gap-1.5"
           >
-            Report
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+            </svg>
+            {/* Report */}
           </button>
+
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
             download={item.name}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center gap-1.5"
           >
-            Download
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V3m0 9l-3-3m3 3l3-3" />
+            </svg>
+            {/* Download */}
           </a>
         </div>
       </div>
