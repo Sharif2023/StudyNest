@@ -269,72 +269,66 @@ export default function MyResources() {
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
           {/* Title / tabs */}
           <div className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 shadow-md backdrop-blur-lg p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">My Resources</h1>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Your personal uploads and room recordings. Share recordings or files to the Shared
-                  feed when you’re ready.
-                </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Tab buttons - now properly aligned to the left */}
+              <div className="inline-flex rounded-xl bg-zinc-100 p-1 dark:bg-slate-800/70">
+                {[
+                  ["resources", "My Uploads"],
+                  ["recordings", "My Recordings"],
+                ].map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setTab(val)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${tab === val
+                        ? "bg-white dark:bg-slate-900 text-zinc-900 dark:text-zinc-100 shadow"
+                        : "text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100"
+                      }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Action buttons - now properly aligned to the right */}
+              <div className="flex items-center gap-2 self-stretch sm:self-auto">
                 <button
                   onClick={() => setUploadOpen(true)}
-                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 whitespace-nowrap"
                   title="Upload a file or save a link"
                 >
                   + Upload
                 </button>
                 <Link
                   to="/resources"
-                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800"
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800 whitespace-nowrap"
                   title="Browse Shared resources"
                 >
                   Shared Resources →
                 </Link>
               </div>
             </div>
-
-            <div className="mt-4 inline-flex rounded-xl bg-zinc-100 p-1 dark:bg-slate-800/70">
-              {[
-                ["resources", "My Uploads"],
-                ["recordings", "My Recordings"],
-              ].map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setTab(val)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-                    tab === val
-                      ? "bg-white dark:bg-slate-900 text-zinc-900 dark:text-zinc-100 shadow"
-                      : "text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Filters */}
-          <div className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 shadow-md backdrop-blur-lg p-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
-              <div className="relative w-full md:max-w-md">
-                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search title, description, or #tag"
-                  className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-                />
-              </div>
 
-              {tab === "resources" && <Select label="Type" value={type} onChange={setType} options={types} />}
-              <Select label="Course" value={course} onChange={setCourse} options={courses} />
-              <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
-              <Select label="Tag" value={tag} onChange={setTag} options={tags} />
-              <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+            <div className="relative w-full md:max-w-md">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search title, description, or #tag"
+                className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+              />
             </div>
+
+            {tab === "resources" && <Select label="Type" value={type} onChange={setType} options={types} />}
+            <Select label="Course" value={course} onChange={setCourse} options={courses} />
+            <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
+            <Select label="Tag" value={tag} onChange={setTag} options={tags} />
+            <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
           </div>
+
 
           {/* Content */}
           <div className="min-h-[40vh]">
@@ -565,11 +559,10 @@ function Card({
             <button
               onClick={() => onShareResource(item.id)}
               disabled={isSharedFlag === true}
-              className={`rounded-md border px-2 py-1 font-medium transition-colors ${
-                isSharedFlag
+              className={`rounded-md border px-2 py-1 font-medium transition-colors ${isSharedFlag
                   ? "border-zinc-200 bg-zinc-50 text-zinc-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800"
                   : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              }`}
+                }`}
               title={isSharedFlag ? "Already shared" : "Share to Shared Resources"}
             >
               {isSharedFlag ? "Shared" : "Share"}
