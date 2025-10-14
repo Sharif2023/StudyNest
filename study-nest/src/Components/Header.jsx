@@ -270,6 +270,7 @@ export default function Header({ sidebarWidth = 72 }) {
       "/groups": ["Study Groups", "Collaborate and share ideas."],
       "/profile": ["Your Profile", "Manage your info and settings."],
       "/points-leaderboard": ["Points Leaderboard", "See how you rank among other students"],
+      "/myresource": ["My Resources", "Your personal uploads and room recordings. Share recordings or files to the Shared feed when you’re ready."],
     };
 
     const [title, subtitle] = Object.entries(map).find(([key]) => path.startsWith(key))?.[1] || [
