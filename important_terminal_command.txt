@@ -1,3 +1,7 @@
+To run the project:
+cd StudyNest
+npm run dev
+
 to run AI_checker run this command:
 cd study-nest
 php -S localhost:8000 -t .
