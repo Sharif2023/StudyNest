@@ -1,27 +1,20 @@
+// Pages/ResourceLibrary.jsx  (or wherever this main page lives)
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
-// Since we don't have access to the external files, we'll create the components here
-// import LeftNav from "../Components/LeftNav";
-// import Footer from "../Components/Footer";
+import SharedResourceUpload from "../Components/SharedResourceUpload"; // <-- NEW import
 
 /**
  * StudyNest — Shared Resource Library (Full)
- * ------------------------------------------------------------------
- * This is the updated frontend component that now interacts with a PHP API
- * for data persistence instead of local storage.
- * - All resource data is now stored and fetched from a MySQL database.
- * - Interactions (add, vote, bookmark, report) now send requests to the API.
- * - This version is a single file for compilation purposes.
  */
 
-// Define the API endpoint URL. You MUST replace this with your server's URL.
-const API_URL = 'http://localhost/StudyNest/study-nest/src/api/ResourceLibrary.php';
-
+const API_URL = "http://localhost/StudyNest/study-nest/src/api/ResourceLibrary.php";
 
 export default function App() {
   const [items, setItems] = useState([]);
+  const auth = JSON.parse(localStorage.getItem("studynest.auth") || "null") || {};
+  const currentUserId = Number(auth?.id || 0);
   const [q, setQ] = useState("");
   const [type, setType] = useState("All");
   const [course, setCourse] = useState("All");
@@ -38,8 +31,8 @@ export default function App() {
   const [anonymous, setAnonymous] = useState(false);
 
   // Match LeftNav’s expected widths
-  const COLLAPSED_W = 72;   // px
-  const EXPANDED_W = 248;  // px
+  const COLLAPSED_W = 72; // px
+  const EXPANDED_W = 248; // px
   const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
   // Function to fetch data from the API.
@@ -51,10 +44,10 @@ export default function App() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      if (data.status === 'success') {
+      if (data.status === "success") {
         setItems(data.resources);
       } else {
-        throw new Error(data.message || 'Failed to fetch resources.');
+        throw new Error(data.message || "Failed to fetch resources.");
       }
     } catch (e) {
       setError(e.message);
@@ -72,12 +65,19 @@ export default function App() {
   const types = useMemo(() => ["All", ...uniq(items.map((x) => x.kind))], [items]);
   const courses = useMemo(() => ["All", ...uniq(items.map((x) => x.course))], [items]);
   const semesters = useMemo(() => ["All", ...uniq(items.map((x) => x.semester))], [items]);
-  const tags = useMemo(() => ["All", ...uniq(items.flatMap((x) => (x.tags || '').split(',').map(t => t.trim()))).filter(Boolean)], [items]);
+  const tags = useMemo(
+    () =>
+      [
+        "All",
+        ...uniq(items.flatMap((x) => (x.tags || "").split(",").map((t) => t.trim()))).filter(Boolean),
+      ],
+    [items]
+  );
 
   const filtered = useMemo(() => {
     const query = q.toLowerCase().trim();
     let list = items.filter((it) => {
-      const resourceTags = (it.tags || '').split(',').map(t => t.trim());
+      const resourceTags = (it.tags || "").split(",").map((t) => t.trim());
       const passT = type === "All" || it.kind === type;
       const passC = course === "All" || it.course === course;
       const passS = semester === "All" || it.semester === semester;
@@ -95,61 +95,30 @@ export default function App() {
     return list;
   }, [items, q, type, course, semester, tag, sort]);
 
-  // Function to handle creating a new resource by sending a POST request to the API.
-  const onCreate = async (payload) => {
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        // Fetch the updated list of resources from the server.
-        fetchResources();
-        setOpen(false);
-      } else {
-        // Use a custom message box instead of alert()
-        console.error("Failed to create resource: " + data.message);
-      }
-    } catch (e) {
-      // Use a custom message box instead of alert()
-      console.error("Error creating resource: " + e.message);
-    }
-  };
-
   // Function to handle updating a resource (vote, bookmark, flag)
   const updateResource = async (id, updates) => {
     try {
       const response = await fetch(API_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ id, ...updates })
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id, ...updates }),
       });
       const data = await response.json();
-      if (data.status === 'success') {
-        // Optimistically update the local state to provide faster feedback.
-        setItems(prevItems =>
-          prevItems.map(item =>
-            item.id === id ? { ...item, ...updates } : item
-          )
+      if (data.status === "success") {
+        setItems((prevItems) =>
+          prevItems.map((item) => (item.id === id ? { ...item, ...updates } : item))
         );
       } else {
-        // Use a custom message box instead of alert()
         console.error("Failed to update resource: " + data.message);
       }
     } catch (e) {
-      // Use a custom message box instead of alert()
       console.error("Error updating resource: " + e.message);
     }
   };
 
   const vote = (id, delta) => {
-    const item = items.find(x => x.id === id);
+    const item = items.find((x) => x.id === id);
     if (!item) return;
     updateResource(id, { votes: Math.max(0, item.votes + delta) });
   };
@@ -163,15 +132,13 @@ export default function App() {
       const res = await fetch(API_URL, {
         method: "POST",
         credentials: "include",
-        body: form
+        body: form,
       });
       const json = await res.json();
 
       if (json.status === "success") {
-        setItems(prev =>
-          prev.map(it =>
-            it.id === id ? { ...it, bookmarked: json.action === "added" } : it
-          )
+        setItems((prev) =>
+          prev.map((it) => (it.id === id ? { ...it, bookmarked: json.action === "added" } : it))
         );
       } else {
         console.error("Bookmark error:", json.message);
@@ -185,33 +152,75 @@ export default function App() {
 
   // Delete recording function
   const deleteRecording = async (id) => {
-    if (!confirm('Are you sure you want to delete this recording? This action cannot be undone.')) {
+    if (!confirm("Are you sure you want to delete this recording? This action cannot be undone.")) {
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost/StudyNest/study-nest/src/api/recordings.php?id=${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const response = await fetch(
+        `http://localhost/StudyNest/study-nest/src/api/recordings.php?id=${id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
 
-      if (data.status === 'success') {
-        // Remove the item from the local state
-        setItems(prevItems => prevItems.filter(item => item.id !== id));
-        alert('Recording deleted successfully!');
+      if (data.status === "success") {
+        setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+        alert("Recording deleted successfully!");
       } else {
-        alert('Failed to delete recording: ' + (data.message || 'Unknown error'));
+        alert("Failed to delete recording: " + (data.message || "Unknown error"));
       }
     } catch (error) {
-      console.error('Error deleting recording:', error);
-      alert('Failed to delete recording. Please try again.');
+      console.error("Error deleting recording:", error);
+      alert("Failed to delete recording. Please try again.");
+    }
+  };
+
+  // Delete a shared (public) resource — ownership enforced server-side
+  const deleteSharedResource = async (id) => {
+    if (!window.confirm("Delete this resource? This cannot be undone.")) return;
+    try {
+      const form = new FormData();
+      form.append("action", "delete_resource");
+      form.append("resource_id", id);
+      const r = await fetch(API_URL, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const j = await r.json();
+      if (j?.status === "success") {
+        await fetchResources();
+        alert("✅ Resource deleted");
+      } else {
+        alert("❌ " + (j?.message || "Failed to delete resource"));
+      }
+    } catch (e) {
+      alert("❌ " + e.message);
+    }
+  };
+
+  // points helper (used when modal returns points_awarded)
+  const bumpLocalPoints = (pts) => {
+    if (!pts) return;
+    const auth = JSON.parse(localStorage.getItem("studynest.auth") || "{}");
+    if (auth?.id) {
+      const updated = { ...auth, points: (auth.points || 0) + pts };
+      localStorage.setItem("studynest.auth", JSON.stringify(updated));
+      window.dispatchEvent(
+        new CustomEvent("studynest:points-updated", { detail: { points: updated.points } })
+      );
     }
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
+    <main
+      className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl"
+      style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}
+    >
       <LeftNav
         navOpen={navOpen}
         setNavOpen={setNavOpen}
@@ -237,10 +246,9 @@ export default function App() {
           </div>
           <Select label="Type" value={type} onChange={setType} options={types} />
           <Select label="Course" value={course} onChange={setCourse} options={courses} />
-          <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
+            <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
           <Select label="Tag" value={tag} onChange={setTag} options={tags} />
           <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
-          {/* Divider on larger screens */}
           <span className="hidden md:block h-6 w-px bg-zinc-300/70 mx-1" />
 
           <button
@@ -264,11 +272,15 @@ export default function App() {
               <li key={it.id}>
                 <ResourceCard
                   item={it}
-                  onPreview={() => setPreview({ url: it.url, name: it.name || it.title, mime: it.mime })}
+                  onPreview={() =>
+                    setPreview({ url: it.url, name: it.name || it.title, mime: it.mime })
+                  }
                   onVote={vote}
                   onBookmark={toggleBookmark}
                   onFlag={flag}
                   onDelete={deleteRecording}
+                  onDeleteResource={deleteSharedResource}
+                  currentUserId={currentUserId}
                 />
               </li>
             ))}
@@ -276,29 +288,33 @@ export default function App() {
         )}
       </div>
 
-      {open && <CreateModal onClose={() => setOpen(false)} onCreate={onCreate} />}
+      {/* NEW modal usage */}
+      {open && (
+        <SharedResourceUpload
+          apiUrl={API_URL}
+          onClose={() => setOpen(false)}
+          onCreated={async (message, points) => {
+            bumpLocalPoints(points);
+            await fetchResources();
+            alert(message || "✅ Resource created");
+            setOpen(false);
+          }}
+        />
+      )}
+
       {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
       <Footer />
     </main>
-
   );
 }
 
 /* -------------------- Components -------------------- */
 function PlusIcon(props) {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M11 4h2v16h-2z" /><path fill="currentColor" d="M4 11h16v2H4z" /></svg>
-  );
-}
-
-function Toggle({ label, value, onChange }) {
-  return (
-    <label className="flex items-center justify-between">
-      <span>{label}</span>
-      <button type="button" onClick={() => onChange(!value)} className={"h-6 w-11 rounded-full transition " + (value ? "bg-emerald-600" : "bg-zinc-300")}>
-        <span className={"block h-5 w-5 rounded-full bg-white transition translate-y-0.5 " + (value ? "translate-x-6" : "translate-x-0.5")}></span>
-      </button>
-    </label>
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
+      <path fill="currentColor" d="M11 4h2v16h-2z" />
+      <path fill="currentColor" d="M4 11h16v2H4z" />
+    </svg>
   );
 }
 
@@ -312,31 +328,43 @@ function Select({ label, value, onChange, options }) {
         className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
       >
         {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o}>
+            {o}
+          </option>
         ))}
       </select>
     </label>
   );
 }
 
-function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete }) {
+function ResourceCard({
+  item,
+  onPreview,
+  onVote,
+  onBookmark,
+  onFlag,
+  onDelete,
+  onDeleteResource,
+  currentUserId,
+}) {
   const isFile = item.src_type === "file";
   const isRecording = item.kind === "recording";
   const url = item.url || "";
   const isPdf = url.toLowerCase().endsWith(".pdf");
   const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-  const isVideo = isRecording || url.match(/\.(mp4|webm|mov)$/i);
 
-  // Get current user info to check if this is their recording
-  const currentUser = JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
-                     JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
-                     "Unknown";
-  
-  const isOwner = item.author === currentUser;
+  const currentUser =
+    JSON.parse(localStorage.getItem("studynest.profile") || "null")?.name ||
+    JSON.parse(localStorage.getItem("studynest.auth") || "null")?.name ||
+    "Unknown";
+
+  const isOwnerById = Number(item.user_id || 0) === Number(currentUserId || -1);
+  const isOwnerByName = item.author === currentUser;
+  const isOwner = isOwnerById || isOwnerByName;
 
   return (
     <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition">
-      {/* ---------- File / Preview thumbnail ---------- */}
+      {/* Preview area */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-zinc-50 grid place-items-center">
         {isRecording ? (
           <div className="flex flex-col items-center text-zinc-400">
@@ -344,17 +372,9 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
             <span className="mt-1 text-xs font-medium">Recording</span>
           </div>
         ) : isFile && isImage ? (
-          <img
-            src={url}
-            alt={item.title}
-            className="h-full w-full object-contain rounded-t-2xl"
-          />
+          <img src={url} alt={item.title} className="h-full w-full object-contain rounded-t-2xl" />
         ) : isFile && isPdf ? (
-          <iframe
-            src={url}
-            title={item.title}
-            className="h-full w-full border-none"
-          />
+          <iframe src={url} title={item.title} className="h-full w-full border-none" />
         ) : isFile ? (
           <div className="flex flex-col items-center text-zinc-400">
             <FileIcon className="h-10 w-10" />
@@ -367,7 +387,6 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
           </div>
         )}
 
-        {/* Hover overlay */}
         <button
           onClick={onPreview}
           className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
@@ -378,36 +397,21 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
         </button>
       </div>
 
-      {/* ---------- Info ---------- */}
+      {/* Info */}
       <div className="flex-1 p-4">
-        {/* Title + file icon */}
         <div className="flex items-center gap-2">
-          <span
-            className="truncate text-lg font-semibold text-zinc-900"
-            title={item.title}
-          >
+          <span className="truncate text-lg font-semibold text-zinc-900" title={item.title}>
             {item.title}
           </span>
           {isFile && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-zinc-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
               <path d="M4 4a2 2 0 012-2h5.586A2 2 0 0113 2.586l3.414 3.414A2 2 0 0117 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
             </svg>
           )}
         </div>
 
-        {/* Description */}
-        {item.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-zinc-600">
-            {item.description}
-          </p>
-        )}
+        {item.description && <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{item.description}</p>}
 
-        {/* File link (for non-previewable types) */}
         {isFile && !isPdf && !isImage && (
           <div className="mt-2">
             <a
@@ -416,26 +420,14 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V3m0 9l-3-3m3 3l3-3"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V3m0 9l-3-3m3 3l3-3" />
               </svg>
               View / Download File
             </a>
           </div>
         )}
 
-        {/* External link */}
         {item.src_type === "link" && url && (
           <div className="mt-2">
             <a
@@ -449,22 +441,14 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
           </div>
         )}
 
-        {/* Tags + info line */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
-            {item.kind}
-          </span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
-            {item.course}
-          </span>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5">
-            {item.semester}
-          </span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.kind}</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.course}</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5">{item.semester}</span>
           <span>•</span>
           <span>by {item.author}</span>
         </div>
 
-        {/* Tags list */}
         <div className="mt-2 flex flex-wrap gap-1">
           {(item.tags || "")
             .split(",")
@@ -481,7 +465,7 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
         </div>
       </div>
 
-      {/* ---------- Actions ---------- */}
+      {/* Actions */}
       <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-3 text-xs">
         <div className="flex items-center gap-2">
           <button
@@ -498,8 +482,9 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
           </button>
           <button
             onClick={() => onBookmark(item.id)}
-            className={`rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 ${item.bookmarked ? "text-emerald-600" : ""
-              }`}
+            className={`rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold hover:bg-zinc-50 ${
+              item.bookmarked ? "text-emerald-600" : ""
+            }`}
           >
             {item.bookmarked ? "🔖 Saved" : "🔖 Save"}
           </button>
@@ -507,33 +492,21 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
         <div className="flex items-center gap-2">
           {isRecording && isOwner && onDelete && (
             <button
-            onClick={() => onDelete(item.id)}
-            className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center"
-            title="Delete recording"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              aria-labelledby="trashTitle"
-              role="img"
+              onClick={() => onDelete(item.id)}
+              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center"
+              title="Delete recording"
             >
-              <title id="trashTitle">Delete</title>
-              <rect x="3.5" y="3.5" width="17" height="2" rx="1" fill="#E53E3E" />
-              <path
-                d="M6 7.5h12l-1 12.5a2 2 0 0 1-2 1.9H9a2 2 0 0 1-2-1.9L6 7.5z"
-                fill="#E53E3E"
-              />
-              <rect x="9" y="1.5" width="6" height="2" rx="1" fill="#C53030" />
-              <g stroke="#FFF" strokeWidth="1" strokeLinecap="round" opacity="0.85">
-                <line x1="9.5" y1="10.5" x2="9.5" y2="16" />
-                <line x1="12" y1="10.5" x2="12" y2="16" />
-                <line x1="14.5" y1="10.5" x2="14.5" y2="16" />
-              </g>
-            </svg>
-          </button>
-          
+              <TrashIcon />
+            </button>
+          )}
+          {!isRecording && isOwner && onDeleteResource && (
+            <button
+              onClick={() => onDeleteResource(item.id)}
+              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+              title="Delete resource"
+            >
+              Delete
+            </button>
           )}
           <button
             onClick={() => onFlag(item.id)}
@@ -556,207 +529,44 @@ function ResourceCard({ item, onPreview, onVote, onBookmark, onFlag, onDelete })
   );
 }
 
-function VideoIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
-      <path fill="currentColor" d="M17 10.5V7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z" />
-    </svg>
-  );
-}
-
-function CreateModal({ onClose, onCreate }) {
-  const [useLink, setUseLink] = useState(false);
-  const [file, setFile] = useState(null);
-  const [link, setLink] = useState("");
-  const [title, setTitle] = useState("");
-  const [kind, setKind] = useState("book");
-  const [course, setCourse] = useState("");
-  const [semester, setSemester] = useState("");
-  const [tags, setTags] = useState("");
-  const [description, setDescription] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
-  const dropRef = useRef(null);
-
-  useEffect(() => {
-    const el = dropRef.current; if (!el) return;
-    const prevent = (e) => { e.preventDefault(); e.stopPropagation(); };
-    const over = (e) => { prevent(e); el.classList.add("ring-emerald-500", "bg-emerald-50"); };
-    const leave = (e) => { prevent(e); el.classList.remove("ring-emerald-500", "bg-emerald-50"); };
-    const drop = (e) => { prevent(e); leave(e); const f = e.dataTransfer.files?.[0]; if (f) setFile(f); };
-    el.addEventListener("dragover", over); el.addEventListener("dragleave", leave); el.addEventListener("drop", drop);
-    return () => { el.removeEventListener("dragover", over); el.removeEventListener("dragleave", leave); el.removeEventListener("drop", drop); };
-  }, []);
-
-  const disabled = (useLink ? !link.trim() : !file) || !title.trim() || !course.trim() || !semester.trim();
-
-  // In the submit function in CreateModal component in ResourceLibrary.jsx
-const submit = async () => {
-  const form = new FormData();
-  form.append("src_type", useLink ? "link" : "file");
-  form.append("title", title.trim());
-  form.append("kind", kind);
-  form.append("course", course.trim());
-  form.append("semester", semester.trim());
-  form.append("tags", tags.trim());
-  form.append("description", description.trim());
-  form.append("author", anonymous ? "Anonymous" : "");
-  form.append("visibility", "public");
-  if (useLink) {
-    form.append("url", link.trim());
-  } else if (file) {
-    form.append("file", file);
-  }
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      credentials: "include",
-      body: form,
-    });
-    const json = await res.json();
-    if (json.status === "success") {
-      // Update points in localStorage if points were awarded
-      if (json.points_awarded) {
-        const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
-        if (auth?.id) {
-          const updatedAuth = {
-            ...auth,
-            points: (auth.points || 0) + json.points_awarded
-          };
-          localStorage.setItem('studynest.auth', JSON.stringify(updatedAuth));
-          
-          // Trigger points update in LeftNav
-          window.dispatchEvent(new CustomEvent('studynest:points-updated', {
-            detail: { points: updatedAuth.points }
-          }));
-        }
-      }
-      
-      alert("✅ " + json.message);
-      window.location.reload();
-    } else {
-      alert("❌ " + (json.message || "Upload failed"));
-    }
-  } catch (err) {
-    alert("❌ " + err.message);
-  }
-};
-
-  return (
-    <div className="fixed inset-0 z-40 bg-black/50 p-4" onClick={onClose}>
-      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-xl ring-1 ring-zinc-200" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-900">Add resource</h2>
-          <button onClick={onClose} className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Close">
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {/* upload vs link */}
-          <div className="md:col-span-2 flex items-center gap-3 text-sm">
-            <label className="inline-flex items-center gap-2">
-              <input type="radio" name="src" checked={!useLink} onChange={() => setUseLink(false)} /> Upload file
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input type="radio" name="src" checked={useLink} onChange={() => setUseLink(true)} /> External link
-            </label>
-            <label className="ml-auto inline-flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} /> Post as Anonymous
-            </label>
-          </div>
-
-          {!useLink ? (
-            <div ref={dropRef} className="md:col-span-2 rounded-2xl border-2 border-dashed border-zinc-300 p-6 text-center ring-1 ring-transparent transition">
-              {!file ? (
-                <>
-                  <FileIcon className="mx-auto h-10 w-10 text-zinc-400" />
-                  <p className="mt-2 text-sm text-zinc-600">Drag & drop a PDF/image/Doc, or</p>
-                  <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">
-                    Choose file
-                    <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                  </label>
-                </>
-              ) : (
-                <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
-                  <div className="truncate text-sm">
-                    <span className="font-semibold">{file.name}</span>
-                    <span className="mx-1 text-zinc-400">•</span>
-                    <span className="text-zinc-600">{file.type || "file"}</span>
-                  </div>
-                  <button onClick={() => setFile(null)} className="rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50">Remove</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="md:col-span-2">
-              <Label>Link URL</Label>
-              <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://example.com/awesome-notes" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-            </div>
-          )}
-
-          <div>
-            <Label>Title</Label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., CSE220 DP Patterns Guide" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <Label>Type</Label>
-            <select value={kind} onChange={(e) => setKind(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-              <option value="book">book</option>
-              <option value="slide">slide</option>
-              <option value="past paper">past paper</option>
-              <option value="study guide">study guide</option>
-              <option value="other">other</option>
-            </select>
-          </div>
-          <div>
-            <Label>Course</Label>
-            <input value={course} onChange={(e) => setCourse(e.target.value)} placeholder="e.g., CSE220" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <Label>Semester</Label>
-            <input value={semester} onChange={(e) => setSemester(e.target.value)} placeholder="e.g., Fall 2025" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Tags</Label>
-            <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="comma separated: dp, graphs, quiz" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Description</Label>
-            <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tell everyone what this resource covers and why it’s useful…" className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50">Cancel</button>
-          <button disabled={disabled} onClick={submit} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">Create</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PreviewModal({ file, onClose }) {
   const isPdf = file.mime?.includes("pdf");
   const isImage = file.mime?.startsWith("image/");
   return (
-    <div className="fixed inset-0 z-40 bg-black/70 p-4" onClick={onClose}>
-      <div className="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
+    <div className="fixed inset-0 z-40 bg-black/70 p-3 sm:p-4" onClick={onClose}>
+      <div
+        className="mx-auto w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-zinc-200 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur">
           <h3 className="text-sm font-semibold text-zinc-900 truncate">{file.name}</h3>
-          <button onClick={onClose} className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100"
+            aria-label="Close"
+          >
             <XIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-3">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-4">
           {isImage ? (
-            <img src={file.url} alt={file.name} className="max-h-[70vh] w-full object-contain" />
+            <img src={file.url} alt={file.name} className="max-h-[78vh] w-full object-contain" />
           ) : isPdf ? (
-            <iframe title="preview" src={file.url} className="h-[70vh] w-full rounded-lg ring-1 ring-zinc-200" />
+            <iframe title="preview" src={file.url} className="h-[78vh] w-full rounded-lg ring-1 ring-zinc-200" />
           ) : (
             <div className="grid place-items-center rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-600">
               Preview not supported. Use download instead.
-              <a href={file.url} download className="mt-3 inline-flex rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800">Download</a>
+              <a
+                href={file.url}
+                download
+                className="mt-3 inline-flex rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800"
+              >
+                Download
+              </a>
             </div>
           )}
         </div>
@@ -772,19 +582,74 @@ function EmptyState({ onNew }) {
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">📚</div>
         <h3 className="mt-4 text-lg font-semibold">No resources yet</h3>
         <p className="mt-1 text-sm text-zinc-600">Upload or add a link to get started.</p>
-        <button onClick={onNew} className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Add resource</button>
+        <button
+          onClick={onNew}
+          className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          Add resource
+        </button>
       </div>
     </div>
   );
 }
 
-function Label({ children }) { return <label className="text-xs font-semibold text-zinc-600">{children}</label>; }
-
-/* -------------------- Icons -------------------- */
-function SearchIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z" /></svg>); }
-function XIcon(props) { return (<svg viewBox="0 0 24 24" className="h-5 w-5" {...props}><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z" /></svg>); }
-function FileIcon(props) { return (<svg viewBox="0 0 24 24" className="h-10 w-10" {...props}><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z" /></svg>); }
+function SearchIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
+      <path
+        fill="currentColor"
+        d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z"
+      />
+    </svg>
+  );
+}
+function XIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
+      <path
+        fill="currentColor"
+        d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"
+      />
+    </svg>
+  );
+}
+function FileIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
+      <path
+        fill="currentColor"
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z"
+      />
+    </svg>
+  );
+}
+function VideoIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
+      <path
+        fill="currentColor"
+        d="M17 10.5V7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z"
+      />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" aria-labelledby="trashTitle" role="img">
+      <title id="trashTitle">Delete</title>
+      <rect x="3.5" y="3.5" width="17" height="2" rx="1" fill="#E53E3E" />
+      <path d="M6 7.5h12l-1 12.5a2 2 0 0 1-2 1.9H9a2 2 0 0 1-2-1.9L6 7.5z" fill="#E53E3E" />
+      <rect x="9" y="1.5" width="6" height="2" rx="1" fill="#C53030" />
+      <g stroke="#FFF" strokeWidth="1" strokeLinecap="round" opacity="0.85">
+        <line x1="9.5" y1="10.5" x2="9.5" y2="16" />
+        <line x1="12" y1="10.5" x2="12" y2="16" />
+        <line x1="14.5" y1="10.5" x2="14.5" y2="16" />
+      </g>
+    </svg>
+  );
+}
 
 /* -------------------- Utils -------------------- */
-function uniq(arr) { return [...new Set(arr.filter(Boolean))]; }
-
+function uniq(arr) {
+  return [...new Set(arr.filter(Boolean))];
+}
