@@ -42,24 +42,24 @@ try {
 
     // Create users table if it does not exist
     $pdo->exec("
-CREATE TABLE IF NOT EXISTS users (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(191) NOT NULL UNIQUE,
-    student_id VARCHAR(32) NOT NULL UNIQUE,
-    email VARCHAR(191) NOT NULL UNIQUE,
-    bio TEXT NULL,
-    profile_picture_url VARCHAR(255) NULL,
-    points INT(11) DEFAULT 0,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
-    // Ensure new columns exist if table already created
-    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT NULL AFTER email;");
-    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_url VARCHAR(255) NULL AFTER bio;");
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed: ' . $e->getMessage()]);
-    exit;
-}
+        CREATE TABLE IF NOT EXISTS users (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(191) NOT NULL UNIQUE,
+            student_id VARCHAR(32) NOT NULL UNIQUE,
+            email VARCHAR(191) NOT NULL UNIQUE,
+            bio TEXT NULL,
+            profile_picture_url VARCHAR(255) NULL,
+            points INT(11) NOT NULL DEFAULT 0,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            role ENUM('User', 'Admin', 'Instructor') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'User',
+            status ENUM('Active', 'Banned', 'Suspended') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Active',
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed: ' . $e->getMessage()]);
+        exit;
+    }
