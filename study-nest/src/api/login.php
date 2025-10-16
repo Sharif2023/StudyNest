@@ -38,7 +38,8 @@ try {
             password_hash, 
             points,
             created_at, 
-            updated_at
+            updated_at,
+            role
         FROM users
         WHERE email = ?
         LIMIT 1
@@ -93,7 +94,8 @@ try {
         'points' => $newPoints, // Send updated points
         'points_earned' => $pointsEarned, // Points earned this login
         'created_at' => $user['created_at'],
-        'updated_at' => $user['updated_at']
+        'updated_at' => $user['updated_at'],
+        'role' => $user['role'] ?? 'User',
     ];
 
     echo json_encode([
