@@ -463,7 +463,14 @@ export function useWebRTC(roomId, displayName) {
     dc.onerror = () => { p.dcOpen = false; };
     dc.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.type === "chat") state.chatCb?.({ author: m.author, text: m.text, ts: m.ts, self: false });
+      if (m.type === "chat") {
+        state.chatCb?.({ author: m.author, text: m.text, ts: m.ts, self: false });
+        return;
+      }
+      if (String(m.type || "").startsWith("wb-")) {
+        state.wbCb?.(m);
+        return;
+      }
     };
     state.peers.set(pid, p);
   }
@@ -590,6 +597,23 @@ export function useWebRTC(roomId, displayName) {
           body: JSON.stringify({ id: roomId }),
         });
       } catch { }
+    },
+
+    // ===== Whiteboard bus =====
+    sendWB(msg) {
+      const payload = JSON.stringify(msg);
+      for (const [, p] of state.peers) {
+        if (p.dcOpen) { try { p.dc.send(payload); } catch { } }
+        else { p.dcQueue?.push?.(payload); }
+      }
+      // mirror over WS so server can forward to everyone & handle sync requests
+      sendWS({ type: "wb-forward", payload: msg });
+      // locally deliver (optimistic)
+      state.wbCb?.(msg);
+    },
+    onWB(cb) {
+      state.wbCb = cb;
+      return () => { if (state.wbCb === cb) state.wbCb = null; };
     },
 
     async getLocalStream() {

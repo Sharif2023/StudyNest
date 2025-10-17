@@ -5,7 +5,7 @@ const wss = new WebSocketServer({ port: 5173 });
 const rooms = new Map(); // roomId -> Map(clientId -> {ws, name})
 
 function send(ws, obj) {
-  try { ws.readyState === 1 && ws.send(JSON.stringify(obj)); } catch {}
+  try { ws.readyState === 1 && ws.send(JSON.stringify(obj)); } catch { }
 }
 
 function broadcast(roomId, obj, exceptId = null) {
@@ -58,6 +58,21 @@ wss.on("connection", (ws) => {
     // reliable chat broadcast (everybody including sender’s peers)
     if (m.type === "chat") {
       broadcast(roomId, { ...m, from: clientId });
+      return;
+    }
+
+    // Whiteboard forwarding (room-wide)
+    if (m.type === "wb-forward" && m.payload) {
+      const payload = { ...m.payload, from: clientId };
+      // If it's a directed sync-response, send to target only.
+      if (payload.type === "wb-sync-response" && payload.to) {
+        const room = rooms.get(roomId);
+        const dest = room && room.get(payload.to);
+        if (dest) send(dest.ws, payload);
+        return;
+      }
+      // Otherwise broadcast
+      broadcast(roomId, payload);
       return;
     }
 

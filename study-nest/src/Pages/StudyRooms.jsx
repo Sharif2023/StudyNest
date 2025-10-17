@@ -4,6 +4,9 @@ import { useWebRTC } from "../realtime/useWebRTC";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
+import Whiteboard from "../Components/Whiteboard";
+import WhiteboardModal from "../Components/WhiteboardModal";
+
 
 // Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
@@ -11,7 +14,6 @@ const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
 
 const MINIMIZE_KEY = "studynest.minimizeRoom";
 
-/* ====================== Recording Hook ====================== */
 /* ====================== Recording Hook ====================== */
 function useRecording(roomId, displayName, room, state) {
   const [recording, setRecording] = useState(false);
@@ -699,6 +701,8 @@ export function StudyRoom() {
   const { state, search } = useLocation();
   const params = new URLSearchParams(search);
   const isEmbed = params.get("embed") === "1";
+  const [showBoard, setShowBoard] = useState(true);
+  const [boardOpen, setBoardOpen] = useState(false);
 
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
@@ -1050,6 +1054,33 @@ export function StudyRoom() {
               </div>
             </div>
 
+            {/* Board Toggle */}
+            <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-zinc-100">Whiteboard</h3>
+                <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={showBoard}
+                    onChange={(e) => setShowBoard(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900"
+                  />
+                  Visible
+                </label>
+              </div>
+              {showBoard && (
+                <div className="mt-3 h-[420px]">
+                  <Whiteboard
+                    rtc={rtc}
+                    myId={participants.find(p => p.self)?.id || "me"}
+                    myName={displayName}
+                    roomId={roomId}
+                    className="h-full"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Participants List */}
             <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
               <h3 className="text-sm font-semibold text-zinc-100">Participants ({participants.length})</h3>
@@ -1127,6 +1158,13 @@ export function StudyRoom() {
             >
               ✋ {hand ? "Lower hand" : "Raise hand"}
             </button>
+            <button
+              onClick={() => setBoardOpen(true)}
+              className="rounded-xl px-4 py-2 text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Whiteboard
+            </button>
+
           </div>
         </div>
       </div>
@@ -1138,6 +1176,15 @@ export function StudyRoom() {
         onCancel={cancelSave}
         uploading={uploading}
       />
+      <WhiteboardModal
+        open={boardOpen}
+        onClose={() => setBoardOpen(false)}
+        rtc={rtc}
+        roomId={roomId}
+        me={participants.find(p => p.self) || { id: "me", name: "You" }}
+        participants={participants}
+      />
+
     </main>
   );
 }

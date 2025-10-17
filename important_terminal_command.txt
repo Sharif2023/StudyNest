@@ -24,7 +24,8 @@ npm start
 # pip install -r flask flask-cors nltk
 # python src/Python/sampar.py
 
-
+# for run the whiteboard
+npm i fabric jspdf uuid
 
 #for chatbot
 composer install
