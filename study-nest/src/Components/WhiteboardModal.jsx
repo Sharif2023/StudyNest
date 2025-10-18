@@ -646,6 +646,96 @@ export default function WhiteboardModal({
   me,
   participants = [],
 }) {
+
+  const [board, setBoard] = useState({
+    owner: me?.id || "me",
+    name: (me?.name || "You") + "'s board",
+    pages: [{ id: uid(), ops: [], undo: [], redo: [] }],
+    pageIndex: 0,
+    shared: true,
+    allowEdits: true,
+  });
+
+  const [tool, setTool] = useState(TOOLS.PEN);
+  const [color, setColor] = useState(DEFAULTS.stroke);
+  const [size, setSize] = useState(DEFAULTS.strokeWidth);
+  const [textSize, setTextSize] = useState(DEFAULTS.textSize);
+  const [zoom, setZoom] = useState(1);
+  const [panning, setPanning] = useState(false);
+
+  const canvasRef = useRef(null);
+  const overlayRef = useRef(null);
+  const stageRef = useRef({ ox: 0, oy: 0, dragging: false, pointer: null, activeOp: null });
+
+  // Reset pan/zoom when opening, but keep the board content
+  useEffect(() => {
+    if (open) {
+      setZoom(1);
+      stageRef.current.ox = 0;
+      stageRef.current.oy = 0;
+    }
+  }, [open]);
+
+  /* -------------------- Helpers -------------------- */
+  const page = () => board.pages[board.pageIndex];
+  const canEdit = () => board.owner === me?.id || board.allowEdits;
+
+  function pointerPos(e) {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - stageRef.current.ox) / zoom;
+    const y = (e.clientY - rect.top - stageRef.current.oy) / zoom;
+    return { x, y };
+  }
+
+  /* -------------------- RTC wiring -------------------- */
+  useEffect(() => {
+    if (!rtc?.onWB || !open) return; // Only listen when modal is open
+    
+    const off = rtc.onWB((msg) => {
+      if (!msg) return;
+      // Ignore my own echoes (server forwards wb-forward with from=id)
+      if (msg.from && me?.id && msg.from === me.id) return;
+
+      if (msg.type === "wb-op" && msg.pageId && msg.op) {
+        setBoard((prev) => {
+          const next = structuredClone(prev);
+          const pg = next.pages.find((p) => p.id === msg.pageId);
+          if (!pg) return prev;
+          if (msg.op.type === "remove") {
+            const idx = pg.ops.findIndex((o) => o.id === msg.op.id);
+            if (idx >= 0) pg.ops.splice(idx, 1);
+            return next;
+          }
+          // upsert by id (so incremental updates don't duplicate)
+          const idx = pg.ops.findIndex((o) => o.id === msg.op.id);
+          if (idx >= 0) pg.ops[idx] = msg.op; else pg.ops.push(msg.op);
+          return next;
+        });
+      }
+
+      if (msg.type === "wb-sync-request") {
+        // Reply with current board state (targeted)
+        rtc.sendWB({
+          type: "wb-sync-response",
+          to: msg.from,
+          board: board,
+        });
+      }
+
+      if (msg.type === "wb-sync-response") {
+        if (!msg.board) return;
+        setBoard(msg.board);
+      }
+    });
+
+    // Ask for latest on mount when modal opens
+    if (open) {
+      rtc.sendWB({ type: "wb-sync-request", from: me?.id });
+    }
+
+    return () => off && off();
+  }, [rtc, me?.id, board, open]); // Add open to dependencies
+
   if (!open) return null;
 
   return (

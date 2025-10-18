@@ -701,7 +701,6 @@ export function StudyRoom() {
   const { state, search } = useLocation();
   const params = new URLSearchParams(search);
   const isEmbed = params.get("embed") === "1";
-  const [showBoard, setShowBoard] = useState(true);
   const [boardOpen, setBoardOpen] = useState(false);
 
   const [mic, setMic] = useState(true);
@@ -1052,33 +1051,6 @@ export function StudyRoom() {
                   Send
                 </button>
               </div>
-            </div>
-
-            {/* Board Toggle */}
-            <div className="rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-zinc-100">Whiteboard</h3>
-                <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={showBoard}
-                    onChange={(e) => setShowBoard(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-700 text-emerald-500 bg-zinc-900"
-                  />
-                  Visible
-                </label>
-              </div>
-              {showBoard && (
-                <div className="mt-3 h-[420px]">
-                  <Whiteboard
-                    rtc={rtc}
-                    myId={participants.find(p => p.self)?.id || "me"}
-                    myName={displayName}
-                    roomId={roomId}
-                    className="h-full"
-                  />
-                </div>
-              )}
             </div>
 
             {/* Participants List */}
