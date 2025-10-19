@@ -4,7 +4,6 @@ import { useWebRTC } from "../realtime/useWebRTC";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
-import Whiteboard from "../Components/Whiteboard";
 import WhiteboardModal from "../Components/WhiteboardModal";
 
 
