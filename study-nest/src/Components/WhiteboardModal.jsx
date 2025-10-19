@@ -27,7 +27,7 @@ function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function BoardInner({ rtc, roomId, me, participants, className = "" }) {
+function BoardInner({ rtc, roomId, me, participants, className = "", visible = true }) {
   // Simple “vector ops” model synced over RTC
   const [board, setBoard] = useState({
     owner: me?.id || "me",
@@ -108,6 +108,7 @@ function BoardInner({ rtc, roomId, me, participants, className = "" }) {
 
   /* -------------------- Rendering loop -------------------- */
   useEffect(() => {
+    if (!visible) return;
     const base = canvasRef.current;
     const overlay = overlayRef.current;
     if (!base || !overlay) return;
@@ -158,7 +159,28 @@ function BoardInner({ rtc, roomId, me, participants, className = "" }) {
 
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, [board, zoom]);
+  }, [board, zoom, visible]);
+
+  // Persist board to localStorage per room
+  useEffect(() => {
+    try {
+      const key = `studynest.board.${roomId}`;
+      const saved = localStorage.getItem(key); if (saved) {
+        const parsed = JSON.parse(saved);
+        // very light validation
+        if (parsed?.pages?.length) setBoard(parsed);
+      }
+    } catch { }
+    // load only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      const key = `studynest.board.${roomId}`;
+      localStorage.setItem(key, JSON.stringify(board));
+    } catch { }
+  }, [board, roomId]);
 
   /* -------------------- Resize canvas -------------------- */
   useEffect(() => {
@@ -517,7 +539,7 @@ function drawOp(ctx, op) {
     img.src = op.dataURL;
     try {
       ctx.drawImage(img, op.x || 0, op.y || 0, op.w || img.width, op.h || img.height);
-    } catch {}
+    } catch { }
     return;
   }
 
@@ -623,11 +645,10 @@ function ToolBtn({ cur, set, id, label, icon }) {
   return (
     <button
       onClick={() => set(id)}
-      className={`px-2 py-1 rounded-md text-xs border ${
-        on
-          ? "bg-emerald-600 text-white border-emerald-600"
-          : "bg-zinc-800 text-zinc-100 border-zinc-700 hover:bg-zinc-700"
-      }`}
+      className={`px-2 py-1 rounded-md text-xs border ${on
+        ? "bg-emerald-600 text-white border-emerald-600"
+        : "bg-zinc-800 text-zinc-100 border-zinc-700 hover:bg-zinc-700"
+        }`}
       title={label}
       aria-pressed={on}
     >
@@ -690,7 +711,7 @@ export default function WhiteboardModal({
   /* -------------------- RTC wiring -------------------- */
   useEffect(() => {
     if (!rtc?.onWB || !open) return; // Only listen when modal is open
-    
+
     const off = rtc.onWB((msg) => {
       if (!msg) return;
       // Ignore my own echoes (server forwards wb-forward with from=id)
@@ -736,10 +757,14 @@ export default function WhiteboardModal({
     return () => off && off();
   }, [rtc, me?.id, board, open]); // Add open to dependencies
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80">
+    <div
+      className={
+        "fixed inset-0 z-[100] bg-black/80 transition-opacity " +
+        (open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")
+      }
+      aria-hidden={open ? "false" : "true"}
+    >
       <div className="absolute inset-0 p-3 sm:p-4 flex flex-col">
         {/* Header */}
         <div className="mb-3 flex items-center justify-between">
@@ -768,6 +793,7 @@ export default function WhiteboardModal({
             me={me}
             participants={participants}
             className="h-full"
+            visible={open}
           />
         </div>
       </div>
