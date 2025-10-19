@@ -39,7 +39,7 @@ try:
     driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
 
     # If HTML5 validation blocks submit, URL stays on /signup
-    time.sleep(2)
+    time.sleep(3)
     if driver.current_url.endswith("/signup"):
         print("✅ Invalid email correctly blocked.")
     else:
@@ -74,5 +74,5 @@ try:
 except Exception as e:
     print("❌ Test failed:", e)
 finally:
-    time.sleep(2)
+    time.sleep(4)
     driver.quit()
