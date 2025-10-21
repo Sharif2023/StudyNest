@@ -748,16 +748,6 @@ function Team() {
       role: "Full Stack Developer",
       img: "https://i.pinimg.com/1200x/82/6f/d5/826fd55fd0a04225cc625368d7e8476c.jpg",
     },
-    {
-      name: "Farhan Fuad",
-      role: "Frontend Developer",
-      img: "https://i.pinimg.com/1200x/85/da/b8/85dab8c053c1cfe642b93ecb20864014.jpg",
-    },
-    {
-      name: "ABMS Sami",
-      role: "Backend Developer",
-      img: "https://i.pinimg.com/1200x/d8/d6/9a/d8d69afcea40eccb2a5e389d985d41b4.jpg",
-    },
   ];
 
   return (
