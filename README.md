@@ -1,6 +1,6 @@
 # 🚀 Quick Start Commands
 
-A tidy, copy-paste friendly guide for running each part of **StudyNest**.
+A guide for running each part of **StudyNest**.
 
 ---
 
