@@ -10,7 +10,7 @@ const wss = new WebSocket.Server({ port: PORT });
 const rooms = new Map();
 
 function send(ws, type, payload) {
-  try { ws.send(JSON.stringify({ type, ...payload })); } catch {}
+  try { ws.send(JSON.stringify({ type, ...payload })); } catch { }
 }
 function broadcast(roomId, exceptId, type, payload) {
   const room = rooms.get(roomId); if (!room) return;
@@ -55,7 +55,7 @@ wss.on('connection', (ws) => {
     // {type:'offer', to, sdp}
     // {type:'answer', to, sdp}
     // {type:'ice', to, candidate}
-    if (['offer','answer','ice'].includes(m.type)) {
+    if (['offer', 'answer', 'ice'].includes(m.type)) {
       const room = rooms.get(roomId); if (!room) return;
       const dest = room.clients.get(m.to);
       if (dest) send(dest, m.type, { from: clientId, ...m });
