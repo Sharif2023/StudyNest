@@ -762,7 +762,7 @@ function Team() {
           </p>
         </div>
 
-        {/* Exactly 4 cards */}
+        {/* Exactly 2 cards */}
         <ul className="grid gap-6 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
           {people.map((p) => (
             <li
