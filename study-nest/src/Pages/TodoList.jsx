@@ -40,18 +40,18 @@ export default function TodoList() {
   // Load tasks
   const loadTodos = async () => {
     console.log("Loading todos for user_id:", userId); // Debug log
-    
+
     if (!userId || userId === "—" || userId === "null" || userId === "undefined") {
       console.warn("Invalid user_id, skipping todo load");
       setTodos([]);
       return;
     }
-    
+
     try {
       const res = await fetch(`${API_BASE}/todo.php?user_id=${userId}`);
       const responseText = await res.text();
       console.log("Raw todos response:", responseText);
-      
+
       let data;
       try {
         data = JSON.parse(responseText);
@@ -60,7 +60,7 @@ export default function TodoList() {
         alert("❌ Server returned invalid JSON when loading todos");
         return;
       }
-      
+
       if (data.ok) {
         setTodos(data.todos || []);
       } else {
@@ -79,71 +79,71 @@ export default function TodoList() {
 
   // ----- Add Task -----
   const saveTask = async () => {
-  if (!form.title.trim()) {
-    alert("⚠️ Please enter a task title.");
-    return;
-  }
-
-  // Validate user ID
-  if (!userId || userId === "—" || userId === "null" || userId === "undefined") {
-    alert("❌ Please log in to add tasks.");
-    return;
-  }
-
-  console.log("Saving task with data:", form);
-  console.log("User ID:", userId);
-
-  setLoading(true);
-  try {
-    const response = await fetch(`${API_BASE}/todo.php?user_id=${userId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    
-    // First, check if the response is OK
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const responseText = await response.text();
-    console.log("Raw response:", responseText);
-    
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error("JSON parse error:", e, "Response:", responseText);
-      // Even if JSON parsing fails, check if the task was actually created
-      // by reloading the todos
-      await loadTodos();
-      alert("✅ Task may have been added (check the list)");
-      setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
+    if (!form.title.trim()) {
+      alert("⚠️ Please enter a task title.");
       return;
     }
-    
-    console.log("Parsed response data: ", data);
 
-    if (data.ok) {
-      alert("✅ Task added successfully!");
-      setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
-      await loadTodos();
-    } else {
-      // Even if there's an error response, the task might still be created
-      // due to the way PHP handles the request
-      await loadTodos(); // Check if task was actually created
-      alert(`⚠️ Task might have been added. Error: ${data.error || "Unknown error"}`);
-      console.error("Error: ", data.error);
+    // Validate user ID
+    if (!userId || userId === "—" || userId === "null" || userId === "undefined") {
+      alert("❌ Please log in to add tasks.");
+      return;
     }
-  } catch (err) {
-    console.error("Network error during task creation:", err);
-    // Even on network error, check if task was created
-    await loadTodos();
-    alert("⚠️ Please check if task was added. Network error occurred.");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    console.log("Saving task with data:", form);
+    console.log("User ID:", userId);
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/todo.php?user_id=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      // First, check if the response is OK
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseText = await response.text();
+      console.log("Raw response:", responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("JSON parse error:", e, "Response:", responseText);
+        // Even if JSON parsing fails, check if the task was actually created
+        // by reloading the todos
+        await loadTodos();
+        alert("✅ Task may have been added (check the list)");
+        setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
+        return;
+      }
+
+      console.log("Parsed response data: ", data);
+
+      if (data.ok) {
+        alert("✅ Task added successfully!");
+        setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
+        await loadTodos();
+      } else {
+        // Even if there's an error response, the task might still be created
+        // due to the way PHP handles the request
+        await loadTodos(); // Check if task was actually created
+        alert(`⚠️ Task might have been added. Error: ${data.error || "Unknown error"}`);
+        console.error("Error: ", data.error);
+      }
+    } catch (err) {
+      console.error("Network error during task creation:", err);
+      // Even on network error, check if task was created
+      await loadTodos();
+      alert("⚠️ Please check if task was added. Network error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ----- Update Task -----
   const updateTask = async (id, updates) => {
@@ -153,7 +153,7 @@ export default function TodoList() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...updates }),
       });
-      
+
       const responseText = await res.text();
       let data;
       try {
@@ -163,7 +163,7 @@ export default function TodoList() {
         alert("❌ Server returned invalid JSON");
         return;
       }
-      
+
       if (data.ok) {
         setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
         alert("✅ Task updated successfully!");
@@ -185,7 +185,7 @@ export default function TodoList() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      
+
       const responseText = await res.text();
       let data;
       try {
@@ -195,7 +195,7 @@ export default function TodoList() {
         alert("❌ Server returned invalid JSON");
         return;
       }
-      
+
       if (data.ok) {
         setTodos((prev) => prev.filter((t) => t.id !== id));
         alert("✅ Task deleted.");
@@ -300,11 +300,10 @@ export default function TodoList() {
                 <button
                   onClick={saveTask}
                   disabled={loading || !userId}
-                  className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${
-                    loading || !userId
+                  className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${loading || !userId
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
-                  }`}
+                    }`}
                 >
                   {loading ? "Saving..." : "Add Task"}
                 </button>
@@ -384,9 +383,8 @@ export default function TodoList() {
                     <div className="flex justify-between items-center">
                       <div>
                         <h3
-                          className={`font-semibold text-base ${
-                            t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
-                          }`}
+                          className={`font-semibold text-base ${t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
+                            }`}
                         >
                           {t.title}
                         </h3>
