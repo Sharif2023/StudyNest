@@ -79,18 +79,18 @@ export default function TagSearch() {
         tags: Array.isArray(it.tags)
           ? it.tags
           : typeof it.tags === "string"
-          ? it.tags.split(",").map((t) => t.trim()).filter(Boolean)
-          : [],
+            ? it.tags.split(",").map((t) => t.trim()).filter(Boolean)
+            : [],
         url:
           kind === "forum"
             ? `/forum#${it.id}`
             : kind === "notes"
-            ? `/notes#${it.id}`
-            : kind === "resources"
-            ? `/resources#${it.id}`
-            : kind === "rooms"
-            ? `/rooms/${it.id}`
-            : "#",
+              ? `/notes#${it.id}`
+              : kind === "resources"
+                ? `/resources#${it.id}`
+                : kind === "rooms"
+                  ? `/rooms/${it.id}`
+                  : "#",
         updatedAt: it.updated_at || it.created_at,
       }));
 
