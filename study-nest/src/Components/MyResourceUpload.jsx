@@ -103,9 +103,8 @@ export default function MyResourceUpload({
                 key={val}
                 type="button"
                 onClick={() => setMode(val)}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${
-                  mode === val ? "bg-white dark:bg-slate-900 shadow" : "text-zinc-600 dark:text-zinc-300"
-                }`}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${mode === val ? "bg-white dark:bg-slate-900 shadow" : "text-zinc-600 dark:text-zinc-300"
+                  }`}
               >
                 {label}
               </button>
@@ -243,9 +242,8 @@ export default function MyResourceUpload({
             <button
               type="submit"
               disabled={!canSubmit || submitting}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
-                canSubmit && !submitting ? "bg-cyan-600 hover:bg-cyan-700" : "bg-cyan-400 cursor-not-allowed"
-              }`}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${canSubmit && !submitting ? "bg-cyan-600 hover:bg-cyan-700" : "bg-cyan-400 cursor-not-allowed"
+                }`}
             >
               {submitting ? "Uploading…" : mode === "file" ? "Upload" : "Save"}
             </button>
