@@ -17,7 +17,8 @@ import {
   LayoutGrid,
   Zap,
   Users,
-  HelpCircle
+  HelpCircle,
+  Shield
 } from "lucide-react";
 import logoUrl from "../assets/logo.png";
 import SummarizingParaphrasing from "./SummarizingParaphrasing";
