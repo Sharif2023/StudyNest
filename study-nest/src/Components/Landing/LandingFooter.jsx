@@ -16,9 +16,7 @@ export default function LandingFooter() {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <a href="#home" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center p-2 shadow-lg shadow-black/10">
-                <img src="src/assets/logo.png" alt="StudyNest" className="w-full h-full object-contain invert" />
-              </div>
+              <img src="/logo.png" alt="StudyNest" className="h-full w-full" />
               <span className="text-xl font-black tracking-tight text-zinc-900">StudyNest</span>
             </a>
             <p className="mt-4 text-sm text-zinc-500 max-w-xs leading-relaxed">

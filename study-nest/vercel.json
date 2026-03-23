@@ -12,6 +12,13 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/$1.php"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
