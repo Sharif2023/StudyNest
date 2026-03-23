@@ -11,11 +11,11 @@ const getApiBase = () => {
     const port = 8000;
     const hasStudyNestInPath = window.location.pathname.includes("study-nest");
     return hasStudyNestInPath 
-      ? `http://localhost:${port}/study-nest/src/api` 
-      : `http://localhost:${port}/src/api`;
+      ? `http://localhost:${port}/study-nest/api` 
+      : `http://localhost:${port}/api`;
   }
   
-  return window.location.origin + "/src/api";
+  return window.location.origin + "/api";
 };
 
 export const API_BASE = getApiBase();

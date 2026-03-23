@@ -8,7 +8,7 @@ import apiClient from "../apiConfig";
 /**
  * StudyNest — Tagging & Topic Search (Live API version)
  * --------------------------------------------------------------
- * Connects to backend: /src/api/search.php
+ * Connects to backend: /api/search.php
  * Supports query (q), tag, and type filters.
  */
 

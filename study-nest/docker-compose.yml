@@ -4,11 +4,11 @@ services:
   # PHP Backend API
   api:
     build:
-      context: ./src/api
+      context: ./api
     ports:
       - "8000:80"
     volumes:
-      - ./src/api:/var/www/html
+      - ./api:/var/www/html
     environment:
       - DB_HOST=db
       - DB_NAME=studynest
