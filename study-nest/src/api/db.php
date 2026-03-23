@@ -45,11 +45,11 @@ if (file_exists(__DIR__ . '/.env')) {
 }
 
 // DB config
-$host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbname = $_ENV['DB_NAME'] ?? 'studynest';
-$user = $_ENV['DB_USER'] ?? 'postgres';
-$pass = $_ENV['DB_PASS'] ?? '';
-$port = $_ENV['DB_PORT'] ?? '5432';
+$host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? '127.0.0.1');
+$dbname = getenv('DB_NAME') ?: ($_ENV['DB_NAME'] ?? 'studynest');
+$user = getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? 'postgres');
+$pass = getenv('DB_PASS') ?: ($_ENV['DB_PASS'] ?? '');
+$port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '5432');
 
 // Database Credentials - Using variables from .env above
 

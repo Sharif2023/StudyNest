@@ -4,6 +4,9 @@ const isLocalhost = window.location.hostname === "localhost" || window.location.
 
 // Auto-detect the correct path
 const getApiBase = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) return envUrl;
+
   if (isLocalhost) {
     const port = 8000;
     const hasStudyNestInPath = window.location.pathname.includes("study-nest");
@@ -12,8 +15,6 @@ const getApiBase = () => {
       : `http://localhost:${port}/src/api`;
   }
   
-  // PRODUCTION: Fall back to current origin + /src/api (standard structure)
-  // Or manually replace with "https://api.yourdomain.com" if hosted separately.
   return window.location.origin + "/src/api";
 };
 

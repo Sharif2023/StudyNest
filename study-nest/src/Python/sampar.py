@@ -205,12 +205,9 @@ def api_paraphrase():
 
 # --------------------------------------------
 # Entrypoint
-# --------------------------------------------
 if __name__ == "__main__":
-    print("Starting summarizer/paraphraser on http://127.0.0.1:5173")
-    if USE_NLTK:
-        print("NLTK WordNet support: available")
-    else:
-        print("NLTK WordNet support: NOT available (using fallback synonyms)")
-    # Host defaults to 127.0.0.1 for dev; change to "0.0.0.0" if you need LAN access.
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    import os
+    # Render provides PORT environment variable
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Starting server on 0.0.0.0:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False)

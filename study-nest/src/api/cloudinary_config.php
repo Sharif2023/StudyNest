@@ -5,10 +5,10 @@
 // Cloudinary credentials - You need to get these from your Cloudinary dashboard
 // Go to: https://cloudinary.com/console -> Settings -> API Keys
 return [
-    'cloud_name' => 'doyi7vchh',
-    'api_key' => '874563878153379', // Replace with your actual API key
-    'api_secret' => 'RYXYbuH1eQvLsrVyZL8pB9AfAiY', // Replace with your actual API secret
-    'upload_preset' => 'studynest_recordings'
+    'cloud_name' => $_ENV['CLOUDINARY_CLOUD_NAME'] ?? 'doyi7vchh',
+    'api_key' => $_ENV['CLOUDINARY_API_KEY'] ?? '874563878153379',
+    'api_secret' => $_ENV['CLOUDINARY_API_SECRET'] ?? 'RYXYbuH1eQvLsrVyZL8pB9AfAiY',
+    'upload_preset' => $_ENV['CLOUDINARY_UPLOAD_PRESET'] ?? 'studynest_recordings'
 ];
 
 // To get your API credentials:

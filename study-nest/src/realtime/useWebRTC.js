@@ -31,11 +31,13 @@ const STUN = [
 
 // WebSocket signaling configuration
 const getWSUrl = () => {
+  const envUrl = import.meta.env.VITE_WS_URL;
+  if (envUrl) return envUrl;
+
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   if (isLocal) return "ws://localhost:5173";
   
-  // PRODUCTION: Assume signaling server is on the same host but different port (e.g. 5173 or proxied)
   return `${proto}://${window.location.hostname}:5173`;
 };
 
