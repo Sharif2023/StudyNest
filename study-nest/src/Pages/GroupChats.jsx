@@ -1,34 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Footer from '../Components/Footer';
 import { Link } from 'react-router-dom';
+import apiClient from '../apiConfig';
 
-const API_BASE = "http://localhost/studynest/study-nest/src/api/group_chat_api.php";
+const API_PATH = "/group_chat_api.php";
 
-// Helper function for API calls
-async function apiCall(action, params = {}) {
-  const url = new URL(API_BASE);
-  url.searchParams.set('action', action);
-  
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    credentials: 'include'
-  });
-  
-  return response.json();
-}
-
-async function apiPost(action, data = {}) {
-  const response = await fetch(`${API_BASE}?action=${action}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify(data)
-  });
-  
-  return response.json();
-}
+// Removed manual helpers in favor of apiClient
 
 export default function GroupChats() {
   const [groupChats, setGroupChats] = useState([]);
@@ -47,7 +24,8 @@ export default function GroupChats() {
   const loadGroupChats = async () => {
     setLoading(true);
     try {
-      const result = await apiCall('my_group_chats');
+      const res = await apiClient.get(API_PATH, { params: { action: 'my_group_chats' } });
+      const result = res.data;
       if (result.ok) {
         setGroupChats(result.group_chats || []);
       } else {
@@ -63,10 +41,14 @@ export default function GroupChats() {
   // Load messages for selected chat
   const loadMessages = async (chatId, sinceId = 0) => {
     try {
-      const result = await apiCall('get_messages', {
-        group_chat_id: chatId,
-        since_id: sinceId
+      const res = await apiClient.get(API_PATH, {
+        params: {
+          action: 'get_messages',
+          group_chat_id: chatId,
+          since_id: sinceId
+        }
       });
+      const result = res.data;
       if (result.ok) {
         if (sinceId > 0) {
           // Append new messages
@@ -84,7 +66,10 @@ export default function GroupChats() {
   // Load participants for selected chat
   const loadParticipants = async (chatId) => {
     try {
-      const result = await apiCall('get_participants', { group_chat_id: chatId });
+      const res = await apiClient.get(API_PATH, {
+        params: { action: 'get_participants', group_chat_id: chatId }
+      });
+      const result = res.data;
       if (result.ok) {
         setParticipants(result.participants || []);
       }
@@ -98,11 +83,14 @@ export default function GroupChats() {
     if (!newMessage.trim() || !selectedChat) return;
 
     try {
-      const result = await apiPost('send_message', {
+      const res = await apiClient.post(API_PATH, {
         group_chat_id: selectedChat.id,
         body: newMessage.trim(),
         message_type: 'text'
+      }, {
+        params: { action: 'send_message' }
       });
+      const result = res.data;
       
       if (result.ok) {
         setNewMessage('');
@@ -122,9 +110,11 @@ export default function GroupChats() {
     
     const lastMessageId = Math.max(...messages.map(m => m.id));
     try {
-      await apiPost('mark_read', {
+      await apiClient.post(API_PATH, {
         group_chat_id: chatId,
         last_read_message_id: lastMessageId
+      }, {
+        params: { action: 'mark_read' }
       });
     } catch (err) {
       console.error('Failed to mark as read:', err);
@@ -134,7 +124,8 @@ export default function GroupChats() {
   // Load unread counts
   const loadUnreadCounts = async () => {
     try {
-      const result = await apiCall('get_unread_counts');
+      const res = await apiClient.get(API_PATH, { params: { action: 'get_unread_counts' } });
+      const result = res.data;
       if (result.ok) {
         setUnreadCounts(result.unread_counts || {});
       }

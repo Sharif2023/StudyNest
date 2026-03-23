@@ -1,18 +1,11 @@
 <?php
+// AIFileCheck.php
+
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
+
 // === External tool paths ===
 const PDFTOTEXT_EXE = 'C:\\poppler\\bin\\pdftotext.exe'; // Poppler
 const ANTIWORD_EXE  = 'C:\\antiword\\antiword.exe';      // Antiword (for .doc)
-
-
-// File: AIFileCheck.php
-// Location: same folder as db.php (e.g., study-nest/src/api/AIFileCheck.php)
-
-// ---------- Headers (CORS + JSON) ----------
-header('Content-Type: application/json; charset=UTF-8');
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 // ---------- Helpers ----------
 function json_fail($code, $msg, $extra = []) {
@@ -296,42 +289,16 @@ if ($wantSim)       $result['similarity']= make_similarity_hint($text);
 
 // ---------- Optional: Save minimal log if not anonymous ----------
 $save_ok = false; $save_error = null;
-if (!$anonymous) {
-  // Try include db.php (must define $conn = new mysqli(...))
-  $conn = null;
-  $dbIncluded = @include_once __DIR__ . "/db.php";
-  if (isset($conn) && $conn instanceof mysqli) {
-    // Create table if missing
-    $sqlCreate = "CREATE TABLE IF NOT EXISTS ai_file_checks (
-      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      filename VARCHAR(255) NOT NULL,
-      mime VARCHAR(120) NOT NULL,
-      size_kb INT UNSIGNED NOT NULL,
-      words INT UNSIGNED NOT NULL,
-      chars INT UNSIGNED NOT NULL,
-      tokens_est INT UNSIGNED NOT NULL,
-      options_json JSON NULL,
-      ip VARCHAR(64) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-    if ($conn->query($sqlCreate) === TRUE) {
-      $stmt = $conn->prepare("INSERT INTO ai_file_checks (filename, mime, size_kb, words, chars, tokens_est, options_json, ip) VALUES (?,?,?,?,?,?,?,?)");
-      if ($stmt) {
+if (!$anonymous && isset($pdo)) {
+    try {
+        $stmt = $pdo->prepare("INSERT INTO ai_file_checks (filename, mime, size_kb, words, chars, tokens_est, options_json, ip) VALUES (?,?,?,?,?,?,?,?)");
         $sizeKB = (int)round($size/1024);
         $optsJson = json_encode($opts, JSON_UNESCAPED_UNICODE);
         $ip = $_SERVER['REMOTE_ADDR'] ?? null;
-        $stmt->bind_param("ssiiisss", $origName, $mime, $sizeKB, $words, $chars, $tokens, $optsJson, $ip);
-        $save_ok = $stmt->execute();
-        if (!$save_ok) $save_error = $stmt->error;
-        $stmt->close();
-      } else {
-        $save_error = $conn->error;
-      }
-    } else {
-      $save_error = $conn->error;
+        $save_ok = $stmt->execute([$origName, $mime, $sizeKB, $words, $chars, $tokens, $optsJson, $ip]);
+    } catch (Throwable $e) {
+        $save_error = $e->getMessage();
     }
-    // Do not die on logging errors
-  }
 }
 
 // ---------- Respond ----------

@@ -1,158 +1,31 @@
 <?php
-session_start();
+// QnAForum.php
 
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
-header("Content-Type: application/json; charset=UTF-8");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  http_response_code(204);
-  exit;
-}
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "studynest";
-$conn = new mysqli($servername, $username, $password, $dbname);
-if ($conn->connect_error) {
-  http_response_code(500);
-  echo json_encode(["status" => "error", "message" => "DB connection failed: " . $conn->connect_error]);
-  exit;
-}
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
 function send_response($status, $message, $data = [])
 {
-  http_response_code($status === 'success' ? 200 : 500);
-  $response = ["status" => $status, "message" => $message];
-  if (!empty($data))
-    $response = array_merge($response, $data);
-  echo json_encode($response);
-  exit;
+    http_response_code(200); 
+    $response = ["status" => $status, "message" => $message, "ok" => ($status === 'success')];
+    if (!empty($data))
+        $response = array_merge($response, $data);
+    echo json_encode($response);
+    exit;
 }
 
-function bearerIsValid(): bool
+function send_sql_error($pdo, $message) {
+    $err = $pdo->errorInfo();
+    send_response('error', $message . " (SQL: " . ($err[2] ?? 'unknown') . ")");
+}
+
+// Centralized awardPoints is provided by db.php
+
+function getUserPoints($pdo, $user_id)
 {
-  if (empty($_SERVER['HTTP_AUTHORIZATION']))
-    return false;
-  if (stripos($_SERVER['HTTP_AUTHORIZATION'], 'Bearer ') !== 0)
-    return false;
-  $token = substr($_SERVER['HTTP_AUTHORIZATION'], 7);
-  return !empty($token);
+    $stmt = $pdo->prepare("SELECT points FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    return $stmt->fetchColumn() ?: 0;
 }
-
-function awardPoints($user_id, $points, $action_type, $reference_id = null, $description = null)
-{
-  global $conn;
-
-  if (!$user_id)
-    return false;
-
-  // Update user's total points
-  $stmt = $conn->prepare("UPDATE users SET points = points + ? WHERE id = ?");
-  $stmt->bind_param("ii", $points, $user_id);
-  $stmt->execute();
-
-  // Record in points history
-  $stmt = $conn->prepare("INSERT INTO points_history (user_id, points, action_type, reference_id, description) VALUES (?, ?, ?, ?, ?)");
-  $stmt->bind_param("iisis", $user_id, $points, $action_type, $reference_id, $description);
-  $stmt->execute();
-
-  return true;
-}
-
-function getUserPoints($user_id)
-{
-  global $conn;
-
-  $stmt = $conn->prepare("SELECT points FROM users WHERE id = ?");
-  $stmt->bind_param("i", $user_id);
-  $stmt->execute();
-  $result = $stmt->get_result();
-
-  if ($row = $result->fetch_assoc()) {
-    return $row['points'];
-  }
-
-  return 0;
-}
-
-/* ==========================================================
-   🧱 AUTO-CREATE TABLES
-   ========================================================== */
-$create_users_table = "
-CREATE TABLE IF NOT EXISTS users (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(191) NOT NULL UNIQUE,
-  student_id VARCHAR(32) NOT NULL UNIQUE,
-  email VARCHAR(191) NOT NULL UNIQUE,
-  bio TEXT NULL,
-  profile_picture_url VARCHAR(255) NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-";
-$conn->query($create_users_table);
-
-$create_questions_table = "
-CREATE TABLE IF NOT EXISTS questions (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  body TEXT NOT NULL,
-  tags VARCHAR(255),
-  author VARCHAR(100) NOT NULL,
-  user_id INT UNSIGNED NULL,
-  anonymous TINYINT(1) NOT NULL DEFAULT 0,
-  votes INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-";
-$conn->query($create_questions_table);
-
-$create_answers_table = "
-CREATE TABLE IF NOT EXISTS answers (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  question_id INT UNSIGNED NOT NULL,
-  body TEXT NOT NULL,
-  author VARCHAR(100) NOT NULL,
-  user_id INT UNSIGNED NULL,
-  votes INT DEFAULT 0,
-  helpful INT DEFAULT 0,
-  is_accepted TINYINT(1) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-";
-$conn->query($create_answers_table);
-
-/* 🆕 Notifications table (updated schema to match todo + reminders) */
-$create_notifications_table = "
-CREATE TABLE IF NOT EXISTS notifications (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  student_id VARCHAR(32) NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  message TEXT,
-  link VARCHAR(255) NULL,
-  type VARCHAR(64) DEFAULT 'general',
-  reference_id INT NULL,
-  scheduled_at DATETIME NULL,
-  sent_at DATETIME NULL,
-  read_at DATETIME NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_student (student_id),
-  FOREIGN KEY (student_id) REFERENCES users(student_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-";
-$conn->query($create_notifications_table);
 
 /* ==========================================================
    MAIN LOGIC
@@ -160,51 +33,77 @@ $conn->query($create_notifications_table);
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-  $questions = [];
-  $result_q = $conn->query("
-    SELECT q.*, u.username AS author_username, q.user_id AS question_owner_id,
-           (SELECT COUNT(*) FROM answers a WHERE a.question_id = q.id) as answer_count
+  require_once __DIR__ . '/auth.php';
+  // Allow unauthenticated access, but get ID if logged in for vote/helpful tracking
+  $logged_in_user_id = StudyNestAuth::validate(['user'], false);
+
+  // 1. Fetch Questions
+  $stmt_q = $pdo->prepare("
+    SELECT q.*, u.username AS author_username,
+           (SELECT COUNT(*) FROM answers WHERE question_id = q.id) as answer_count,
+           (SELECT vote_type FROM question_votes WHERE question_id = q.id AND user_id = ?) as user_vote
     FROM questions q
     LEFT JOIN users u ON q.user_id = u.id
     ORDER BY q.created_at DESC
-    LIMIT 10
+    LIMIT 50
   ");
-  if ($result_q === false)
-    send_response("error", "Failed to query questions: " . $conn->error);
-
-  while ($row = $result_q->fetch_assoc()) {
+  $stmt_q->execute([$logged_in_user_id]);
+  
+  $questions = [];
+  while ($row = $stmt_q->fetch(PDO::FETCH_ASSOC)) {
+    // Formatting
     $row['tags'] = $row['tags'] ? explode(',', $row['tags']) : [];
-    $row['anonymous'] = (bool) $row['anonymous'];
-    $row['answers'] = [];
-    $row['createdAt'] = $row['created_at'];
-    $row['questionOwnerId'] = (int) $row['question_owner_id']; // Ensure it's an integer
-    unset($row['created_at'], $row['question_owner_id']);
-    if ($row['author_username'] && !$row['anonymous'])
+    $row['anonymous'] = (bool)$row['anonymous'];
+    $row['user_vote'] = (int)($row['user_vote'] ?? 0);
+    $row['answer_count'] = (int)($row['answer_count'] ?? 0);
+    
+    // UI compatibility fields
+    if ($row['author_username'] && !$row['anonymous']) {
       $row['author'] = $row['author_username'];
+    }
     unset($row['author_username']);
+    
+    $row['id'] = (int)$row['id'];
+    $row['user_id'] = (int)$row['user_id'];
+    
     $questions[$row['id']] = $row;
+    $questions[$row['id']]['answers'] = [];
   }
 
-  // Also update the answers query to include user_id
-  $result_a = $conn->query("
-    SELECT a.*, u.username AS author_username, a.user_id AS answer_user_id
-    FROM answers a
-    LEFT JOIN users u ON a.user_id = u.id
-    ORDER BY a.created_at ASC
-  ");
-  if ($result_a === false)
-    send_response("error", "Failed to query answers: " . $conn->error);
-
-  while ($row = $result_a->fetch_assoc()) {
-    if (isset($questions[$row['question_id']])) {
-      $row['isAccepted'] = (bool) $row['is_accepted'];
-      $row['createdAt'] = $row['created_at'];
-      $row['userId'] = (int) $row['answer_user_id']; // Add user ID for answers too
-      unset($row['is_accepted'], $row['created_at'], $row['answer_user_id']);
-      if ($row['author_username'])
-        $row['author'] = $row['author_username'];
-      unset($row['author_username']);
-      $questions[$row['question_id']]['answers'][] = $row;
+  // 2. Fetch Answers for these questions
+  if (!empty($questions)) {
+    $qids = array_keys($questions);
+    $placeholders = implode(',', array_fill(0, count($qids), '?'));
+    
+    $stmt_a = $pdo->prepare("
+      SELECT a.*, u.username AS author_username,
+             (SELECT vote_type FROM answer_votes WHERE answer_id = a.id AND user_id = ?) as user_vote,
+             (SELECT 1 FROM answer_helpful_votes WHERE answer_id = a.id AND user_id = ?) as user_helpful
+      FROM answers a
+      LEFT JOIN users u ON a.user_id = u.id
+      WHERE a.question_id IN ($placeholders)
+      ORDER BY a.created_at ASC
+    ");
+    
+    $args = array_merge([$logged_in_user_id, $logged_in_user_id], $qids);
+    $stmt_a->execute($args);
+    
+    while ($row = $stmt_a->fetch(PDO::FETCH_ASSOC)) {
+      $qid = (int)$row['question_id'];
+      if (isset($questions[$qid])) {
+        $row['id'] = (int)$row['id'];
+        $row['user_id'] = (int)$row['user_id'];
+        $row['is_accepted'] = (bool)$row['is_accepted'];
+        $row['user_vote'] = (int)($row['user_vote'] ?? 0);
+        $row['user_helpful'] = (bool)($row['user_helpful'] ?? false);
+        
+        if ($row['author_username']) {
+          $row['author'] = $row['author_username'];
+        }
+        unset($row['author_username']);
+        
+        $questions[$qid]['answers'][] = $row;
+      }
     }
   }
 
@@ -213,143 +112,211 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-  if (empty($_SESSION['user_id']))
-    $_SESSION['user_id'] = 1;
-  if (!isset($_SESSION['user_id']) && !bearerIsValid()) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'User not authenticated.']);
-    exit;
-  }
+  require_once __DIR__ . '/auth.php';
+  $logged_in_user_id = StudyNestAuth::validate(['user']); // Correctly authenticate or exit with 401/403
 
-  $data = json_decode(file_get_contents('php://input'), true) ?? [];
-  $action = $data['action'] ?? '';
-  $logged_in_user_id = $_SESSION['user_id'] ?? null;
+  try {
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    $action = $data['action'] ?? '';
 
   switch ($action) {
 
     case 'add_question': {
-      $title = trim($data['title'] ?? '');
-      $body = trim($data['body'] ?? '');
-      $tags = $data['tags'] ?? '';
-      if (is_array($tags))
-        $tags = implode(',', $tags);
-      $anonymous = isset($data['anonymous']) ? (int) $data['anonymous'] : 0;
-      $author = $anonymous ? 'Anonymous' : ($data['author'] ?? 'Anonymous');
+      $title = $data['title'] ?? '';
+      $body = $data['body'] ?? '';
+      $tags = is_array($data['tags'] ?? null) ? implode(',', $data['tags']) : ($data['tags'] ?? '');
+      $anonymous = !empty($data['anonymous']) ? true : false;
+      $author = $data['author'] ?? 'Anonymous';
 
-      $stmt = $conn->prepare("INSERT INTO questions (title, body, tags, user_id, anonymous, author) VALUES (?, ?, ?, ?, ?, ?)");
-      $stmt->bind_param("sssiss", $title, $body, $tags, $logged_in_user_id, $anonymous, $author);
+      if (!$title || !$body) {
+          send_response('error', 'Title and body are required.');
+      }
 
-      if ($stmt->execute()) {
+      $stmt = $pdo->prepare("INSERT INTO questions (title, body, tags, user_id, anonymous, author) VALUES (?, ?, ?, ?, ?, ?)");
+
+      if ($stmt->execute([$title, $body, $tags, $logged_in_user_id, $anonymous, $author])) {
         // Award 15 points for asking a question
-        awardPoints($logged_in_user_id, 15, 'ask_question', $conn->insert_id, 'Asked a question');
-        send_response('success', 'Question added.', ['id' => $conn->insert_id]);
+        $newId = $pdo->lastInsertId();
+        awardPoints($pdo, $logged_in_user_id, 15, 'ask_question', (string)$newId, 'Asked a question');
+        send_response('success', 'Question added.', ['id' => $newId]);
       } else {
-        send_response('error', 'Failed to add question: ' . $stmt->error);
+        send_sql_error($pdo, 'Failed to add question.');
       }
       break;
     }
 
-    /* ==========================================================
-     🆕 ADD ANSWER + CREATE NOTIFICATION
-     ========================================================== */
     case 'add_answer': {
+      $qid = $data['question_id'] ?? 0;
+      $body = $data['body'] ?? '';
       $author = $data['author'] ?? 'Anonymous';
-      $qid = (int) ($data['question_id'] ?? 0);
-      $body = trim($data['body'] ?? '');
 
-      $stmt = $conn->prepare("INSERT INTO answers (question_id, body, user_id, author) VALUES (?, ?, ?, ?)");
-      $stmt->bind_param("isis", $qid, $body, $logged_in_user_id, $author);
+      if (!$qid || !$body) {
+          send_response('error', 'Question ID and body are required.');
+      }
 
-      if ($stmt->execute()) {
+      $stmt = $pdo->prepare("INSERT INTO answers (question_id, body, user_id, author) VALUES (?, ?, ?, ?)");
+
+      if ($stmt->execute([$qid, $body, $logged_in_user_id, $author])) {
         // Award 2 points for answering
-        awardPoints($logged_in_user_id, 2, 'answer_question', $conn->insert_id, 'Answered a question');
+        $newId = $pdo->lastInsertId();
+        awardPoints($pdo, $logged_in_user_id, 2, 'answer_question', (string)$newId, 'Answered a question');
 
         /* 🆕 Create notification for question owner */
-        $qres = $conn->prepare("SELECT q.title AS q_title, u.student_id AS target_sid, u.username AS q_author FROM questions q LEFT JOIN users u ON q.user_id = u.id WHERE q.id=?");
-        $qres->bind_param("i", $qid);
-        $qres->execute();
-        $meta = $qres->get_result()->fetch_assoc();
+        $qres = $pdo->prepare("SELECT q.title AS q_title, u.student_id AS target_sid, u.username AS q_author FROM questions q LEFT JOIN users u ON q.user_id = u.id WHERE q.id=?");
+        $qres->execute([$qid]);
+        $meta = $qres->fetch(PDO::FETCH_ASSOC);
 
-        if (!empty($meta['target_sid'])) {
+        if ($meta && !empty($meta['target_sid'])) {
           $n_title = "💬 New answer to your question";
           $n_message = "{$author} replied to: \"{$meta['q_title']}\"";
           $n_link = "/forum";
-          $nstmt = $conn->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id) VALUES (?, ?, ?, ?, 'forum_answer', ?)");
-          $nstmt->bind_param("ssssi", $meta['target_sid'], $n_title, $n_message, $n_link, $qid);
-          $nstmt->execute();
+          $nstmt = $pdo->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id) VALUES (?, ?, ?, ?, 'forum_answer', ?)");
+          $nstmt->execute([$meta['target_sid'], $n_title, $n_message, $n_link, $qid]);
         }
 
-        send_response('success', 'Answer added.');
+        send_response('success', 'Answer added.', ['id' => $newId]);
       } else {
-        send_response('error', 'Failed to add answer: ' . $stmt->error);
+        send_sql_error($pdo, 'Failed to add answer.');
       }
       break;
     }
 
     case 'vote_question': {
-      $stmt = $conn->prepare("UPDATE questions SET votes = votes + ? WHERE id = ?");
-      $stmt->bind_param("ii", $data['delta'], $data['id']);
-      $stmt->execute() ? send_response('success', 'Vote updated.')
-        : send_response('error', 'Vote failed: ' . $stmt->error);
+      $qid = (int)($data['id'] ?? 0);
+      $delta = (int)($data['delta'] ?? 0); // 1 or -1
+      if (!$qid || abs($delta) !== 1) send_response('error', 'Invalid parameters.');
+
+      $pdo->beginTransaction();
+      try {
+        $check = $pdo->prepare("SELECT vote_type FROM question_votes WHERE question_id=? AND user_id=?");
+        $check->execute([$qid, $logged_in_user_id]);
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+
+        $final_delta = 0;
+        if ($existing) {
+          if ($existing['vote_type'] == $delta) {
+            // Toggle off
+            $pdo->prepare("DELETE FROM question_votes WHERE question_id=? AND user_id=?")->execute([$qid, $logged_in_user_id]);
+            $final_delta = -$delta;
+          } else {
+            // Change vote
+            $pdo->prepare("UPDATE question_votes SET vote_type=? WHERE question_id=? AND user_id=?")->execute([$delta, $qid, $logged_in_user_id]);
+            $final_delta = 2 * $delta;
+          }
+        } else {
+          // New vote
+          $pdo->prepare("INSERT INTO question_votes (question_id, user_id, vote_type) VALUES (?, ?, ?)")->execute([$qid, $logged_in_user_id, $delta]);
+          $final_delta = $delta;
+        }
+
+        $pdo->prepare("UPDATE questions SET votes = votes + ? WHERE id = ?")->execute([$final_delta, $qid]);
+        $pdo->commit();
+        send_response('success', 'Vote updated.', ['new_votes' => $final_delta]);
+      } catch (Throwable $e) {
+        $pdo->rollBack();
+        send_response('error', 'Vote failed: ' . $e->getMessage());
+      }
       break;
     }
 
     case 'vote_answer': {
-      $stmt = $conn->prepare("UPDATE answers SET votes = votes + ? WHERE id = ?");
-      $stmt->bind_param("ii", $data['delta'], $data['id']);
-      $stmt->execute() ? send_response('success', 'Vote updated.')
-        : send_response('error', 'Vote failed: ' . $stmt->error);
+      $aid = (int)($data['id'] ?? 0);
+      $delta = (int)($data['delta'] ?? 0);
+      if (!$aid || abs($delta) !== 1) send_response('error', 'Invalid parameters.');
+
+      $pdo->beginTransaction();
+      try {
+        $check = $pdo->prepare("SELECT vote_type FROM answer_votes WHERE answer_id=? AND user_id=?");
+        $check->execute([$aid, $logged_in_user_id]);
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+
+        $final_delta = 0;
+        if ($existing) {
+          if ($existing['vote_type'] == $delta) {
+            $pdo->prepare("DELETE FROM answer_votes WHERE answer_id=? AND user_id=?")->execute([$aid, $logged_in_user_id]);
+            $final_delta = -$delta;
+          } else {
+            $pdo->prepare("UPDATE answer_votes SET vote_type=? WHERE answer_id=? AND user_id=?")->execute([$delta, $aid, $logged_in_user_id]);
+            $final_delta = 2 * $delta;
+          }
+        } else {
+          $pdo->prepare("INSERT INTO answer_votes (answer_id, user_id, vote_type) VALUES (?, ?, ?)")->execute([$aid, $logged_in_user_id, $delta]);
+          $final_delta = $delta;
+        }
+
+        $pdo->prepare("UPDATE answers SET votes = votes + ? WHERE id = ?")->execute([$final_delta, $aid]);
+        $pdo->commit();
+        send_response('success', 'Vote updated.', ['new_votes' => $final_delta]);
+      } catch (Throwable $e) {
+        $pdo->rollBack();
+        send_response('error', 'Vote failed: ' . $e->getMessage());
+      }
       break;
     }
 
     case 'peer_review': {
-      $stmt = $conn->prepare("UPDATE answers SET helpful = helpful + 1 WHERE id = ?");
-      $stmt->bind_param("i", $data['id']);
-      $stmt->execute() ? send_response('success', 'Marked as helpful.')
-        : send_response('error', 'Failed to mark helpful: ' . $stmt->error);
+      $aid = (int)($data['id'] ?? 0);
+      if (!$aid) send_response('error', 'Invalid parameters.');
+
+      $pdo->beginTransaction();
+      try {
+        $check = $pdo->prepare("SELECT 1 FROM answer_helpful_votes WHERE answer_id=? AND user_id=?");
+        $check->execute([$aid, $logged_in_user_id]);
+        
+        if ($check->fetch()) {
+          // Toggle off
+          $pdo->prepare("DELETE FROM answer_helpful_votes WHERE answer_id=? AND user_id=?")->execute([$aid, $logged_in_user_id]);
+          $pdo->prepare("UPDATE answers SET helpful = GREATEST(0, helpful - 1) WHERE id = ?")->execute([$aid]);
+          $pdo->commit();
+          send_response('success', 'Helpful mark removed.');
+        } else {
+          // Mark helpful
+          $pdo->prepare("INSERT INTO answer_helpful_votes (answer_id, user_id) VALUES (?, ?)")->execute([$aid, $logged_in_user_id]);
+          $pdo->prepare("UPDATE answers SET helpful = helpful + 1 WHERE id = ?")->execute([$aid]);
+          $pdo->commit();
+          send_response('success', 'Marked as helpful.');
+        }
+      } catch (Throwable $e) {
+        $pdo->rollBack();
+        send_response('error', 'Update failed: ' . $e->getMessage());
+      }
       break;
     }
 
     case 'accept_answer': {
-      $conn->begin_transaction();
       try {
+        $pdo->beginTransaction();
         // First, verify that the current user owns the question
-        $verifyStmt = $conn->prepare("SELECT user_id FROM questions WHERE id = ?");
-        $verifyStmt->bind_param("i", $data['question_id']);
-        $verifyStmt->execute();
-        $verifyResult = $verifyStmt->get_result();
-        $questionOwner = $verifyResult->fetch_assoc();
+        $verifyStmt = $pdo->prepare("SELECT user_id FROM questions WHERE id = ?");
+        $verifyStmt->execute([$data['question_id']]);
+        $questionOwner = $verifyStmt->fetch(PDO::FETCH_ASSOC);
 
         // Check if current user is the question owner
         if (!$questionOwner || $questionOwner['user_id'] != $logged_in_user_id) {
           send_response('error', 'Only the question owner can accept answers.');
-          return;
+          exit;
         }
 
-        $stmt1 = $conn->prepare("UPDATE answers SET is_accepted = 0 WHERE question_id = ?");
-        $stmt1->bind_param("i", $data['question_id']);
-        $stmt1->execute();
+        $stmt1 = $pdo->prepare("UPDATE answers SET is_accepted = FALSE WHERE question_id = ?");
+        $stmt1->execute([($data['question_id'] ?? 0)]);
 
-        $stmt2 = $conn->prepare("UPDATE answers SET is_accepted = 1 WHERE id = ?");
-        $stmt2->bind_param("i", $data['answer_id']);
-        $stmt2->execute();
+        $stmt2 = $pdo->prepare("UPDATE answers SET is_accepted = TRUE WHERE id = ?");
+        $stmt2->execute([($data['answer_id'] ?? 0)]);
 
         // Get answer author's user_id to award points
-        $stmt3 = $conn->prepare("SELECT user_id FROM answers WHERE id = ?");
-        $stmt3->bind_param("i", $data['answer_id']);
-        $stmt3->execute();
-        $result = $stmt3->get_result();
+        $stmt3 = $pdo->prepare("SELECT user_id FROM answers WHERE id = ?");
+        $stmt3->execute([$data['answer_id']]);
+        $row = $stmt3->fetch(PDO::FETCH_ASSOC);
 
-        $row = $result->fetch_assoc();
         if ($row && !empty($row['user_id'])) {
           // Award 5 points for accepted answer
-          awardPoints($row['user_id'], 5, 'answer_accepted', $data['answer_id'], 'Answer was accepted');
+          awardPoints($pdo, $row['user_id'], 5, 'answer_accepted', (string)$data['answer_id'], 'Answer was accepted');
         }
 
-        $conn->commit();
+        $pdo->commit();
         send_response('success', 'Answer accepted.');
-      } catch (mysqli_sql_exception $e) {
-        $conn->rollback();
+      } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollback();
         send_response('error', 'Failed to accept answer: ' . $e->getMessage());
       }
       break;
@@ -361,14 +328,16 @@ if ($method === 'POST') {
         send_response('error', 'User not authenticated.');
       }
 
-      $points = getUserPoints($logged_in_user_id);
+      $points = getUserPoints($pdo, $logged_in_user_id);
       send_response('success', 'Points retrieved.', ['points' => $points]);
       break;
     }
 
     default:
-      send_response('error', 'Invalid action specified.');
+      send_response('error', 'Invalid action specified: ' . ($action ?: 'empty'));
+      break;
+    }
+  } catch (Throwable $e) {
+    send_response('error', 'Server error: ' . $e->getMessage());
   }
 }
-
-$conn->close();

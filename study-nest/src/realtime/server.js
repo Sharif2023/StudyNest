@@ -24,7 +24,7 @@ function roomSnapshot(roomId) {
   if (!room) return { participants: [] };
   const participants = [];
   for (const [cid, u] of room.users.entries()) {
-    participants.push({ id: cid, name: u.name || 'Student', hand: !!u.hand });
+    participants.push({ id: cid, stableId: u.stableId, name: u.name || 'Student', hand: !!u.hand });
   }
   return { participants };
 }
@@ -36,18 +36,54 @@ wss.on('connection', (ws) => {
   ws.on('message', (msg) => {
     let m; try { m = JSON.parse(msg); } catch { return; }
 
-    // {type:'join', roomId, name}
+    // {type:'join', roomId, name, stableId?} — stableId dedupes same user reconnecting (Meet-style)
     if (m.type === 'join') {
       roomId = m.roomId;
+      const stableKey =
+        m.stableId != null && String(m.stableId).trim() !== ''
+          ? String(m.stableId).trim()
+          : clientId;
       if (!rooms.has(roomId)) rooms.set(roomId, { clients: new Map(), users: new Map(), meta: {} });
       const room = rooms.get(roomId);
-      room.clients.set(clientId, ws);
-      room.users.set(clientId, { name: m.name || 'Student', hand: false, joinedAt: Date.now() });
 
-      // Send snapshot to this client
-      send(ws, 'joined', { clientId, ...roomSnapshot(roomId) });
-      // Notify others
-      broadcast(roomId, clientId, 'peer-joined', { id: clientId, name: m.name || 'Student' });
+      // Evict older socket for the same stable identity so roster stays one row per person
+      for (const [cid, oldWs] of [...room.clients.entries()]) {
+        const u = room.users.get(cid);
+        if (!u || u.stableId !== stableKey) continue;
+        room.clients.delete(cid);
+        room.users.delete(cid);
+        broadcast(roomId, clientId, 'peer-left', { id: cid });
+        try {
+          oldWs.close(4000, 'replaced');
+        } catch { }
+      }
+
+      room.clients.set(clientId, ws);
+      room.users.set(clientId, {
+        name: m.name || 'Student',
+        hand: false,
+        joinedAt: Date.now(),
+        stableId: stableKey,
+      });
+
+      send(ws, 'joined', { clientId, stableId: stableKey, ...roomSnapshot(roomId) });
+      broadcast(roomId, clientId, 'peer-joined', { id: clientId, stableId: stableKey, name: m.name || 'Student' });
+      return;
+    }
+
+    // Explicit leave so peers drop the tile immediately (before TCP teardown)
+    if (m.type === 'leave-room') {
+      const room = rooms.get(roomId);
+      if (!room) return;
+      const had = room.clients.has(clientId);
+      room.clients.delete(clientId);
+      room.users.delete(clientId);
+      if (had) broadcast(roomId, clientId, 'peer-left', { id: clientId });
+      if (room.clients.size === 0) rooms.delete(roomId);
+      roomId = null;
+      try {
+        ws.close(1000, 'leave');
+      } catch { }
       return;
     }
 
@@ -71,6 +107,41 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // Chat broadcast
+    if (m.type === 'chat') {
+      if (m.to) {
+        const room = rooms.get(roomId);
+        const dest = room && room.clients.get(m.to);
+        if (dest) send(dest, 'chat', { ...m, from: clientId });
+        return;
+      }
+      broadcast(roomId, clientId, 'chat', { ...m, from: clientId });
+      return;
+    }
+
+    // Whiteboard forwarding
+    if (m.type === 'wb-forward' && m.payload) {
+      const payload = { ...m.payload, from: clientId };
+      // If targeted sync response, send to individual
+      if (payload.type === 'wb-sync-response' && payload.to) {
+        const room = rooms.get(roomId);
+        const dest = room && room.clients.get(payload.to);
+        if (dest) send(dest, 'wb-forward', payload);
+        return;
+      }
+      // Otherwise broadcast
+      broadcast(roomId, clientId, 'wb-forward', payload);
+      return;
+    }
+
+    // Host / client signals meeting finished — everyone in the room should leave UI
+    if (m.type === 'meeting-ended') {
+      const rid = m.roomId || roomId;
+      if (!rid) return;
+      broadcast(rid, null, 'meeting-ended', { roomId: rid });
+      return;
+    }
+
     // Presence ping
     if (m.type === 'ping') {
       send(ws, 'pong', { t: Date.now() });
@@ -82,10 +153,12 @@ wss.on('connection', (ws) => {
     if (!roomId) return;
     const room = rooms.get(roomId);
     if (!room) return;
+    const had = room.clients.has(clientId);
     room.clients.delete(clientId);
     room.users.delete(clientId);
-    broadcast(roomId, clientId, 'peer-left', { id: clientId });
+    if (had) broadcast(roomId, clientId, 'peer-left', { id: clientId });
     if (room.clients.size === 0) rooms.delete(roomId);
+    roomId = null;
   });
 });
 

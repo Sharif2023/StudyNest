@@ -1,9 +1,22 @@
+// src/pages/Groups.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
-
-const API = "http://localhost/StudyNest/study-nest/src/api/group_api.php";
+import apiClient from "../apiConfig";
+import { 
+  Users, 
+  Search, 
+  Upload, 
+  X, 
+  CheckCircle, 
+  Clock, 
+  Lock, 
+  ArrowRight,
+  MessageSquare,
+  ShieldAlert
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 function getAuthUser() {
     try {
@@ -19,104 +32,33 @@ export default function Groups() {
     const [groups, setGroups] = useState([]);
     const [myGroups, setMyGroups] = useState([]);
     const [search, setSearch] = useState("");
-    const [joinModal, setJoinModal] = useState({ open: false, groupId: null });
+    const [joinModal, setJoinModal] = useState({ open: false, groupId: null, sectionName: "" });
     const [proofFile, setProofFile] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     const me = getAuthUser();
 
-    useEffect(() => {
-        fetch(`${API}?action=my_groups`, { credentials: "include" })
-            .then((r) => r.json())
-            .then((j) => j.ok && setMyGroups(j.groups));
+    const fetchAll = () => {
+        apiClient.get("group_api.php", { params: { action: "my_groups" } })
+            .then((res) => { if (res.data.ok) setMyGroups(res.data.groups); });
 
-        fetch(
-            "http://localhost/StudyNest/study-nest/src/api/admin_api.php?action=list_groups&k=MYKEY123"
-        )
-            .then((r) => r.json())
-            .then((j) => j.ok && setGroups(j.groups));
-    }, []);
-
-    const joinGroup = async (id) => {
-        if (!me) {
-            alert("You must be logged in to join groups.");
-            return;
-        }
-        const proof = await new Promise((resolve) => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".pdf,.png,.jpg,.jpeg,.csv"; // allowed routine formats
-            input.onchange = () => resolve(input.files[0]);
-            input.click();
-        });
-
-        if (!proof) return; // user canceled
-
-        const fd = new FormData();
-        fd.append("group_id", id);
-        fd.append("proof", proof);
-
-        const r = await fetch(`${API}?action=join_group`, {
-            method: "POST",
-            body: fd,
-            credentials: "include",
-        });
-        const j = await r.json();
-        if (j.ok) {
-            alert("Join request sent with routine proof!");
-            fetch(`${API}?action=my_groups`, { credentials: "include" })
-                .then((r) => r.json())
-                .then((j) => j.ok && setMyGroups(j.groups));
-        } else {
-            alert("Failed: " + j.error);
-        }
+        apiClient.get("admin_api.php", { params: { action: "list_groups", k: "MYKEY123" } })
+            .then((res) => { if (res.data.ok) setGroups(res.data.groups); });
     };
 
-    const leaveGroup = (id) => {
-        if (!me) return alert("You must be logged in.");
-        fetch(`${API}?action=leave_group`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ group_id: id }),
-        })
-            .then((r) => r.json())
-            .then((j) => {
-                if (j.ok) {
-                    alert("You left the group!");
-                    // refresh groups
-                    fetch(`${API}?action=my_groups`, { credentials: "include" })
-                        .then((r) => r.json())
-                        .then((j) => j.ok && setMyGroups(j.groups));
-                } else {
-                    alert("Failed: " + j.error);
-                }
-            });
-    };
+    useEffect(() => { fetchAll(); }, []);
 
     const cancelRequest = async (id) => {
-        if (!me) return alert("You must be logged in.");
-        const r = await fetch(`${API}?action=cancel_request`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ group_id: id }),
-        });
-        const j = await r.json();
-        if (j.ok) {
-            alert("Join request cancelled!");
-            fetch(`${API}?action=my_groups`, { credentials: "include" })
-                .then((r) => r.json())
-                .then((j) => j.ok && setMyGroups(j.groups));
-        } else {
-            alert("Failed: " + j.error);
-        }
+        if (!confirm("Cancel this join request?")) return;
+        const res = await apiClient.post("group_api.php", { group_id: id }, { params: { action: "cancel_request" } });
+        if (res.data.ok) fetchAll();
     };
 
     const myStatus = (id) => myGroups.find((g) => g.id === id)?.status || null;
 
     const getCourseCode = (sectionName) => {
         const parts = sectionName.split(" / ");
-        return parts[1] || null; // e.g. "CSE 1101"
+        return parts[1] || "";
     };
 
     const joinedCourses = new Set(
@@ -125,197 +67,194 @@ export default function Groups() {
             .map((g) => getCourseCode(g.section_name))
     );
 
+    const handleJoinSubmit = async () => {
+        if (!proofFile) return alert("Please upload your routine proof.");
+        setLoading(true);
+        const fd = new FormData();
+        fd.append("group_id", joinModal.groupId);
+        fd.append("proof", proofFile);
+
+        const res = await apiClient.post("group_api.php", fd, { params: { action: "join_group" } });
+        setLoading(false);
+        if (res.data.ok) {
+            setJoinModal({ open: false, groupId: null, sectionName: "" });
+            setProofFile(null);
+            fetchAll();
+        } else {
+            alert(res.data.error || "Failed to join group");
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <LeftNav />
-            <Header />
-            <div className="max-w-4xl mx-auto p-6">
-                <h1 className="text-2xl font-bold mb-4">Join a Group</h1>
+        <div className="min-h-screen bg-[#08090e] text-slate-200 selection:bg-cyan-500/30">
+            <LeftNav sidebarWidth={72} />
+            <Header sidebarWidth={72} />
 
-                {/* Search bar */}
-                <div className="relative mb-6">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        🔍
-                    </span>
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search groups…"
-                        className="w-full rounded-lg border border-slate-600 bg-slate-800/80 
-               pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-400 
-               focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-                    />
-                </div>
-
-                {/* Groups list */}
-                <ul className="space-y-3">
-                    {groups
-                        .filter((g) =>
-                            g.section_name.toLowerCase().includes(search.toLowerCase())
-                        )
-                        .map((g) => {
-                            const status = myStatus(g.id);
-                            const courseCode = getCourseCode(g.section_name);
-                            const alreadyInCourse = joinedCourses.has(courseCode);
-
-                            return (
-                                <li key={g.id} className="p-4 bg-slate-800/80 border border-slate-700 
-                           rounded-xl flex justify-between items-center">
-                                    <span>{g.section_name}</span>
-
-                                    {status === "accepted" ? (
-                                        <a
-                                            href={`/group/${g.id}`}
-                                            className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 transition"
-                                        >
-                                            Enter Chat
-                                        </a>
-                                    ) : status === "pending" ? (
-                                        <div className="flex gap-2 items-center">
-                                            <span className="text-yellow-400 text-sm">Pending</span>
-                                            <button
-                                                onClick={() => cancelRequest(g.id)}
-                                                className="text-xs px-2 py-1 bg-red-600 hover:bg-red-500 rounded-lg"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ) : status === "rejected" ? (
-                                        <div className="flex gap-2 items-center">
-                                            <span className="text-red-400 text-sm">Rejected</span>
-                                            <button
-                                                onClick={() => setJoinModal({ open: true, groupId: g.id })}
-                                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition"
-                                            >
-                                                Re-Join
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() =>
-                                                !alreadyInCourse && setJoinModal({ open: true, groupId: g.id })
-                                            }
-                                            disabled={alreadyInCourse}
-                                            className={`px-3 py-1.5 rounded-lg transition ${alreadyInCourse
-                                                ? "bg-gray-600 cursor-not-allowed"
-                                                : "bg-emerald-600 hover:bg-emerald-500"
-                                                }`}
-                                        >
-                                            {alreadyInCourse ? "Locked" : "Join"}
-                                        </button>
-                                    )}
-                                </li>
-                            );
-
-                        })}
-                    {groups.length === 0 && (
-                        <li className="text-slate-400">No groups found.</li>
-                    )}
-                </ul>
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(100px)" }} />
+                <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(100px)" }} />
             </div>
-            {/* Join Modal */}
-            {joinModal.open && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-                        <h2 className="text-lg font-semibold mb-4 text-gray-800">
-                            Upload Your Routine
-                        </h2>
 
-                        {/* File Upload */}
-                        <input
-                            type="file"
-                            accept=".pdf,.png,.jpg,.jpeg,.csv"
-                            onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                            className="block w-full text-sm text-gray-600
-                         file:mr-3 file:py-2 file:px-4
-                         file:rounded-lg file:border-0
-                         file:text-sm file:font-semibold
-                         file:bg-emerald-50 file:text-emerald-700
-                         hover:file:bg-emerald-100"
-                        />
+            <main className="relative z-10 pt-32 pb-20 px-6 max-w-6xl mx-auto" style={{ paddingLeft: "calc(72px + 1.5rem)" }}>
+                <header className="mb-16">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Collaborative Ecosystem</span>
+                        </div>
+                        <h1 className="text-5xl md:text-6xl font-display font-black text-white leading-tight tracking-tighter mb-4 italic">
+                            STUDY <span className="text-gradient-brand underline decoration-zinc-800 decoration-4 underline-offset-8">GROUPS.</span>
+                        </h1>
+                        <p className="max-w-xl text-slate-500 text-sm font-medium leading-relaxed">
+                            Connect with peers from your specific sections. Access exclusive resources, routine-synced chats, and synchronized learning environments.
+                        </p>
+                    </motion.div>
+                </header>
 
-                        {/* Preview */}
-                        {proofFile && (
-                            <div className="mt-4">
-                                <p className="text-sm text-gray-600 mb-2">
-                                    Preview of: <b>{proofFile.name}</b>
-                                </p>
-
-                                {/\.(jpg|jpeg|png|gif|webp)$/i.test(proofFile.name) ? (
-                                    <img
-                                        src={URL.createObjectURL(proofFile)}
-                                        alt="Routine Preview"
-                                        className="max-h-60 w-full object-contain rounded-lg border"
-                                    />
-                                ) : /\.pdf$/i.test(proofFile.name) ? (
-                                    <iframe
-                                        src={URL.createObjectURL(proofFile)}
-                                        title="PDF Preview"
-                                        className="w-full h-60 border rounded-lg"
-                                    />
-                                ) : /\.csv$/i.test(proofFile.name) ? (
-                                    <div className="bg-gray-100 text-gray-700 text-xs p-2 rounded-lg max-h-40 overflow-auto">
-                                        <pre>{/* CSV text preview handled separately */}</pre>
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500 text-sm">
-                                        Preview not available
-                                    </p>
-                                )}
+                {/* Search & Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
+                    <div className="lg:col-span-3">
+                        <div className="glass-card p-2 rounded-[2rem] border border-white/10 bg-white/[0.02] flex items-center group transition-all hover:bg-white/[0.04]">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Find your section node... (e.g. CSE 1101)"
+                                    className="w-full bg-transparent border-none text-white pl-16 pr-6 py-5 text-sm font-black uppercase tracking-widest placeholder:text-slate-600 focus:ring-0"
+                                />
                             </div>
-                        )}
-
-                        {/* Buttons */}
-                        <div className="flex justify-end gap-3 mt-5">
-                            <button
-                                onClick={() => {
-                                    setProofFile(null);
-                                    setJoinModal({ open: false, groupId: null });
-                                }}
-                                className="px-4 py-2 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    if (!proofFile) {
-                                        alert("Please select a file first!");
-                                        return;
-                                    }
-                                    const fd = new FormData();
-                                    fd.append("group_id", joinModal.groupId);
-                                    fd.append("proof", proofFile);
-
-                                    const r = await fetch(`${API}?action=join_group`, {
-                                        method: "POST",
-                                        body: fd,
-                                        credentials: "include",
-                                    });
-                                    const j = await r.json();
-                                    if (j.ok) {
-                                        alert("Join request sent with routine!");
-                                        setProofFile(null);
-                                        setJoinModal({ open: false, groupId: null });
-
-                                        setMyGroups(prev => [...prev, { id: joinModal.groupId, status: "pending", section_name: "" }]);
-                                        // refresh groups
-                                        fetch(`${API}?action=my_groups`, { credentials: "include" })
-                                            .then((r) => r.json())
-                                            .then((j) => j.ok && setMyGroups(j.groups));
-                                    } else {
-                                        alert("Failed: " + j.error);
-                                    }
-                                }}
-                                className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
-                            >
-                                Submit
-                            </button>
                         </div>
                     </div>
+                    <div className="lg:col-span-1 glass-card p-6 rounded-[2rem] border border-white/10 bg-white/[0.02] flex items-center justify-between">
+                        <div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">My Nodes</div>
+                            <div className="text-3xl font-black text-white">{myGroups.length}</div>
+                        </div>
+                        <Users className="w-8 h-8 text-cyan-500/50" />
+                    </div>
                 </div>
-            )}
-            <Footer />
+
+                {/* Groups Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <AnimatePresence>
+                        {groups
+                            .filter((g) => g.section_name.toLowerCase().includes(search.toLowerCase()))
+                            .map((g, idx) => {
+                                const status = myStatus(g.id);
+                                const courseCode = getCourseCode(g.section_name);
+                                const alreadyInCourse = joinedCourses.has(courseCode);
+
+                                return (
+                                    <motion.div
+                                        key={g.id}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className="glass-card p-8 rounded-[2.5rem] border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-all group relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                            <Users size={60} />
+                                        </div>
+                                        
+                                        <div className="mb-6">
+                                            <div className="text-[10px] font-black tracking-[0.2em] text-cyan-500 uppercase mb-2 italic">Active Section</div>
+                                            <h3 className="text-lg font-black text-white leading-snug uppercase italic tracking-tight truncate pr-10">{g.section_name}</h3>
+                                        </div>
+
+                                        <div className="flex flex-col gap-4">
+                                            {status === "accepted" ? (
+                                                <Link
+                                                    to={`/group/${g.id}`}
+                                                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition-all"
+                                                >
+                                                    Enter Neural Link <ArrowRight size={14} />
+                                                </Link>
+                                            ) : status === "pending" ? (
+                                                <div className="flex gap-2">
+                                                    <div className="flex-1 py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">
+                                                        <Clock size={14} /> Verifying
+                                                    </div>
+                                                    <button onClick={() => cancelRequest(g.id)} className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : status === "rejected" ? (
+                                                <div className="flex gap-2">
+                                                    <div className="flex-1 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">
+                                                        <ShieldAlert size={14} /> Denied
+                                                    </div>
+                                                    <button onClick={() => setJoinModal({ open: true, groupId: g.id, sectionName: g.section_name })} className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all text-center">
+                                                        Retry
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => !alreadyInCourse && setJoinModal({ open: true, groupId: g.id, sectionName: g.section_name })}
+                                                    disabled={alreadyInCourse}
+                                                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all ${alreadyInCourse 
+                                                        ? "bg-white/[0.01] border border-white/5 text-slate-700 cursor-not-allowed" 
+                                                        : "bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-cyan-500/50 hover:text-cyan-400"}`}
+                                                >
+                                                    {alreadyInCourse ? <><Lock size={14} /> Conflict</> : <>Join Cohort <ArrowRight size={14} /></>}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                    </AnimatePresence>
+                </div>
+                <Footer sidebarWidth={72} />
+            </main>
+
+            {/* Join Modal */}
+            <AnimatePresence>
+                {joinModal.open && (
+                    <div className="fixed inset-0 flex items-center justify-center z-[100] p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setJoinModal({ open: false, groupId: null, sectionName: "" })} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-lg glass-card p-10 rounded-[3rem] border border-white/10 bg-[#0c0d12] shadow-2xl">
+                            <h2 className="text-2xl font-black text-white uppercase italic tracking-tight mb-2">Initialize Join</h2>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8 italic">{joinModal.sectionName}</p>
+
+                            <div className="space-y-6">
+                                <div className="relative border-2 border-dashed border-white/10 hover:border-cyan-500/50 rounded-[2rem] p-12 text-center transition-all bg-white/[0.01]">
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.png,.jpg,.jpeg,.csv"
+                                        onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                    {proofFile ? (
+                                        <div className="space-y-4">
+                                            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 mx-auto flex items-center justify-center text-cyan-400">
+                                                <CheckCircle size={32} />
+                                            </div>
+                                            <div className="text-sm font-black text-white truncate max-w-[200px] mx-auto uppercase">{proofFile.name}</div>
+                                            <button onClick={(e) => { e.stopPropagation(); setProofFile(null); }} className="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-400">Clear File</button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-slate-400">
+                                                <Upload size={32} />
+                                            </div>
+                                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Upload Class Routine Proof</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <button onClick={() => setJoinModal({ open: false, groupId: null, sectionName: "" })} className="flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all">Abort</button>
+                                    <button onClick={handleJoinSubmit} disabled={!proofFile || loading} className="flex-1 py-5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-cyan-500/20 disabled:opacity-40 transition-all">
+                                        {loading ? "Transmitting..." : "Submit Join Request"}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

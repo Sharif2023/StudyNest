@@ -6,8 +6,8 @@
 // Go to: https://cloudinary.com/console -> Settings -> API Keys
 return [
     'cloud_name' => 'doyi7vchh',
-    'api_key' => 'your_api_key_here', // Replace with your actual API key
-    'api_secret' => 'your_api_secret_here', // Replace with your actual API secret
+    'api_key' => '874563878153379', // Replace with your actual API key
+    'api_secret' => 'RYXYbuH1eQvLsrVyZL8pB9AfAiY', // Replace with your actual API secret
     'upload_preset' => 'studynest_recordings'
 ];
 

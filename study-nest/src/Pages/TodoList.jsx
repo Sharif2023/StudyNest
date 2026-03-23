@@ -1,10 +1,8 @@
-// Pages/TodoList.jsx
 import React, { useEffect, useState } from "react";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
-
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+import apiClient from "../apiConfig";
 
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 const SIDEBAR_WIDTH_EXPANDED = 260;
@@ -33,42 +31,26 @@ export default function TodoList() {
   const profile = profileStr ? JSON.parse(profileStr) : {};
   const userId = profile?.id; // Use 'id' as this is the primary key in users table
 
-  // Add debug logging:
-  console.log("User Profile:", profile);
-  console.log("User ID:", userId);
 
   // Load tasks
   const loadTodos = async () => {
-    console.log("Loading todos for user_id:", userId); // Debug log
 
     if (!userId || userId === "—" || userId === "null" || userId === "undefined") {
       console.warn("Invalid user_id, skipping todo load");
       setTodos([]);
       return;
     }
-
     try {
-      const res = await fetch(`${API_BASE}/todo.php?user_id=${userId}`);
-      const responseText = await res.text();
-      console.log("Raw todos response:", responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("JSON parse error:", e, "Response:", responseText);
-        alert("❌ Server returned invalid JSON when loading todos");
-        return;
-      }
+      const res = await apiClient.get("todo.php", { params: { user_id: userId } });
+      const data = res.data;
 
       if (data.ok) {
         setTodos(data.todos || []);
       } else {
-        console.error('Error loading todos:', data.error);
         alert(`❌ Failed to load todos: ${data.error}`);
       }
     } catch (err) {
-      console.error('Network error:', err);
+      // Error handled
       alert("⚠️ Failed to load your to-do list. Please check your connection.");
     }
   };
@@ -85,59 +67,24 @@ export default function TodoList() {
     }
 
     // Validate user ID
-    if (!userId || userId === "—" || userId === "null" || userId === "undefined") {
-      alert("❌ Please log in to add tasks.");
-      return;
-    }
-
-    console.log("Saving task with data:", form);
-    console.log("User ID:", userId);
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/todo.php?user_id=${userId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      const response = await apiClient.post("todo.php", form, { 
+        params: { user_id: userId } 
       });
-
-      // First, check if the response is OK
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      console.log("Raw response:", responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("JSON parse error:", e, "Response:", responseText);
-        // Even if JSON parsing fails, check if the task was actually created
-        // by reloading the todos
-        await loadTodos();
-        alert("✅ Task may have been added (check the list)");
-        setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
-        return;
-      }
-
-      console.log("Parsed response data: ", data);
+      const data = response.data;
 
       if (data.ok) {
         alert("✅ Task added successfully!");
         setForm({ title: "", description: "", type: "default", due_date: "", due_time: "" });
         await loadTodos();
       } else {
-        // Even if there's an error response, the task might still be created
-        // due to the way PHP handles the request
-        await loadTodos(); // Check if task was actually created
+        await loadTodos();
         alert(`⚠️ Task might have been added. Error: ${data.error || "Unknown error"}`);
-        console.error("Error: ", data.error);
       }
     } catch (err) {
       console.error("Network error during task creation:", err);
-      // Even on network error, check if task was created
       await loadTodos();
       alert("⚠️ Please check if task was added. Network error occurred.");
     } finally {
@@ -148,21 +95,10 @@ export default function TodoList() {
   // ----- Update Task -----
   const updateTask = async (id, updates) => {
     try {
-      const res = await fetch(`${API_BASE}/todo.php?user_id=${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...updates }),
+      const res = await apiClient.put("todo.php", { id, ...updates }, {
+        params: { user_id: userId }
       });
-
-      const responseText = await res.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("JSON parse error in update:", e);
-        alert("❌ Server returned invalid JSON");
-        return;
-      }
+      const data = res.data;
 
       if (data.ok) {
         setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
@@ -180,21 +116,11 @@ export default function TodoList() {
   const deleteTask = async (id) => {
     if (!window.confirm("🗑️ Are you sure you want to delete this task?")) return;
     try {
-      const res = await fetch(`${API_BASE}/todo.php?user_id=${userId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+      const res = await apiClient.delete("todo.php", {
+        data: { id },
+        params: { user_id: userId }
       });
-
-      const responseText = await res.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("JSON parse error in delete:", e);
-        alert("❌ Server returned invalid JSON");
-        return;
-      }
+      const data = res.data;
 
       if (data.ok) {
         setTodos((prev) => prev.filter((t) => t.id !== id));
@@ -225,219 +151,181 @@ export default function TodoList() {
     setEditingForm(null);
   };
 
+  const TYPE_COLORS = {
+    assignment: { color: "#a78bfa", bg: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.3)" },
+    report:     { color: "#22d3ee", bg: "rgba(6,182,212,0.12)",  border: "rgba(6,182,212,0.3)" },
+    exam:       { color: "#fb7185", bg: "rgba(244,63,94,0.12)",  border: "rgba(244,63,94,0.3)" },
+    class_test: { color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)" },
+    midterm:    { color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.3)" },
+    final:      { color: "#fb7185", bg: "rgba(244,63,94,0.15)",  border: "rgba(244,63,94,0.4)" },
+    default:    { color: "#64748b", bg: "rgba(100,116,139,0.08)", border: "rgba(100,116,139,0.2)" },
+  };
+  const inputStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0", padding: "0.625rem 1rem", borderRadius: "0.75rem", fontSize: "0.875rem", width: "100%", outline: "none" };
+
+  const completedCount = todos.filter(t => t.status === "completed").length;
+  const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
-      <LeftNav
-        navOpen={navOpen}
-        setNavOpen={setNavOpen}
-        anonymous={anonymous}
-        setAnonymous={setAnonymous}
-        sidebarWidth={sidebarWidth}
-      />
+    <div className="min-h-screen relative" style={{ background: "#08090e" }}>
+      {/* Aurora */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/3 w-80 h-80 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #34d399, transparent)", filter: "blur(80px)" }} />
+      </div>
+
+      <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} anonymous={anonymous} setAnonymous={setAnonymous} sidebarWidth={sidebarWidth} />
       <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
-      <main className="pt-10 pb-16" style={{ paddingLeft: sidebarWidth }}>
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+      <main className="pb-16 relative z-10" style={{ paddingLeft: sidebarWidth }}>
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+
+          {/* Header + Progress */}
+          <div className="flex items-end justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">To-Do List</h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Organize your assignments, reports, and exams in one place.
-              </p>
+              <h1 className="text-4xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #f1f5f9, #34d399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                Task Planner
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "#475569" }}>Organize assignments, reports, and exams</p>
             </div>
-            {!userId && (
-              <div className="text-amber-600 dark:text-amber-400 text-sm bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
-                Please log in to manage tasks
+            {todos.length > 0 && (
+              <div className="text-right">
+                <p className="text-3xl font-display font-black" style={{ color: "#34d399" }}>{progress}%</p>
+                <p className="text-xs uppercase tracking-widest" style={{ color: "#475569" }}>Completed</p>
               </div>
             )}
           </div>
 
-          {/* Add Task */}
+          {/* Progress Bar */}
+          {todos.length > 0 && (
+            <div className="h-1.5 rounded-full mb-8 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: "linear-gradient(90deg, #7c3aed, #34d399)" }} />
+            </div>
+          )}
+
+          {/* Add Task Form */}
           {userId && (
-            <div className="rounded-2xl bg-white/70 dark:bg-slate-900/80 backdrop-blur shadow-lg ring-1 ring-zinc-200 dark:ring-slate-800 p-6 mb-10 transition-all">
-              <h2 className="text-lg font-semibold mb-4 text-zinc-800 dark:text-zinc-100">Add New Task</h2>
+            <div className="p-6 rounded-2xl mb-8" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] mb-4" style={{ color: "#475569" }}>Add New Task</h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Task title *"
-                  className="rounded-xl border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-                <input
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Description"
-                  className="rounded-xl border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="rounded-xl border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                >
-                  <option value="default">Default</option>
-                  <option value="assignment">Assignment</option>
-                  <option value="report">Report</option>
-                  <option value="exam">Exam</option>
-                  <option value="class_test">Class Test</option>
-                  <option value="midterm">Midterm</option>
-                  <option value="final">Final</option>
+                {[
+                  { placeholder: "Task title *", key: "title" },
+                  { placeholder: "Description", key: "description" },
+                ].map(({ placeholder, key }) => (
+                  <input key={key} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"}
+                    onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+                  />
+                ))}
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} style={{ ...inputStyle, cursor: "pointer" }}>
+                  {["default","assignment","report","exam","class_test","midterm","final"].map(t => (
+                    <option key={t} value={t} style={{ background: "#0d0f1a" }}>
+                      {t.charAt(0).toUpperCase() + t.slice(1).replace("_"," ")}
+                    </option>
+                  ))}
                 </select>
-                <input
-                  type="date"
-                  value={form.due_date}
-                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                  className="rounded-xl border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                <input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"}
+                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
                 />
-                <input
-                  type="time"
-                  value={form.due_time}
-                  onChange={(e) => setForm({ ...form, due_time: e.target.value })}
-                  className="rounded-xl border border-zinc-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                <input type="time" value={form.due_time} onChange={(e) => setForm({ ...form, due_time: e.target.value })} style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"}
+                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
                 />
               </div>
               <div className="mt-4 flex justify-end">
-                <button
-                  onClick={saveTask}
-                  disabled={loading || !userId}
-                  className={`rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors ${loading || !userId
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
-                    }`}
-                >
-                  {loading ? "Saving..." : "Add Task"}
+                <button onClick={saveTask} disabled={loading || !userId}
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" }}>
+                  {loading ? "Saving..." : "+ Add Task"}
                 </button>
               </div>
             </div>
           )}
 
           {/* Task List */}
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {todos.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-zinc-300 dark:border-slate-700 px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                {userId ? "No tasks yet — start by adding one above 👆" : "Please log in to see your tasks"}
-              </li>
-            ) : (
-              todos.map((t) =>
-                editingId === t.id ? (
-                  <li key={t.id} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 shadow ring-1 ring-zinc-200 dark:ring-slate-700">
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      <input
-                        value={editingForm.title}
-                        onChange={(e) => setEditingForm({ ...editingForm, title: e.target.value })}
-                        className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
-                        placeholder="Title"
+              <div className="rounded-2xl border-2 border-dashed py-16 text-center" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#334155" }}>
+                  {userId ? "No tasks yet — start above 👆" : "Please log in to see your tasks"}
+                </p>
+              </div>
+            ) : todos.filter(t => t.status !== "completed").map((t) => {
+              const tc = TYPE_COLORS[t.type] || TYPE_COLORS.default;
+              return editingId === t.id ? (
+                <div key={t.id} className="p-5 rounded-2xl" style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {["title","description"].map(k => (
+                      <input key={k} value={editingForm[k] || ""} onChange={(e) => setEditingForm({ ...editingForm, [k]: e.target.value })}
+                        placeholder={k.charAt(0).toUpperCase() + k.slice(1)} style={inputStyle}
+                        onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"}
+                        onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
                       />
-                      <input
-                        value={editingForm.description}
-                        onChange={(e) => setEditingForm({ ...editingForm, description: e.target.value })}
-                        className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editingForm.type}
-                        onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value })}
-                        className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
-                      >
-                        <option value="default">Default</option>
-                        <option value="assignment">Assignment</option>
-                        <option value="report">Report</option>
-                        <option value="exam">Exam</option>
-                        <option value="class_test">Class Test</option>
-                        <option value="midterm">Midterm</option>
-                        <option value="final">Final</option>
-                      </select>
-                      <input
-                        type="date"
-                        value={editingForm.due_date || ""}
-                        onChange={(e) => setEditingForm({ ...editingForm, due_date: e.target.value })}
-                        className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
-                      />
-                      <input
-                        type="time"
-                        value={editingForm.due_time || ""}
-                        onChange={(e) => setEditingForm({ ...editingForm, due_time: e.target.value })}
-                        className="rounded-xl border px-3 py-2 text-sm dark:bg-slate-900 dark:border-slate-700"
-                      />
+                    ))}
+                    <select value={editingForm.type} onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value })} style={{ ...inputStyle, cursor: "pointer" }}>
+                      {["default","assignment","report","exam","class_test","midterm","final"].map(tp => (
+                        <option key={tp} value={tp} style={{ background: "#0d0f1a" }}>{tp}</option>
+                      ))}
+                    </select>
+                    <input type="date" value={editingForm.due_date || ""} onChange={(e) => setEditingForm({ ...editingForm, due_date: e.target.value })} style={inputStyle} onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                    <input type="time" value={editingForm.due_time || ""} onChange={(e) => setEditingForm({ ...editingForm, due_time: e.target.value })} style={inputStyle} onFocus={e => e.target.style.borderColor = "rgba(124,58,237,0.4)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                  </div>
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button onClick={saveEdit} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}>Save</button>
+                    <button onClick={cancelEdit} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={t.id} className="flex items-center px-5 py-4 rounded-2xl transition-all duration-200 group/task"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: `3px solid ${tc.color}` }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${tc.bg}`; e.currentTarget.style.borderColor = tc.border; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderLeftColor = tc.color; }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: tc.bg, color: tc.color, border: `1px solid ${tc.border}` }}>
+                        {t.type.replace("_"," ")}
+                      </span>
                     </div>
-                    <div className="mt-4 flex justify-end gap-2">
-                      <button
-                        onClick={saveEdit}
-                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={cancelEdit}
-                        className="rounded-xl bg-zinc-500 px-3 py-1.5 text-sm text-white hover:bg-zinc-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </li>
-                ) : (
-                  <li
-                    key={t.id}
-                    className="rounded-xl bg-white dark:bg-slate-900/90 px-5 py-4 shadow ring-1 ring-zinc-200 dark:ring-slate-700 hover:shadow-md transition-all"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3
-                          className={`font-semibold text-base ${t.status === "completed" ? "line-through text-zinc-400" : "text-zinc-900 dark:text-zinc-100"
-                            }`}
-                        >
-                          {t.title}
-                        </h3>
-                        {t.description && <p className="text-xs text-zinc-500 mt-1">{t.description}</p>}
-                        <p className="text-xs text-zinc-400 mt-1">
-                          {t.type} • {t.due_date || "No date"} {t.due_time || ""}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() =>
-                            updateTask(t.id, { ...t, status: t.status === "completed" ? "pending" : "completed" })
-                          }
-                          className="text-xs rounded-lg bg-emerald-600 px-3 py-1.5 text-white hover:bg-emerald-700"
-                        >
-                          {t.status === "completed" ? "Undo" : "Done"}
-                        </button>
-                        <button
-                          onClick={() => startEditing(t)}
-                          className="text-xs rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteTask(t.id)}
-                          className="text-xs rounded-lg bg-rose-600 px-3 py-1.5 text-white hover:bg-rose-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                )
-              )
-            )}
-          </ul>
+                    <h3 className="font-bold text-sm" style={{ color: "#e2e8f0" }}>{t.title}</h3>
+                    {t.description && <p className="text-xs mt-0.5" style={{ color: "#475569" }}>{t.description}</p>}
+                    <p className="text-xs mt-1" style={{ color: "#334155" }}>{t.due_date || "No date"} {t.due_time}</p>
+                  </div>
+                  <div className="flex gap-2 opacity-0 group-hover/task:opacity-100 transition-opacity duration-200">
+                    <button onClick={() => updateTask(t.id, { ...t, status: "completed" })}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+                      style={{ background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" }}>Done</button>
+                    <button onClick={() => startEditing(t)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+                      style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)" }}>Edit</button>
+                    <button onClick={() => deleteTask(t.id)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+                      style={{ background: "rgba(244,63,94,0.1)", color: "#fb7185", border: "1px solid rgba(244,63,94,0.2)" }}>Delete</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {/* Completed Tasks */}
-          {todos.some((t) => t.status === "completed") && (
-            <div className="mt-10">
-              <h2 className="text-lg font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Completed Tasks</h2>
-              <ul className="space-y-2">
-                {todos
-                  .filter((t) => t.status === "completed")
-                  .map((t) => (
-                    <li
-                      key={t.id}
-                      className="rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300"
-                    >
-                      ✅ {t.title} — {t.due_date || "No date"} {t.due_time || ""}
-                    </li>
-                  ))}
-              </ul>
+          {todos.some(t => t.status === "completed") && (
+            <div className="mt-8">
+              <h2 className="text-xs font-bold uppercase tracking-[0.3em] mb-4" style={{ color: "#334155" }}>Completed</h2>
+              <div className="space-y-2">
+                {todos.filter(t => t.status === "completed").map(t => (
+                  <div key={t.id} className="flex items-center justify-between px-5 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)" }}>
+                        <span className="text-[10px]" style={{ color: "#34d399" }}>✓</span>
+                      </div>
+                      <span className="text-sm line-through" style={{ color: "#334155" }}>{t.title}</span>
+                    </div>
+                    <button onClick={() => updateTask(t.id, { ...t, status: "pending" })}
+                      className="text-xs px-2.5 py-1 rounded-lg transition-all duration-200"
+                      style={{ color: "#475569", border: "1px solid rgba(255,255,255,0.06)" }}>Undo</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -446,4 +334,4 @@ export default function TodoList() {
       <Footer sidebarWidth={sidebarWidth} />
     </div>
   );
-}
+}

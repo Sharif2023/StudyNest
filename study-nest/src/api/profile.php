@@ -1,117 +1,31 @@
 <?php
 // profile.php
 
-function allow_cors()
-{
-  $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-  header("Access-Control-Allow-Origin: $origin");
-  header("Access-Control-Allow-Credentials: true");
-  header("Access-Control-Allow-Headers: Content-Type, Authorization");
-  header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
-  header("Content-Type: application/json; charset=utf-8");
-  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-  }
-}
-allow_cors();
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
-// --- Session Configuration ---
-session_set_cookie_params([
-  'lifetime' => 86400,
-  'path' => '/',
-  'domain' => $_SERVER['HTTP_HOST'] ?? 'localhost',
-  'secure' => false, // Set to true in production with HTTPS
-  'httponly' => true,
-  'samesite' => 'Lax'
-]);
+require_once __DIR__ . '/auth.php'; // Provides JWT/Session validation
 
-session_start();
+// --- Authentication Check ---
+$user_id = requireAuth(); // Automatically handles 401 if missing
 
-// --- DB config ---
-$host = 'localhost';
-$db_name = 'studynest';
-$user = 'root';
-$pass = '';
-$charset = 'utf8mb4';
 
-$dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
-$options = [
-  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  PDO::ATTR_EMULATE_PREPARES => false,
-];
-
+// Verify the user exists
 try {
-  $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(["ok" => false, "error" => "DB connect error", "detail" => $e->getMessage()]);
-  exit;
-}
+    $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
 
-// --- Enhanced Authentication Check ---
-$user_id = $_SESSION['user_id'] ?? null;
-
-// If no session user_id, check for auth token in headers or request
-if (!$user_id) {
-  // Check for Authorization header
-  $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-  if (str_starts_with($auth_header, 'Bearer ')) {
-    $token = substr($auth_header, 7);
-    // You would validate the token here and get user_id
-  }
-
-  // Check for user_id in request (for testing)
-  $input = json_decode(file_get_contents('php://input'), true) ?? [];
-  $user_id = $input['user_id'] ?? $_GET['user_id'] ?? null;
-}
-
-// If still no user_id, try to get from your auth system
-if (!$user_id) {
-  // Check if we have any session data that might indicate a logged-in user
-  foreach ($_SESSION as $key => $value) {
-    if (strpos($key, 'user') !== false || strpos($key, 'auth') !== false) {
-      error_log("Session has key: $key = " . json_encode($value));
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode(["ok" => false, "error" => "User not found in database"]);
+        exit;
     }
-  }
 
-  // TEMPORARY FIX: For development, you can hardcode a user ID
-  // Remove this in production
-  $user_id = 1; // Change this to an actual user ID from your database
-
-  // Set it in session for future requests
-  $_SESSION['user_id'] = $user_id;
-}
-
-if (!$user_id) {
-  http_response_code(401);
-  echo json_encode([
-    "ok" => false,
-    "error" => "Not authenticated. Please log in again."
-  ]);
-  exit;
-}
-
-// First, verify the user exists
-try {
-  $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ?");
-  $stmt->execute([$user_id]);
-  $user = $stmt->fetch();
-
-  if (!$user) {
-    http_response_code(404);
-    echo json_encode(["ok" => false, "error" => "User not found in database"]);
-    exit;
-  }
-
-  $username = $user['username'];
-  error_log("Profile API - Found user: " . $username);
-
+    $username = $user['username'];
 } catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(["ok" => false, "error" => "User verification failed", "detail" => $e->getMessage()]);
-  exit;
+    http_response_code(500);
+    echo json_encode(["ok" => false, "error" => "User verification failed", "detail" => $e->getMessage()]);
+    exit;
 }
 
 // ------------------------------------------
@@ -127,24 +41,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $out['notes'] = $notes;
 
-    // Resources - FIXED: Use direct username comparison
+    // Resources - FIXED: Use user_id for robust filtering
     $stmt = $pdo->prepare("
       SELECT * 
       FROM resources 
-      WHERE author = ?
+      WHERE user_id = ?
     ");
-    $stmt->execute([$username]);
+    $stmt->execute([$user_id]);
     $out['resources'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Recordings
     $stmt = $pdo->prepare("
       SELECT id, title, description, course, semester, created_at, url, kind
       FROM resources 
-      WHERE author = ? 
+      WHERE user_id = ? 
       AND kind = 'recording'
       ORDER BY created_at DESC
     ");
-    $stmt->execute([$username]);
+    $stmt->execute([$user_id]);
     $out['recordings'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Rooms
@@ -228,13 +142,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $counts['notes'] = $stmt->fetchColumn();
 
     // Resources count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ?");
-    $stmt->execute([$row['name']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE user_id = ?");
+    $stmt->execute([$user_id]);
     $counts['resources'] = $stmt->fetchColumn();
 
     // Recordings count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE author = ? AND kind = 'recording'");
-    $stmt->execute([$row['name']]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM resources WHERE user_id = ? AND kind = 'recording'");
+    $stmt->execute([$user_id]);
     $counts['recordings'] = $stmt->fetchColumn();
 
     // Rooms count

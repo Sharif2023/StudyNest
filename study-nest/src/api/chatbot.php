@@ -1,62 +1,12 @@
 <?php
 // chatbot.php - Backend chatbot endpoint
 
-header("Content-Type: application/json");
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
-// Enable CORS by allowing all origins
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-
-// If it's a preflight OPTIONS request, return 200 response
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-require '../../../vendor/autoload.php'; // Correct the path to autoload.php
-
-use Dotenv\Dotenv;
-
-// Load .env file
-$dotenv = Dotenv::createImmutable(__DIR__);
-$dotenv->load(); 
-
-// Load database credentials from .env file
-$host = $_ENV['DB_HOST'];
-$db = $_ENV['DB_NAME'];
-$user = $_ENV['DB_USER'];
-$pass = $_ENV['DB_PASS'];
-
-// Create a PDO instance for database connection
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    // Log successful connection
-    error_log("Database connection successful");
-} catch (PDOException $e) {
-    error_log("Database connection failed: " . $e->getMessage());
-    echo json_encode(['error' => 'Database connection failed']);
-    exit; // Stop further execution if the DB connection fails
-}
-
-// Ensure the chat_history table exists (if not, create it)
-try {
-    $createTableQuery = "
-        CREATE TABLE IF NOT EXISTS chat_history (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_message TEXT NOT NULL,
-            bot_response TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-    $pdo->exec($createTableQuery);
-    error_log("Table 'chat_history' is ready.");
-} catch (PDOException $e) {
-    error_log("Error creating table: " . $e->getMessage());
-    echo json_encode(['error' => 'Error creating table']);
-    exit;
-}
+// OpenAI configuration
+// We can use the .env loader from db.php which already populated $_ENV
+$apiKey = $_ENV['OPENAI_API_KEY'] ?? null;
+$apiUrl = 'https://api.openai.com/v1/chat/completions';
 
 $apiKey = $_ENV['OPENAI_API_KEY']; // Load API key from .env file
 $apiUrl = 'https://api.openai.com/v1/chat/completions'; // OpenAI API URL for chat models
@@ -115,25 +65,19 @@ $data = json_decode(file_get_contents("php://input"), true);
 if (isset($data['message'])) {
     $userMessage = $data['message'];
 
-    // Save the user message to the database
     try {
-        $stmt = $pdo->prepare("INSERT INTO chat_history (user_message) VALUES (:message)");
-        $stmt->bindParam(':message', $userMessage);
-        $stmt->execute();
-
-        // Get a response from OpenAI
+        // 1) Get a response from OpenAI first
         $botResponse = getOpenAIResponse($userMessage);
 
-        // Save bot response to the database
-        $stmt = $pdo->prepare("INSERT INTO chat_history (bot_response) VALUES (:response)");
-        $stmt->bindParam(':response', $botResponse);
-        $stmt->execute();
+        // 2) Save both to the database in one row
+        $stmt = $pdo->prepare("INSERT INTO chat_history (user_message, bot_response) VALUES (?, ?)");
+        $stmt->execute([$userMessage, $botResponse]);
 
-        // Return the bot's response
+        // 3) Return the bot's response
         echo json_encode(['response' => $botResponse]);
-    } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
-        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    } catch (Throwable $e) {
+        error_log('Chatbot error: ' . $e->getMessage());
+        echo json_encode(['error' => 'Chatbot error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['error' => 'No message received']);

@@ -4,21 +4,7 @@
 // messages_fetch, messages_send, messages_mark_read). Requires db.php to expose $pdo and sessions.
 // No changes to db/php elsewhere. Creates missing tables if needed.
 
-header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header("Access-Control-Allow-Origin: $origin");
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-require_once __DIR__ . '/db.php'; // must set $pdo and session_start() or similar
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    @session_start();
-}
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
 // ---------- Helpers ----------
 function json_ok($data = [])
@@ -45,49 +31,6 @@ function me_or_401(PDO $pdo)
         json_err("unauthorized", 401);
     return $me;
 }
-function ensure_schema(PDO $pdo)
-{
-    // conversations: single row per pair (a_user_id < b_user_id)
-    $pdo->exec("
-    CREATE TABLE IF NOT EXISTS conversations (
-      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      a_user_id INT UNSIGNED NOT NULL,
-      b_user_id INT UNSIGNED NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_pair (a_user_id, b_user_id),
-      KEY idx_a (a_user_id),
-      KEY idx_b (b_user_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  ");
-
-    // messages
-    $pdo->exec("
-    CREATE TABLE IF NOT EXISTS messages (
-      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      conversation_id INT UNSIGNED NOT NULL,
-      sender_id INT UNSIGNED NOT NULL,
-      body TEXT NULL,
-      attachment_url VARCHAR(1024) NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      KEY idx_conv (conversation_id, id),
-      KEY idx_sender (sender_id),
-      CONSTRAINT fk_msg_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  ");
-
-    // per-user read position
-    $pdo->exec("
-    CREATE TABLE IF NOT EXISTS message_reads (
-      conversation_id INT UNSIGNED NOT NULL,
-      user_id INT UNSIGNED NOT NULL,
-      last_read_message_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (conversation_id, user_id),
-      KEY idx_user (user_id),
-      CONSTRAINT fk_read_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  ");
-}
 
 // Normalize pair so (a<b) to keep only one conversation row per pair.
 function norm_pair($u1, $u2)
@@ -105,7 +48,6 @@ if (!$action) {
 }
 
 try {
-    ensure_schema($pdo);
     $me = me_or_401($pdo);
 
     switch ($action) {
@@ -378,7 +320,8 @@ try {
             $up = $pdo->prepare("
     INSERT INTO message_reads (conversation_id, user_id, last_read_message_id)
     VALUES (?,?,?)
-    ON DUPLICATE KEY UPDATE last_read_message_id = GREATEST(last_read_message_id, VALUES(last_read_message_id))
+    ON CONFLICT (conversation_id, user_id) 
+    DO UPDATE SET last_read_message_id = GREATEST(message_reads.last_read_message_id, EXCLUDED.last_read_message_id)
   ");
             $up->execute([$cid, $uid, $id]);
 
@@ -408,7 +351,8 @@ try {
             $up = $pdo->prepare("
         INSERT INTO message_reads (conversation_id, user_id, last_read_message_id)
         VALUES (?,?,?)
-        ON DUPLICATE KEY UPDATE last_read_message_id=GREATEST(last_read_message_id, VALUES(last_read_message_id))
+        ON CONFLICT (conversation_id, user_id) 
+        DO UPDATE SET last_read_message_id = GREATEST(message_reads.last_read_message_id, EXCLUDED.last_read_message_id)
       ");
             $up->execute([$cid, $me['id'], $last]);
             json_ok();

@@ -1,337 +1,286 @@
 // Components/SharedResourceUpload.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  X, 
+  Upload, 
+  Link as LinkIcon, 
+  Plus, 
+  CheckCircle2, 
+  Globe,
+  Tag,
+  BookOpen,
+  Layout,
+  Clock
+} from "lucide-react";
+import apiClient from "../apiConfig";
 
-/**
- * SharedResourceUpload (modal)
- * - Viewport-safe modal with sticky header, scrollable body
- * - Creates a PUBLIC resource in the Shared Library
- * - Supports: file upload (Cloudinary via backend) or external link
- *
- * Props:
- *  - apiUrl: string (POST endpoint, e.g., /ResourceLibrary.php)
- *  - onClose(): void
- *  - onCreated(message: string, points?: number): void
- */
 export default function SharedResourceUpload({
   apiUrl = "",
   onClose,
   onCreated,
 }) {
-  const [useLink, setUseLink] = useState(false); // false=file, true=link
+  const [mode, setMode] = useState("file"); // 'file' | 'link'
   const [file, setFile] = useState(null);
-  const [link, setLink] = useState("");
+  const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState("book");
   const [course, setCourse] = useState("");
   const [semester, setSemester] = useState("");
+  const [kind, setKind] = useState("book");
   const [tags, setTags] = useState("");
   const [description, setDescription] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const dropRef = useRef(null);
-
-  // Drag & drop styling
-  useEffect(() => {
-    const el = dropRef.current;
-    if (!el) return;
-    const prevent = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    const over = (e) => {
-      prevent(e);
-      el.classList.add("ring-emerald-500", "bg-emerald-50");
-    };
-    const leave = (e) => {
-      prevent(e);
-      el.classList.remove("ring-emerald-500", "bg-emerald-50");
-    };
-    const drop = (e) => {
-      prevent(e);
-      leave(e);
-      const f = e.dataTransfer.files?.[0];
-      if (f) setFile(f);
-    };
-    el.addEventListener("dragover", over);
-    el.addEventListener("dragleave", leave);
-    el.addEventListener("drop", drop);
-    return () => {
-      el.removeEventListener("dragover", over);
-      el.removeEventListener("dragleave", leave);
-      el.removeEventListener("drop", drop);
-    };
-  }, []);
-
-  // Lock background scroll while open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
 
   const canSubmit =
-    (useLink ? !!link.trim() : !!file) &&
-    !!title.trim() &&
-    !!course.trim() &&
-    !!semester.trim() &&
-    !!apiUrl;
+    title.trim() !== "" &&
+    course.trim() !== "" &&
+    semester.trim() !== "" &&
+    (mode === "file" ? !!file : url.trim() !== "");
 
-  const submit = async () => {
-    if (!canSubmit) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit || !apiUrl) return;
+
     setSubmitting(true);
     try {
       const form = new FormData();
-      form.append("src_type", useLink ? "link" : "file");
+      form.append("action", "upload_resource"); // Optional depending on backend
       form.append("title", title.trim());
-      form.append("kind", kind);
       form.append("course", course.trim());
       form.append("semester", semester.trim());
-      form.append("tags", tags.trim());
-      form.append("description", description.trim());
-      form.append("author", anonymous ? "Anonymous" : "");
-      // crucial: create directly in Shared (public) library
-      form.append("visibility", "public");
+      form.append("kind", kind);
+      form.append("tags", tags);
+      form.append("description", description);
+      form.append("visibility", "public"); // Forced public for Shared Library
+      form.append("src_type", mode);
 
-      if (useLink) {
-        form.append("url", link.trim());
-      } else if (file) {
+      if (mode === "file") {
         form.append("file", file);
+      } else {
+        form.append("url", url.trim());
       }
 
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const json = await res.json();
+      const res = await apiClient.post(apiUrl || "/ResourceLibrary.php", form);
+      const j = res.data;
 
-      if (json?.status === "success") {
+      if (j?.status === "success") {
         onClose?.();
-        onCreated?.(json.message || "Resource created", json.points_awarded || 0);
+        onCreated?.(j.message, j.points_awarded || 0);
       } else {
-        alert("❌ " + (json?.message || "Upload failed"));
+        alert("❌ " + (j?.message || "Failed to create resource"));
       }
     } catch (err) {
-      alert("❌ " + (err?.message || "Upload failed"));
+      console.error(err);
+      alert("❌ " + (err.message || "Upload failed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-3 sm:p-4" onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-zinc-200 flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur">
-          <h2 className="text-lg font-semibold text-zinc-900">Add resource</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100"
-            aria-label="Close"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-2xl"
+        />
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* upload vs link */}
-            <div className="md:col-span-2 flex items-center gap-3 text-sm">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="src"
-                  checked={!useLink}
-                  onChange={() => setUseLink(false)}
-                />{" "}
-                Upload file
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="src"
-                  checked={useLink}
-                  onChange={() => setUseLink(true)}
-                />{" "}
-                External link
-              </label>
-              <label className="ml-auto inline-flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={anonymous}
-                  onChange={(e) => setAnonymous(e.target.checked)}
-                />{" "}
-                Post as Anonymous
-              </label>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[3rem] bg-[#08090e] border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.8)] custom-scrollbar"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-10 py-10 bg-[#08090e]/95 backdrop-blur-3xl border-b border-white/5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Resource.Public_Sync</span>
+              </div>
+              <h3 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                <Plus className="w-8 h-8 text-cyan-500" />
+                Global Node
+              </h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="group p-4 rounded-2xl bg-white/5 text-slate-500 hover:bg-white/10 hover:text-white transition-all duration-500 border border-white/5"
+            >
+              <X className="h-5 w-5 group-hover:rotate-180 transition-transform duration-700" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-10 space-y-10">
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/5 w-fit">
+              {[
+                ["file", "Digital File"],
+                ["link", "External Link"],
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setMode(val)}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    mode === val
+                      ? "bg-white text-black shadow-xl"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {!useLink ? (
-              <div
-                ref={dropRef}
-                className="md:col-span-2 rounded-2xl border-2 border-dashed border-zinc-300 p-6 text-center ring-1 ring-transparent transition"
-              >
-                {!file ? (
-                  <>
-                    <FileIcon className="mx-auto h-10 w-10 text-zinc-400" />
-                    <p className="mt-2 text-sm text-zinc-600">
-                      Drag & drop a PDF/image/Doc, or
-                    </p>
-                    <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">
-                      Choose file
+            <div className="grid gap-8">
+              {mode === "file" ? (
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Content Payload</label>
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-700" />
+                    <div className="relative p-12 rounded-[2.5rem] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center text-center group-hover:border-cyan-500/50 transition-all duration-500 group-hover:bg-white/[0.04]">
+                      <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-3xl mb-6 relative group-hover:scale-110 transition-transform duration-500">
+                        <Upload className="w-8 h-8 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                        {file && (
+                          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-cyan-500 text-black flex items-center justify-center">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
                       <input
                         type="file"
-                        className="hidden"
-                        onChange={(e) =>
-                          setFile(e.target.files?.[0] || null)
-                        }
+                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                    </label>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
-                    <div className="truncate text-sm">
-                      <span className="font-semibold">{file.name}</span>
-                      <span className="mx-1 text-zinc-400">•</span>
-                      <span className="text-zinc-600">
-                        {file.type || "file"}
+                      <span className="text-[11px] font-black text-white uppercase tracking-widest ">
+                        {file ? file.name : "Establish Global Connection"}
                       </span>
+                      <p className="mt-2 text-[9px] font-bold text-slate-600 uppercase tracking-widest">DRAG & DROP SECURE PAYLOAD (MAX 50MB)</p>
                     </div>
-                    <button
-                      onClick={() => setFile(null)}
-                      className="rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold hover:bg-zinc-50"
-                    >
-                      Remove
-                    </button>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="md:col-span-2">
-                <Label>Link URL</Label>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Source URL</label>
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://cloud.archive/asset-v1"
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Archive Title</label>
                 <input
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://example.com/awesome-notes"
-                  className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  placeholder="E.G., ADVANCED ALGORITHMS NOTES"
+                  required
                 />
               </div>
-            )}
 
-            <div>
-              <Label>Title</Label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., CSE220 DP Patterns Guide"
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Course Identifier</label>
+                  <input
+                    value={course}
+                    onChange={(e) => setCourse(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="E.G., CSE401"
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Academic Term</label>
+                  <input
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="E.G., SPRING 2026"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Node Typology</label>
+                  <select
+                    value={kind}
+                    onChange={(e) => setKind(e.target.value)}
+                    className="w-full appearance-none rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  >
+                    {["book", "slide", "past paper", "study guide", "recording", "other"].map((k) => (
+                      <option key={k} value={k} className="bg-[#08090e] text-white">{k.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Registry Tags</label>
+                  <input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="COMMA-SEPARATED TAGS"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Archival Abstract</label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all resize-none"
+                  placeholder="Summarize the core concepts for the shared knowledge base..."
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col items-center justify-center p-8 rounded-[2rem] bg-cyan-500/5 border border-cyan-500/20">
+                  <Globe className="w-8 h-8 text-cyan-500 mb-3 animate-pulse" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Synched to Global Registry</span>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-2">Public visibility is enabled for this node</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Type</Label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-10 border-t border-white/5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-white hover:bg-white/5 transition-all"
               >
-                <option value="book">book</option>
-                <option value="slide">slide</option>
-                <option value="past paper">past paper</option>
-                <option value="study guide">study guide</option>
-                <option value="other">other</option>
-              </select>
+                Abort
+              </button>
+              <button
+                type="submit"
+                disabled={!canSubmit || submitting}
+                className={`w-full sm:w-auto relative px-12 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] overflow-hidden group transition-all ${
+                  canSubmit && !submitting 
+                    ? "bg-white text-black shadow-2xl shadow-white/5 hover:scale-105 active:scale-95" 
+                    : "bg-white/10 text-slate-600 cursor-not-allowed"
+                }`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <span className="relative z-10 group-hover:text-white transition-colors">
+                  {submitting ? "Processing..." : "Commit Transfer"}
+                </span>
+              </button>
             </div>
-            <div>
-              <Label>Course</Label>
-              <input
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                placeholder="e.g., CSE220"
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <Label>Semester</Label>
-              <input
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                placeholder="e.g., Fall 2025"
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Tags</Label>
-              <input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="comma separated: dp, graphs, quiz"
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Description</Label>
-              <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Tell everyone what this resource covers and why it’s useful…"
-                className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-zinc-200 px-4 py-3 flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold hover:bg-zinc-50"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!canSubmit || submitting}
-            onClick={submit}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {submitting ? "Uploading…" : "Create"}
-          </button>
-        </div>
+          </form>
+        </motion.div>
       </div>
-    </div>
-  );
-}
-
-function Label({ children }) {
-  return (
-    <label className="text-xs font-semibold text-zinc-600">{children}</label>
-  );
-}
-
-function XIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
-      <path
-        fill="currentColor"
-        d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"
-      />
-    </svg>
-  );
-}
-function FileIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
-      <path
-        fill="currentColor"
-        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z"
-      />
-    </svg>
+    </AnimatePresence>
   );
 }

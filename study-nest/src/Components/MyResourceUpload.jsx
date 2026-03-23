@@ -1,5 +1,23 @@
 // Components/MyResourceUpload.jsx
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  X, 
+  Upload, 
+  Link as LinkIcon, 
+  File, 
+  Database, 
+  Shield, 
+  Globe, 
+  Plus, 
+  CheckCircle2, 
+  AlertCircle,
+  Tag,
+  BookOpen,
+  Layout,
+  Clock
+} from "lucide-react";
+import apiClient from "../apiConfig";
 
 /**
  * Scroll-safe modal for creating a resource (file → Cloudinary via backend, or external link).
@@ -53,12 +71,8 @@ export default function MyResourceUpload({
         form.append("url", url.trim());
       }
 
-      const r = await fetch(apiUrl, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const j = await r.json();
+      const res = await apiClient.post(apiUrl || "/ResourceLibrary.php", form);
+      const j = res.data;
 
       if (j?.status === "success") {
         onClose?.();
@@ -75,193 +89,234 @@ export default function MyResourceUpload({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-4 flex items-center justify-center" onClick={onClose}>
-      <div
-        className="mx-auto w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl ring-1 ring-zinc-200 dark:bg-slate-900 dark:ring-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Sticky header to keep close button visible */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/90 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add a Resource</h3>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-slate-800"
-            aria-label="Close"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-2xl"
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          {/* File vs Link toggle */}
-          <div className="inline-flex rounded-lg bg-zinc-100 p-1 dark:bg-slate-800">
-            {[
-              ["file", "File upload"],
-              ["link", "External link"],
-            ].map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setMode(val)}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${mode === val ? "bg-white dark:bg-slate-900 shadow" : "text-zinc-600 dark:text-zinc-300"
-                  }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {mode === "file" ? (
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">File</label>
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-cyan-700"
-              />
-              <p className="text-xs text-zinc-500">
-                Images, videos, PDFs, docs, slides, spreadsheets, zips, etc. will be stored on Cloudinary.
-              </p>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[3rem] bg-[#08090e] border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.8)] custom-scrollbar"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-10 py-10 bg-[#08090e]/95 backdrop-blur-3xl border-b border-white/5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Resource.Protocol_01</span>
+              </div>
+              <h3 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                <Plus className="w-8 h-8 text-cyan-500" />
+                Initiate Archive
+              </h3>
             </div>
-          ) : (
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">URL</label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/resource"
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              />
-            </div>
-          )}
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Title *</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="e.g., Week 3 Slides"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Course *</label>
-              <input
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-                placeholder="e.g., CS101"
-                required
-              />
-            </div>
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Semester *</label>
-              <input
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-                placeholder="e.g., Fall 2025"
-                required
-              />
-            </div>
-            <div className="grid gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              >
-                {["other", "book", "slide", "past paper", "study guide", "recording"].map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tags</label>
-            <input
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="Comma-separated, e.g., algebra,midterm"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Description</label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-              placeholder="Optional notes for your future self (or others if public)"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Visibility</label>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="private"
-                  checked={visibility === "private"}
-                  onChange={() => setVisibility("private")}
-                />
-                <span>Private (My Resources)</span>
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="public"
-                  checked={visibility === "public"}
-                  onChange={() => setVisibility("public")}
-                />
-                <span>Public (Shared Resources)</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
             <button
-              type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:bg-slate-800"
+              className="group p-4 rounded-2xl bg-white/5 text-slate-500 hover:bg-white/10 hover:text-white transition-all duration-500 border border-white/5"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!canSubmit || submitting}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${canSubmit && !submitting ? "bg-cyan-600 hover:bg-cyan-700" : "bg-cyan-400 cursor-not-allowed"
-                }`}
-            >
-              {submitting ? "Uploading…" : mode === "file" ? "Upload" : "Save"}
+              <X className="h-5 w-5 group-hover:rotate-180 transition-transform duration-700" />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} className="p-10 space-y-10">
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/5 w-fit">
+              {[
+                ["file", "Digital File"],
+                ["link", "External Link"],
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setMode(val)}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    mode === val
+                      ? "bg-white text-black shadow-xl"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-8">
+              {mode === "file" ? (
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Content Payload</label>
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-700" />
+                    <div className="relative p-12 rounded-[2.5rem] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center text-center group-hover:border-cyan-500/50 transition-all duration-500 group-hover:bg-white/[0.04]">
+                      <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-3xl mb-6 relative group-hover:scale-110 transition-transform duration-500">
+                        <Upload className="w-8 h-8 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                        {file && (
+                          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-cyan-500 text-black flex items-center justify-center">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <span className="text-[11px] font-black text-white uppercase tracking-widest ">
+                        {file ? file.name : "Establish Metadata Connection"}
+                      </span>
+                      <p className="mt-2 text-[9px] font-bold text-slate-600 uppercase tracking-widest">DRAG & DROP SECURE PAYLOAD (MAX 50MB)</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Source URL</label>
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://cloud.archive/asset-v1"
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Asset Identification</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  placeholder="E.G., QUANTUM PHYSICS NOTES"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Context Category</label>
+                  <input
+                    value={course}
+                    onChange={(e) => setCourse(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="E.G., PHY101"
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Academic Cycle</label>
+                  <input
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="E.G., FALL 2026"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Asset Logic</label>
+                  <select
+                    value={kind}
+                    onChange={(e) => setKind(e.target.value)}
+                    className="w-full appearance-none rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                  >
+                    {["other", "book", "slide", "past paper", "study guide", "recording"].map((k) => (
+                      <option key={k} value={k} className="bg-[#08090e] text-white">{k.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Registry Tags</label>
+                  <input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all"
+                    placeholder="COMMA-SEPARATED TAGS"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Metadata Summary</label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-8 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl transition-all resize-none"
+                  placeholder="Enter detailed description for archival indexing..."
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 text-center block">Visibility Permissions</label>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  {[
+                    ["private", "Vault Storage", Shield],
+                    ["public", "Global Registry", Globe],
+                  ].map(([val, label, Icon]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setVisibility(val)}
+                      className={`group flex flex-1 items-center gap-5 px-8 py-5 rounded-2xl transition-all duration-500 border ${
+                        visibility === val 
+                          ? "bg-white/10 border-white/20 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]" 
+                          : "bg-transparent border-transparent opacity-30 hover:opacity-100 hover:bg-white/5"
+                      }`}
+                    >
+                      <div className={`p-3 rounded-xl transition-all ${visibility === val ? "bg-cyan-500 text-black shadow-[0_0_20px_rgba(6,182,212,0.4)]" : "bg-white/5 text-slate-400"}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] block">{label}</span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                          {val === "private" ? "Restricted Access" : "Network Visibility"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-10 border-t border-white/5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!canSubmit || submitting}
+                className={`w-full sm:w-auto relative px-12 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] overflow-hidden group transition-all ${
+                  canSubmit && !submitting 
+                    ? "bg-white text-black shadow-2xl shadow-white/5 hover:scale-105 active:scale-95" 
+                    : "bg-white/10 text-slate-600 cursor-not-allowed"
+                }`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <span className="relative z-10 group-hover:text-white transition-colors">
+                  {submitting ? "Processing..." : mode === "file" ? "Execute Upload" : "Sync Archive"}
+                </span>
+              </button>
+            </div>
+          </form>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }
 
 /* local icon */
-function XIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
-      <path
-        fill="currentColor"
-        d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"
-      />
-    </svg>
-  );
-}

@@ -1,217 +1,22 @@
 <?php
-/**
- * ResourceLibrary.php — Cloudinary-enabled (UNSIGNED uploads)
- * -----------------------------------------------------------
- * - GET  : public feed (optionally exclude recordings)
- * - POST : toggle_bookmark | share_resource | share_recording | create (file→Cloudinary or link) | delete_resource
- * - PUT  : update counters (votes, bookmarks, flagged)
- *
- * Cloudinary: uses UNSIGNED uploads (no API secret in server).
- * Required:
- *   - CLOUDINARY_CLOUD_NAME  (or CLOUDINARY_URL from which cloud name will be parsed)
- *   - CLOUDINARY_UPLOAD_PRESET  (MUST be unsigned)
- */
+// ResourceLibrary.php
 
-////////////////////
-// CORS + Headers //
-////////////////////
-$allowed_origins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    // add production origins here
-];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowed_origins, true)) {
-    header("Access-Control-Allow-Origin: $origin");
-    header("Vary: Origin");
-    header("Access-Control-Allow-Credentials: true");
-}
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, X-Requested-With");
-header("Content-Type: application/json");
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
-session_start();
-
-///////////////////////////
-// Cloudinary Config     //
-///////////////////////////
-// 1) Try explicit env var
-$cloud_from_env = getenv('CLOUDINARY_CLOUD_NAME');
-// 2) Else parse from CLOUDINARY_URL (e.g. cloudinary://<key>:<secret>@yourcloud)
-$cloud_from_url = null;
-if (!$cloud_from_env) {
-    $url = getenv('CLOUDINARY_URL') ?: '';
-    if ($url && preg_match('~@([a-zA-Z0-9_-]+)~', $url, $m)) {
-        $cloud_from_url = $m[1];
-    }
-}
-// 3) Hard fallback (your provided value)
-$cloud_hard_fallback = 'doyi7vchh';
-
-// Final config
-$CLOUDINARY_CLOUD_NAME    = $cloud_from_env ?: ($cloud_from_url ?: $cloud_hard_fallback);
-$CLOUDINARY_UPLOAD_PRESET = getenv('CLOUDINARY_UPLOAD_PRESET') ?: 'resources';
-$CLOUDINARY_ENDPOINT      = "https://api.cloudinary.com/v1_1/{$CLOUDINARY_CLOUD_NAME}/auto/upload";
-
-//////////////////////
-// Database Connect //
-//////////////////////
-$host    = "localhost";
-$db_name = "studynest";
-$user    = "root";
-$pass    = "";
-$charset = "utf8mb4";
-
-$dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-];
-try { $pdo = new PDO($dsn, $user, $pass, $options); }
-catch (Throwable $e) {
-    echo json_encode(["status"=>"error","message"=>"DB connection failed","detail"=>$e->getMessage()]);
-    exit;
-}
-
-///////////////////////
-// Schema Bootstrap  //
-///////////////////////
-// Bookmarks
-$pdo->exec("
-CREATE TABLE IF NOT EXISTS bookmarks (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  resource_id INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uniq_user_resource (user_id, resource_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
-
-// Resources — fixed schema (no stray semicolon after visibility)
-$pdo->exec("
-CREATE TABLE IF NOT EXISTS resources (
-  id                       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id                  INT UNSIGNED NULL,
-  title                    VARCHAR(255) NOT NULL,
-  kind                     VARCHAR(64) NULL,
-  course                   VARCHAR(64) NULL,
-  semester                 VARCHAR(64) NULL,
-  tags                     VARCHAR(512) NULL,
-  description              TEXT NULL,
-  author                   VARCHAR(128) NULL,
-  src_type                 VARCHAR(20) NULL,      -- 'file' | 'link'
-  url                      TEXT NULL,             -- Cloudinary secure_url OR external link
-
-  cloudinary_public_id     VARCHAR(255) NULL,
-  cloudinary_resource_type VARCHAR(20)  NULL,     -- image | video | raw
-  cloudinary_version       BIGINT       NULL,
-  cloudinary_bytes         BIGINT       NULL,
-
-  votes                    INT NOT NULL DEFAULT 0,
-  bookmarks                INT NOT NULL DEFAULT 0,
-  flagged                  TINYINT(1) NOT NULL DEFAULT 0,
-  visibility               ENUM('public','private') NOT NULL DEFAULT 'private',
-  shared_from_recording_id INT UNSIGNED NULL,
-  shared_at                DATETIME NULL,
-  created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY idx_kind (kind),
-  KEY idx_course_semester (course, semester),
-  KEY idx_visibility_kind_created (visibility, kind, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
-
-// --- Best-effort column backfill for existing installs (prevents 42S22) ---
-function ensureColumn(PDO $pdo, string $table, string $column, string $definition): void {
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
-    ");
-    $stmt->execute([$table, $column]);
-    $exists = (int)$stmt->fetchColumn() > 0;
-    if (!$exists) {
-        $pdo->exec("ALTER TABLE `$table` ADD COLUMN $column $definition");
-    }
-}
-
-// Backfill Cloudinary and sharing columns if missing
-try {
-    ensureColumn($pdo, 'resources', 'cloudinary_public_id',     "VARCHAR(255) NULL");
-    ensureColumn($pdo, 'resources', 'cloudinary_resource_type', "VARCHAR(20) NULL");
-    ensureColumn($pdo, 'resources', 'cloudinary_version',       "BIGINT NULL");
-    ensureColumn($pdo, 'resources', 'cloudinary_bytes',         "BIGINT NULL");
-    ensureColumn($pdo, 'resources', 'shared_from_recording_id', "INT UNSIGNED NULL");
-    ensureColumn($pdo, 'resources', 'shared_at',                "DATETIME NULL");
-    // If an older install had visibility default wrong, try to fix to 'private'
-    $pdo->exec("ALTER TABLE `resources` MODIFY visibility ENUM('public','private') NOT NULL DEFAULT 'private'");
-} catch (Throwable $e) {
-    // Non-fatal; continues even if ALTER fails (e.g., permissions)
-}
+require_once __DIR__ . '/auth.php'; // Provides StudyNestAuth
+require_once __DIR__ . '/cloudinary_helper.php';
 
 //////////////////////
 // Utility helpers  //
 //////////////////////
 function current_user_id(): ?int {
-    return !empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
-}
-function award_points(PDO $pdo, int $user_id, int $points, string $actionType, int $refId, string $desc): void {
-    $pdo->prepare("UPDATE users SET points = COALESCE(points, 0) + ? WHERE id = ?")->execute([$points, $user_id]);
-    $pdo->exec("
-      CREATE TABLE IF NOT EXISTS points_history (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        points INT NOT NULL,
-        action_type VARCHAR(64) NOT NULL,
-        reference_id INT NULL,
-        description VARCHAR(255) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-    $pdo->prepare("
-      INSERT INTO points_history (user_id, points, action_type, reference_id, description)
-      VALUES (?, ?, ?, ?, ?)
-    ")->execute([$user_id, $points, $actionType, $refId, $desc]);
+    // Standardize: try JWT scope 'user' first, then session
+    return StudyNestAuth::validate(['user'], false) ?: (!empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
 }
 
-/** Upload local file to Cloudinary via UNSIGNED preset */
-function cloudinary_upload(string $endpoint, string $unsigned_preset, string $tmpPath, ?string $filename=null): array {
-    $ch = curl_init();
-    $cfile = new CURLFile($tmpPath, mime_content_type($tmpPath), $filename ?: basename($tmpPath));
-    $payload = [
-        'upload_preset' => $unsigned_preset,
-        'file'          => $cfile,
-        'folder'        => 'resources',
-    ];
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $endpoint,
-        CURLOPT_POST           => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_TIMEOUT        => 60,
-    ]);
-    $resp = curl_exec($ch);
-    if ($resp === false) {
-        $err = curl_error($ch);
-        curl_close($ch);
-        throw new RuntimeException("Cloudinary upload failed: $err");
-    }
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+// Centralized awardPoints is provided by db.php
 
-    $json = json_decode($resp, true);
-    if ($status >= 400 || !is_array($json) || empty($json['secure_url'])) {
-        $msg = is_array($json) && !empty($json['error']['message']) ? $json['error']['message'] : 'Unknown Cloudinary error';
-        throw new RuntimeException("Cloudinary error ($status): " . $msg);
-    }
-    return [
-        'secure_url'    => $json['secure_url'],
-        'public_id'     => $json['public_id'] ?? null,
-        'resource_type' => $json['resource_type'] ?? null,
-        'bytes'         => $json['bytes'] ?? null,
-        'version'       => $json['version'] ?? null,
-    ];
-}
+// Logic moved to cloudinary_helper.php
 
 /////////////////////////
 // GET — public feed  //
@@ -271,17 +76,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uid = current_user_id();
         $rid = (int)($_POST['resource_id'] ?? 0);
         if (!$rid) { echo json_encode(["status"=>"error","message"=>"Missing resource ID"]); exit; }
+        $is_note = ($_POST['is_note'] ?? '0') === '1';
         try {
-            $q = $pdo->prepare("SELECT id,user_id FROM resources WHERE id=? LIMIT 1");
-            $q->execute([$rid]);
-            $res = $q->fetch();
-            if (!$res) { echo json_encode(["status"=>"error","message"=>"Resource not found"]); exit; }
-            if (!is_null($res['user_id']) && (int)$res['user_id'] !== $uid) {
-                echo json_encode(["status"=>"error","message"=>"You can only delete your own resource"]); exit;
+            $res = null;
+            if (!$is_note) {
+                $q = $pdo->prepare("SELECT id,user_id FROM resources WHERE id=? LIMIT 1");
+                $q->execute([$rid]);
+                $res = $q->fetch();
+            }
+            if (!$res) {
+                // Check if it's a note
+                $qn = $pdo->prepare("SELECT id,user_id FROM notes WHERE id=? LIMIT 1");
+                $qn->execute([$rid]);
+                $note = $qn->fetch();
+                if (!$note) { echo json_encode(["status"=>"error","message"=>"Item not found"]); exit; }
+                if ((int)$note['user_id'] !== $uid) { echo json_encode(["status"=>"error","message"=>"You can only delete your own item"]); exit; }
+            } else {
+                if (!is_null($res['user_id']) && (int)$res['user_id'] !== $uid) {
+                    echo json_encode(["status"=>"error","message"=>"You can only delete your own resource"]); exit;
+                }
             }
             // Note: With unsigned uploads we cannot delete the actual Cloudinary asset server-side here.
             $pdo->prepare("DELETE FROM resources WHERE id=?")->execute([$rid]);
             $pdo->prepare("DELETE FROM bookmarks WHERE resource_id=?")->execute([$rid]); // clean up
+            
+            // Also check if it's a note (if MyResources calls this for notes)
+            $pdo->prepare("DELETE FROM notes WHERE id=? AND user_id=?")->execute([$rid, $uid]);
+
             echo json_encode(["status"=>"success","message"=>"Resource deleted"]);
         } catch (Throwable $e) {
             echo json_encode(["status"=>"error","message"=>$e->getMessage()]);
@@ -299,7 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $q = $pdo->prepare("SELECT id,user_id,visibility FROM resources WHERE id=? LIMIT 1");
             $q->execute([$rid]);
             $res = $q->fetch();
-            if (!$res) { echo json_encode(["status"=>"error","message"=>"Resource not found"]); exit; }
+            if (!$res) {
+                echo json_encode(["status"=>"error","message"=>"Resource not found. If this is a personal note, please use the publish button."]); exit;
+            }
             if (!is_null($res['user_id']) && (int)$res['user_id'] !== $uid) {
                 echo json_encode(["status"=>"error","message"=>"You can only share your own resource"]); exit;
             }
@@ -307,12 +130,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(["status"=>"success","message"=>"Already shared","points_awarded"=>0]); exit;
             }
             $pdo->prepare("UPDATE resources SET visibility='public', shared_at=NOW() WHERE id=?")->execute([$rid]);
-            $points = 15; award_points($pdo, $uid, $points, 'resource_share', $rid, "Shared personal resource");
+            
+            // Note: If this were a note, we'd need to copy it to resources table. 
+            // MyResources currently only calls this on items from the resources table.
+            $points = 15; 
+            $newTotal = awardPoints($pdo, $uid, $points, 'resource_share', $rid, "Shared personal resource");
+
+            // Proactive Notification for peers
+            $resInfo = $pdo->prepare("SELECT title, course FROM resources WHERE id = ?");
+            $resInfo->execute([$rid]);
+            $rdata = $resInfo->fetch();
+            if ($rdata && !empty($rdata['course'])) {
+                $course = $rdata['course'];
+                $notifStmt = $pdo->prepare("
+                    SELECT DISTINCT u.student_id 
+                    FROM users u
+                    WHERE u.id <> ? 
+                      AND (
+                        u.id IN (SELECT user_id FROM resources WHERE course = ?)
+                        OR u.id IN (SELECT user_id FROM meeting_participants WHERE meeting_id IN (SELECT id FROM meetings WHERE course = ?))
+                      )
+                    LIMIT 30
+                ");
+                $notifStmt->execute([$uid, $course, $course]);
+                $targets = $notifStmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($targets) {
+                    $n_title = "🆕 New Resource: {$course}";
+                    $n_msg = "A new resource \"{$rdata['title']}\" was just shared in your course!";
+                    $n_link = "/resources";
+                    $n_ins = $pdo->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id) VALUES (?, ?, ?, ?, 'resource_alert', ?)");
+                    foreach ($targets as $target_sid) { $n_ins->execute([$target_sid, $n_title, $n_msg, $n_link, $rid]); }
+                }
+            }
+
             echo json_encode([
                 "status"=>"success",
                 "message"=>"Resource is now public. +{$points} points!",
                 "points_awarded"=>$points,
-                "resource_id"=>$rid
+                "resource_id"=>$rid,
+                "new_points" => $newTotal
             ]);
         } catch (Throwable $e) {
             echo json_encode(["status"=>"error","message"=>$e->getMessage()]);
@@ -355,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               VALUES
                 (:user_id,:title,'recording',:course,:semester,:tags,:description,:author,'file',:url,
                  NULL,NULL,NULL,NULL,
-                 0,0,0,'public',:rec_id,NOW(),NOW(),NOW())
+                  0,0,false,'public',:rec_id,NOW(),NOW(),NOW())
             ");
             $ins->execute([
                 ":user_id"=>$uid, ":title"=>$rec['title'] ?: 'Recording',
@@ -364,12 +220,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ":author"=>$author, ":url"=>$rec['url'] ?: '', ":rec_id"=>$rec['id'],
             ]);
             $rid = (int)$pdo->lastInsertId();
-            $points = 25; award_points($pdo, $uid, $points, 'recording_share', $rid, "Shared a recording");
+            $points = 25; 
+            $newTotal = awardPoints($pdo, $uid, $points, 'recording_share', $rid, "Shared a recording");
+            
+            // Proactive Notification
+            $course = $rec['course'] ?: '';
+            if ($course) {
+                $notifStmt = $pdo->prepare("
+                    SELECT DISTINCT u.student_id FROM users u
+                    WHERE u.id <> ? AND (
+                        u.id IN (SELECT user_id FROM resources WHERE course = ?)
+                        OR u.id IN (SELECT user_id FROM meeting_participants WHERE meeting_id IN (SELECT id FROM meetings WHERE course = ?))
+                    ) LIMIT 30
+                ");
+                $notifStmt->execute([$uid, $course, $course]);
+                $targets = $notifStmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($targets) {
+                    $n_title = "🎬 New Recording for {$course}";
+                    $n_msg = "A session recording \"{$rec['title']}\" is now available!";
+                    $n_link = "/resources";
+                    $n_ins = $pdo->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id) VALUES (?, ?, ?, ?, 'resource_alert', ?)");
+                    foreach ($targets as $target_sid) { $n_ins->execute([$target_sid, $n_title, $n_msg, $n_link, $rid]); }
+                }
+            }
+
             echo json_encode([
                 "status"=>"success",
                 "message"=>"Recording shared. +{$points} points!",
                 "points_awarded"=>$points,
-                "resource_id"=>$rid
+                "resource_id"=>$rid,
+                "new_points" => $newTotal
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode(["status"=>"error","message"=>$e->getMessage()]);
+        }
+        exit;
+    }
+
+    // Share a note -> copy into public resources
+    if ($action === 'share_note') {
+        if (!current_user_id()) { echo json_encode(["status"=>"error","message"=>"Not logged in"]); exit; }
+        $uid = current_user_id();
+        $note_id = (int)($_POST['note_id'] ?? 0);
+        if (!$note_id) { echo json_encode(["status"=>"error","message"=>"Missing note ID"]); exit; }
+        try {
+            $r = $pdo->prepare("SELECT * FROM notes WHERE id=? LIMIT 1");
+            $r->execute([$note_id]);
+            $note = $r->fetch();
+            if (!$note) { echo json_encode(["status"=>"error","message"=>"Note not found"]); exit; }
+            if ((int)$note['user_id'] !== $uid) { echo json_encode(["status"=>"error","message"=>"You can only share your own note"]); exit; }
+
+            // Check if already shared
+            $check = $pdo->prepare("SELECT id FROM resources WHERE user_id=? AND title=? AND course=? AND kind='note' LIMIT 1");
+            $check->execute([$uid, $note['title'], $note['course']]);
+            if ($check->fetch()) {
+                echo json_encode(["status"=>"success","message"=>"Already shared","points_awarded"=>0]); exit;
+            }
+
+            $ins = $pdo->prepare("
+              INSERT INTO resources
+                (user_id,title,kind,course,semester,tags,description,author,src_type,url,
+                 votes,bookmarks,flagged,visibility,shared_at,created_at,updated_at)
+              VALUES
+                (:user_id,:title,'note',:course,:semester,:tags,:description,:author,'file',:url,
+                 0,0,false,'public',NOW(),NOW(),NOW())
+            ");
+            
+            $author = "Unknown";
+            $u = $pdo->prepare("SELECT username FROM users WHERE id=?");
+            $u->execute([$uid]);
+            $un = $u->fetchColumn();
+            if ($un) $author = $un;
+
+            $ins->execute([
+                ":user_id"=>$uid, ":title"=>$note['title'] ?: 'Note',
+                ":course"=>$note['course'] ?: '', ":semester"=>$note['semester'] ?: '',
+                ":tags"=>$note['tags'] ?: '', ":description"=>$note['description'] ?: '',
+                ":author"=>$author, ":url"=>$note['file_url'] ?: '',
+            ]);
+            $rid = (int)$pdo->lastInsertId();
+            $points = 15; 
+            $newTotal = awardPoints($pdo, $uid, $points, 'note_share', $rid, "Shared a note");
+
+            echo json_encode([
+                "status"=>"success",
+                "message"=>"Note shared. +{$points} points!",
+                "points_awarded"=>$points,
+                "resource_id"=>$rid,
+                "new_points" => $newTotal
             ]);
         } catch (Throwable $e) {
             echo json_encode(["status"=>"error","message"=>$e->getMessage()]);
@@ -411,13 +349,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(["status"=>"error","message"=>"File upload error"]); exit;
             }
             // Validate Cloudinary config
-            if (!$CLOUDINARY_CLOUD_NAME || !$CLOUDINARY_UPLOAD_PRESET) {
+            $c_config = get_cloudinary_config();
+            if (!$c_config['cloud_name'] || !$c_config['upload_preset']) {
                 echo json_encode(["status"=>"error","message"=>"Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET (unsigned)."]); exit;
             }
             // Upload
             $tmp  = $_FILES['file']['tmp_name'];
             $name = $_FILES['file']['name'];
-            $uploaded    = cloudinary_upload($CLOUDINARY_ENDPOINT, $CLOUDINARY_UPLOAD_PRESET, $tmp, $name);
+            $uploaded    = cloudinary_upload_file($tmp, $name);
             $url         = $uploaded['secure_url'];
             $c_public_id = $uploaded['public_id'];
             $c_type      = $uploaded['resource_type'];
@@ -438,7 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (:user_id,:title,:kind,:course,:semester,:tags,:description,:author,
              :src_type,:url,
              :c_pid,:c_type,:c_ver,:c_bytes,
-             0,0,0,:visibility,NOW(),NOW())
+             0,0,false,:visibility,NOW(),NOW())
         ");
         $stmt->execute([
             ":user_id"=>$uid, ":title"=>$data['title'], ":kind"=>$kind, ":course"=>$course, ":semester"=>$semester,
@@ -451,12 +390,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($uid) {
             $points = ($visibility === 'public') ? 25 : 10;
-            award_points($pdo, $uid, $points, 'resource_upload', $rid, "Uploaded resource: ".$data['title']);
+            $newTotal = awardPoints($pdo, $uid, $points, 'resource_upload', $rid, "Uploaded resource: ".$data['title']);
+
+            // If public, notify peers
+            if ($visibility === 'public' && !empty($course)) {
+                $notifStmt = $pdo->prepare("
+                    SELECT DISTINCT u.student_id FROM users u
+                    WHERE u.id <> ? AND (
+                        u.id IN (SELECT user_id FROM resources WHERE course = ?)
+                        OR u.id IN (SELECT user_id FROM meeting_participants WHERE meeting_id IN (SELECT id FROM meetings WHERE course = ?))
+                    ) LIMIT 30
+                ");
+                $notifStmt->execute([$uid, $course, $course]);
+                $targets = $notifStmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($targets) {
+                    $n_title = "🆕 New Resource: {$course}";
+                    $n_msg = "A new \"{$kind}\" was uploaded: \"{$data['title']}\"";
+                    $n_link = "/resources";
+                    $n_ins = $pdo->prepare("INSERT INTO notifications (student_id, title, message, link, type, reference_id) VALUES (?, ?, ?, ?, 'resource_alert', ?)");
+                    foreach ($targets as $target_sid) { $n_ins->execute([$target_sid, $n_title, $n_msg, $n_link, $rid]); }
+                }
+            }
+
             echo json_encode([
                 "status"=>"success",
                 "message"=>"Resource added successfully. +{$points} points!",
                 "points_awarded"=>$points,
-                "resource_id"=>$rid
+                "resource_id"=>$rid,
+                "new_points" => $newTotal
             ]); exit;
         }
         echo json_encode(["status"=>"success","message"=>"Resource added successfully.","resource_id"=>$rid]);

@@ -1,376 +1,375 @@
-// Components/LeftNav.jsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home,
+  Search,
+  Video,
+  Files,
+  MessageSquare,
+  Database,
+  CheckSquare,
+  Trophy,
+  PlusCircle,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  LayoutGrid,
+  Zap,
+  Users,
+  HelpCircle
+} from "lucide-react";
 import logoUrl from "../assets/logo.png";
 import SummarizingParaphrasing from "./SummarizingParaphrasing";
+import { API_BASE } from "../apiConfig";
 
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+const NavItem = ({ to, icon, label, expanded, isActive, onClick }) => {
+  const isButton = !!onClick;
+  
+  const innerContent = (
+    <>
+      {/* Active left bar */}
+      {isActive && (
+        <motion.div
+          layoutId="active-nav-indicator"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
+          style={{ background: "linear-gradient(180deg, #7c3aed, #06b6d4)" }}
+          transition={{ type: "spring", stiffness: 400, damping: 35 }}
+        />
+      )}
 
-/** Safely get backend origin from API_BASE (no crashes during import). */
-function getBackendOrigin() {
-  try {
-    const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
-    if (m && m[0]) return m[0]; // e.g., http://localhost
-  } catch { }
-  return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
-}
+      {/* Glow bg for active */}
+      {isActive && (
+        <div className="absolute inset-0 rounded-xl"
+          style={{ background: "radial-gradient(ellipse at left, rgba(124,58,237,0.1), transparent 70%)" }} />
+      )}
 
-/** Build an absolute URL that points to the backend host. */
-function toBackendUrl(url) {
-  if (!url) return null;
-  const ORIGIN = getBackendOrigin();
-  if (/^https?:\/\//i.test(url)) return url;             // already absolute
-  if (url.startsWith("/")) return ORIGIN + url;     // root-relative
-  return ORIGIN + "/" + url.replace(/^\/+/, "");          // plain relative
-}
+      <div className={`flex-shrink-0 w-5 h-5 transition-all duration-300 ${isActive ? "scale-110" : "group-hover:scale-105"}`}
+        style={{
+          color: isActive ? "#a78bfa" : "inherit",
+          filter: isActive ? "drop-shadow(0 0 6px rgba(139,92,246,0.5))" : "none"
+        }}>
+        {icon}
+      </div>
 
-const Button = ({ variant = "soft", className = "", ...props }) => {
-  const base = "px-3 py-1.5 rounded-lg text-xs font-medium transition focus:outline-none";
-  const variants = {
-    soft: "bg-slate-800/70 border border-slate-700 text-slate-200 hover:bg-slate-800 focus:ring-2 focus:ring-cyan-400/40",
-    danger: "bg-gradient-to-r from-rose-600 to-red-600 text-white hover:from-rose-500 hover:to-red-500 border-0 focus:ring-2 focus:ring-rose-400/50",
-  };
-  return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
-};
-
-const NavItem = ({ to, icon, label, expanded, onClick }) => {
-  const collapsed = !expanded;
-  return (
-    <div className={`relative ${collapsed ? "group" : ""}`}>
-      <Link
-        to={to}
-        onClick={onClick}
-        title={collapsed ? label : undefined}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl
-                   hover:bg-slate-800/50 transition
-                   focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-      >
-        <span className="text-xl text-slate-300 group-hover:text-white transition">{icon}</span>
-        {expanded && <span className="text-sm text-slate-100">{label}</span>}
-      </Link>
-      {collapsed && (
-        <div
-          className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex z-[60] animate-fade-in"
-          role="tooltip"
-        >
-          <div className="relative bg-slate-900/95 border border-slate-700 px-3 py-1.5 text-sm font-medium text-white rounded-lg shadow-lg">
+      <AnimatePresence mode="wait">
+        {expanded && (
+          <motion.span
+            initial={{ opacity: 0, x: -10, filter: "blur(4px)" }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, x: -10, filter: "blur(4px)" }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="text-[13px] font-semibold whitespace-nowrap relative z-10 text-left"
+          >
             {label}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1.5 w-3 h-3 rotate-45 bg-slate-900 border-l border-t border-slate-700" />
-          </div>
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </>
+  );
+
+  const commonProps = {
+    className: "flex items-center gap-3.5 px-3 py-3 rounded-xl transition-all duration-300 relative overflow-hidden w-full",
+    style: {
+      background: isActive ? "rgba(124,58,237,0.15)" : "transparent",
+      border: isActive ? "1px solid rgba(124,58,237,0.25)" : "1px solid transparent",
+      color: isActive ? "#a78bfa" : "#475569",
+    },
+    onMouseEnter: e => {
+      if (!isActive) {
+        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+        e.currentTarget.style.color = "#94a3b8";
+      }
+    },
+    onMouseLeave: e => {
+      if (!isActive) {
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.color = "#475569";
+      }
+    }
+  };
+
+  return (
+    <div className="relative group px-3">
+      {isButton ? (
+        <button onClick={onClick} {...commonProps}>
+          {innerContent}
+        </button>
+      ) : (
+        <Link to={to} {...commonProps}>
+          {innerContent}
+        </Link>
+      )}
+
+      {/* Collapsed Tooltip */}
+      {!expanded && (
+        <div
+          className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-x-2 group-hover:translate-x-0 z-[100]"
+          style={{
+            background: "rgba(13,15,26,0.95)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(16px)",
+            color: "#e2e8f0",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
+          }}
+        >
+          {label}
+          <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 rotate-45"
+            style={{ background: "rgba(13,15,26,0.95)", border: "1px solid rgba(255,255,255,0.08)", borderRight: "none", borderTop: "none" }} />
         </div>
       )}
     </div>
   );
 };
 
-export default function LeftNav({
-  navOpen,
-  setNavOpen,
-  anonymous,
-  setAnonymous,
-  sidebarWidth = 72,
-}) {
-  const [moreVisible, setMoreVisible] = useState(false);
+export default function LeftNav({ navOpen, setNavOpen, sidebarWidth = 80 }) {
+  const location = useLocation();
   const [spOpen, setSpOpen] = useState(false);
-
-  const [profile, setProfile] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
-  });
-  const [auth, setAuth] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
-  });
-
-  // Stay in sync with storage + same-tab updates from Profile save
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === "studynest.profile") {
-        try { setProfile(JSON.parse(e.newValue) || null); } catch { setProfile(null); }
-      }
-      if (e.key === "studynest.auth") {
-        try { setAuth(JSON.parse(e.newValue) || null); } catch { setAuth(null); }
-      }
-    };
-    const onLocalProfile = () => {
-      try { setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null); } catch { }
-      try { setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null); } catch { }
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("studynest:profile-updated", onLocalProfile);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("studynest:profile-updated", onLocalProfile);
-    };
-  }, []);
-
-  // In LeftNav.jsx, replace the hardcoded points with dynamic points
-  const [points, setPoints] = useState(0);
-
-  // Add this useEffect to sync points
-  useEffect(() => {
-    const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
-    if (auth?.points) {
-      setPoints(auth.points);
-    }
-  }, [auth]);
-
-  useEffect(() => {
-    const handlePointsUpdate = (event) => {
-      if (event.detail?.points !== undefined) {
-        setPoints(event.detail.points);
-      }
-    };
-
+    const [points, setPoints] = useState(0);
+    const [userRole, setUserRole] = useState("User");
+  
+    useEffect(() => {
+      const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+      if (auth?.points) setPoints(auth.points);
+      if (auth?.role) setUserRole(auth.role);
+    const handlePointsUpdate = (e) => e.detail?.points !== undefined && setPoints(e.detail.points);
     window.addEventListener('studynest:points-updated', handlePointsUpdate);
-
-    return () => {
-      window.removeEventListener('studynest:points-updated', handlePointsUpdate);
-    };
+    return () => window.removeEventListener('studynest:points-updated', handlePointsUpdate);
   }, []);
 
-  const toggleMoreVisibility = () => setMoreVisible((v) => !v);
+  const isAdmin = userRole?.toLowerCase() === 'admin';
 
-  const displayName = profile?.name || auth?.name || "Student";
-  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
+  const navItems = [
+    { to: isAdmin ? "/admin" : "/home", label: "Dashboard", icon: <LayoutGrid className="w-5 h-5" /> },
+    ...(!isAdmin ? [
+      { to: "/rooms",     label: "Study Rooms",  icon: <Video className="w-5 h-5" /> },
+      { to: "/resources", label: "Resources",    icon: <Database className="w-5 h-5" /> },
+      { to: "/forum",     label: "Q&A Forum",    icon: <MessageSquare className="w-5 h-5" /> },
+      { to: "/notes",     label: "My Notes",     icon: <Files className="w-5 h-5" /> },
+      { to: "/my-resources", label: "My Resources", icon: <LayoutGrid className="w-5 h-5" /> },
+      { to: "/to-do-list", label: "Planner",     icon: <CheckSquare className="w-5 h-5" /> },
+    ] : []),
+  ];
 
-  // Normalize picture URL to backend origin, add cache-buster via updated_at
-  const rawPic = profile?.profile_picture_url || auth?.profile_picture_url || null;
-  const profilePicUrl = rawPic ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}` : null;
+  const bottomNavItems = [
+    { label: "Help Center", icon: <HelpCircle className="w-5 h-5" />, to: "/help" },
+  ];
+
+  const toolItems = !isAdmin ? [
+    { label: "AI Check",                   icon: <Sparkles className="w-5 h-5" />, to: "/ai-check" },
+    { label: "Paraphrasing & Summarizing", icon: <Zap className="w-5 h-5" />,      onClick: () => setSpOpen(true) },
+    { label: "Leaderboard",                icon: <Trophy className="w-5 h-5" />,   to: "/points-leaderboard" },
+  ] : [];
 
   return (
     <>
       <aside
-        className="fixed top-0 left-0 h-screen border-r border-slate-800
-                   bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950
-                   backdrop-blur z-50 transition-[width] duration-300 flex flex-col"
-        style={{ width: sidebarWidth }}
+        onMouseEnter={() => setNavOpen && setNavOpen(true)}
+        onMouseLeave={() => setNavOpen && setNavOpen(false)}
+        className={`fixed top-0 left-0 h-screen flex flex-col z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          navOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+        style={{
+          width: sidebarWidth,
+          background: "rgba(8,9,14,0.95)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          borderRight: "1px solid rgba(255,255,255,0.05)",
+          boxShadow: navOpen ? "20px 0 50px rgba(0,0,0,0.5)" : "none",
+        }}
       >
-        {/* Brand + Toggle */}
-        <div className="flex items-center gap-2 px-3 py-3 border-b border-slate-800">
-          <Link
-            to="/home"
-            className="h-8 w-8 rounded-xl bg-gradient-to-br from-[##001D35] to-[##001D35] grid place-content-center shadow-sm"
-            title="Study Nest"
-          >
-            <img src={logoUrl} alt="Study Nest" className="h-8 w-8 object-contain" />
-          </Link>
-          {navOpen && <span className="font-semibold hidden xl:block text-white">Study Nest</span>}
-          <button
-            onClick={() => setNavOpen((v) => !v)}
-            className="ml-auto h-8 w-8 grid place-content-center rounded-lg
-                       bg-slate-900/70 border border-slate-700 text-slate-200
-                       hover:bg-slate-900
-                       focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
-            aria-label={navOpen ? "Collapse sidebar" : "Expand sidebar"}
-            title={navOpen ? "Collapse" : "Expand"}
-          >
-            <span className="opacity-90">
-              {navOpen ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
-              )}
-            </span>
-          </button>
-        </div>
+        {/* Ambient glow top */}
+        <div className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse at top, rgba(124,58,237,0.06), transparent 70%)" }} />
 
-        {/* Profile / points (only in expanded) */}
-        {navOpen && (
-          <div className="px-3 py-2 border-b border-slate-800">
-            <Link
-              to="/profile"
-              className="flex items-center gap-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:bg-slate-800/70 transition"
-              title="View Profile"
+        {/* Brand Header */}
+        <div className="h-20 flex items-center px-4 flex-shrink-0 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          <Link to="/home" className="flex items-center gap-3.5 flex-1 min-w-0 group/logo">
+            <motion.div
+              whileHover={{ scale: 1.08, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 400 }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 p-2 relative"
+              style={{
+                background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.15))",
+                border: "1px solid rgba(124,58,237,0.3)",
+                boxShadow: "0 0 20px rgba(124,58,237,0.2)"
+              }}
             >
-              <div className="h-9 w-9 rounded-xl overflow-hidden bg-slate-800 grid place-content-center">
-                {profilePicUrl ? (
-                  <img
-                    src={profilePicUrl}
-                    alt={displayName}
-                    className="h-9 w-9 object-cover"
-                  />
-                ) : (
-                  <span className="text-white text-sm">
-                    {String(displayName || 'U').slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="text-sm text-left">
-                <div className="font-medium leading-tight text-white hover:text-cyan-300 transition">
-                  {displayName}
-                </div>
-                <div className="font-medium leading-tight text-slate-400 hover:text-cyan-300 transition">
-                  ID: {studentId}
-                </div>
-              </div>
-            </Link>
-
-            {/* Clickable Points row */}
-            <Link
-              to="/points-leaderboard"
-              className="mt-2 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 hover:bg-slate-800/70 hover:border-cyan-500/30 transition cursor-pointer group"
-              title="View Points Leaderboard"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 1l3 6 6 .75-4.12 4.62L16.95 19 12 16.25 7.05 19l1.17-6.63L3 7.75 9 7z" />
-              </svg>
-              Points <span className="font-semibold text-amber-300">{points.toLocaleString()}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 ml-auto text-slate-400 group-hover:text-cyan-400 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        )}
-
-        {/* Nav list */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-2 py-2 pb-20 custom-scroll">
-          <nav className="space-y-1">
-            <NavItem to="/search" label="Search" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>}
-            />
-            <NavItem to="/home" label="Dashboard" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>}
-            />
-            <NavItem to="/rooms" label="Study Rooms" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>}
-            />
-            <NavItem to="/resources" label="Shared Resources" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6h4m6 6V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h8" /></svg>}
-            />
-            <NavItem to="/forum" label="Q&A Forum" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="8" width="34" height="28" rx="4" ry="4" /><path d="M19 18a5 5 0 015-5 5 5 0 015 5c0 3-2 4-3 5s-1 2-1 3" /><circle cx="24" cy="30" r="1.5" /><rect x="28" y="28" width="34" height="28" rx="4" ry="4" /><line x1="45" y1="32" x2="45" y2="32" /><line x1="45" y1="38" x2="45" y2="48" /></svg>}
-            />
-            <NavItem to="/notes" label="Notes Repository" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125" /></svg>}
-            />
-            <NavItem to="/myresource" label="My Resources" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-12v8m-16-8v8" /></svg>}
-            />
-            <NavItem to="/to-do-list" label="To-Do List" expanded={navOpen}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="5" y1="8" x2="19" y2="8" /><circle cx="5" cy="8" r="1" /><line x1="5" y1="12" x2="19" y2="12" /><circle cx="5" cy="12" r="1" /><line x1="5" y1="16" x2="19" y2="16" /><circle cx="5" cy="16" r="1" /></svg>}
-            />
-            <NavItem
-              to="#"
-              label="Paraphasing & Summarizing"
-              expanded={navOpen}
-              onClick={(e) => { e.preventDefault(); setSpOpen(true); }}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1l-2 3h4l-2-3z" /><line x1="7" y1="12" x2="17" y2="12" /><path d="M14 15l2 2-4 4-2-2 4-4z" /><path d="M17 19l4-4-4-4" /><path d="M7 19l-4-4 4-4" /></svg>}
-            />
-            <NavItem
-              to="#"
-              label="More Tools"
-              expanded={navOpen}
-              onClick={toggleMoreVisibility}
-              icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" /></svg>}
-            />
-            {moreVisible && (
-              <div className="space-y-1 mt-2">
-                <NavItem
-                  to="/ai-check"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      className="w-6 h-6 flex-shrink-0 text-current"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="m23.5 17l-5 5l-3.5-3.5l1.5-1.5l2 2l3.5-3.5zM6 2a2 2 0 0 0-2 2v16c0 1.11.89 2 2 2h7.81c-.36-.62-.61-1.3-.73-2H6V4h7v5h5v4.08c.33-.05.67-.08 1-.08c.34 0 .67.03 1 .08V8l-6-6M8 12v2h8v-2m-8 4v2h5v-2Z"
-                      />
-                    </svg>
-                  }
-                  label="AI File Check"
-                  expanded={navOpen}
-                />
-
-                <NavItem
-                  to="/ai-usage"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      className="w-6 h-6 flex-shrink-0 text-current"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M23 15v3c0 .5-.36.88-.83.97L20.2 17h.8v-1h-1.8l-.2-.2V14c0-2.76-2.24-5-5-5h-1.8l-2-2h.8V5.73c-.6-.34-1-.99-1-1.73c0-1.1.9-2 2-2s2 .9 2 2c0 .74-.4 1.39-1 1.73V7h1c3.87 0 7 3.13 7 7h1c.55 0 1 .45 1 1M8.5 13.5c-1.1 0-2 .9-2 2s.9 2 2 2s2-.89 2-2s-.89-2-2-2m13.61 7.96l-1.27 1.27l-.95-.95c-.27.14-.57.22-.89.22H5a2 2 0 0 1-2-2v-1H2c-.55 0-1-.45-1-1v-3c0-.55.45-1 1-1h1c0-2.47 1.29-4.64 3.22-5.89L1.11 3l1.28-1.27zm-4-1.46l-2.51-2.5h-.1a2 2 0 0 1-2-2v-.1L7.7 9.59C6.1 10.42 5 12.08 5 14v2H3v1h2v3z"
-                      />
-                    </svg>
-                  }
-                  label="AI Usage Check"
-                  expanded={navOpen}
-                />
-
-                <NavItem
-                  to="/humanize"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 32 32"
-                      className="w-6 h-6 flex-shrink-0 text-current"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M28.19 13.71h1.52v10.67h-1.52Z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M26.67 27.43H11.43v-1.52H9.9v1.52H8.38V32h21.33v-4.57h-1.52v-3.05h-1.52Zm0 3.05h-3.05v-1.53h3.05Zm0-18.29h1.52v1.52h-1.52Zm-3.05 1.52h1.52v4.58h-1.52Zm0-3.04h3.05v1.52h-3.05Zm-3.05-6.1h1.52V6.1h-1.52Zm1.52 0h1.53V0h-4.57v1.52h3.04zm-3.04 9.14h1.52v4.58h-1.52Zm0-7.61h1.52v1.52h-1.52Zm0-3.05h1.52v1.52h-1.52Zm-1.53-1.53h1.53v1.53h-1.53ZM16 3.05h1.52v1.52H16Zm-1.52 10.66H16v4.58h-1.52Z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M14.48 10.67h9.14V9.14h-4.57V7.62h-1.53v1.52H16V4.57h-4.57V6.1h3.05zM9.9 15.24H8.38v1.52H9.9v3.05h1.53V6.1H9.9v3.04H8.38v1.53H9.9zm-1.52 9.14H9.9v1.53H8.38Zm-1.52-3.05h1.52v3.05H6.86Zm0-4.57h1.52v1.53H6.86Zm0-6.09h1.52v1.52H6.86Zm-1.53 7.62h1.53v3.04H5.33Zm0-6.1h1.53v1.52H5.33Zm-1.52 4.57h1.52v1.53H3.81Zm0-3.05h1.52v1.53H3.81Zm-1.52 1.53h1.52v1.52H2.29Z"
-                      />
-                    </svg>
-                  }
-                  label="Humanize Writing"
-                  expanded={navOpen}
-                />
-              </div>
-            )}
-          </nav>
-        </div>
-
-        {/* Pinned footer */}
-        <div className="px-3 py-3 border-t border-slate-800 space-y-2">
-          {/* {navOpen && (
-            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">
-                  {anonymous ? (
-                    <img
-                      src="https://cdn-icons-png.flaticon.com/512/3076/3076251.png"
-                      alt="Anonymous"
-                      className="h-8 w-8 object-contain"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span className="text-xl">🙂</span>
-                  )}
-                </span>
-                <div className="text-sm leading-tight">
-                  <div className="font-medium text-white">Anonymous mode</div>
-                  <div className="text-xs text-slate-400">Hide your name in rooms & Q&A.</div>
-                </div>
-                <button
-                  onClick={() => setAnonymous((a) => !a)}
-                  className={`ml-auto h-6 w-11 rounded-full relative transition ${anonymous ? "bg-emerald-600" : "bg-slate-700"}`}
-                  aria-label="Toggle anonymous mode"
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            </motion.div>
+            <AnimatePresence mode="wait">
+              {navOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, x: -10, filter: "blur(8px)" }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${anonymous ? "right-0.5" : "left-0.5"}`} />
-                </button>
-              </div>
-            </div>
-          )} */}
-          <Link to={"/login"}>
-            <Button variant="danger" className={`w-full flex items-center justify-center ${navOpen ? "gap-2 px-3" : "px-2"} py-2`}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
-              </svg>
-              {navOpen && <span className="text-sm">Sign out</span>}
-            </Button>
+                  <span className="text-base font-bold tracking-tight"
+                    style={{
+                      background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text"
+                    }}>
+                    StudyNest
+                  </span>
+                  <p className="text-[9px] font-bold uppercase tracking-widest mt-0.5"
+                    style={{ color: "#334155" }}>
+                    UIU Platform
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Link>
+
+          {/* Toggle Button */}
+          {navOpen && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setNavOpen(false)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 ml-2"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#475569"
+              }}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </motion.button>
+          )}
+          {!navOpen && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setNavOpen(true)}
+              className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all duration-200"
+              style={{
+                background: "rgba(13,15,26,0.95)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#a78bfa",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.4)"
+              }}
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </motion.button>
+          )}
         </div>
+
+        {/* Navigation Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-6 custom-scroll">
+
+          {/* Main Menu */}
+          <div className="space-y-1 mb-6">
+            {navOpen && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-6 mb-3 text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: "#334155" }}
+              >
+                Navigation
+              </motion.p>
+            )}
+            {navItems.map((item) => (
+              <NavItem
+                key={`nav-${item.to}`}
+                {...item}
+                expanded={navOpen}
+                isActive={location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to))}
+              />
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div className="mx-4 mb-6" style={{ height: "1px", background: "rgba(255,255,255,0.04)" }} />
+
+          {/* Tools */}
+          <div className="space-y-1">
+            {navOpen && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-6 mb-3 text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: "#334155" }}
+              >
+                Tools
+              </motion.p>
+            )}
+            {toolItems.map((item) => (
+              <NavItem
+                key={`tool-${item.label}`}
+                {...item}
+                expanded={navOpen}
+                isActive={item.path ? location.pathname === item.path : false}
+              />
+            ))}
+            
+            {isAdmin && (
+              <>
+                 <div className="mx-4 my-4" style={{ height: "1px", background: "rgba(255,255,255,0.04)" }} />
+                 <NavItem
+                    to="/admin"
+                    label="Admin Console"
+                    icon={<Shield className="w-5 h-5" />}
+                    expanded={navOpen}
+                    isActive={location.pathname === "/admin"}
+                 />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Points Widget (expanded only) */}
+        <AnimatePresence>
+          {navOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="px-4 pb-4"
+            >
+              <Link
+                to="/points-leaderboard"
+                className="relative block p-4 rounded-2xl overflow-hidden group/pts transition-all duration-300"
+                style={{
+                  background: "rgba(124,58,237,0.08)",
+                  border: "1px solid rgba(124,58,237,0.2)",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "rgba(124,58,237,0.14)";
+                  e.currentTarget.style.borderColor = "rgba(124,58,237,0.35)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "rgba(124,58,237,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(124,58,237,0.2)";
+                }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover/pts:opacity-100 transition-opacity duration-300"
+                  style={{ background: "radial-gradient(ellipse at center, rgba(124,58,237,0.1), transparent 70%)" }} />
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", boxShadow: "0 0 15px rgba(124,58,237,0.4)" }}>
+                    <Trophy className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>
+                      Study Points
+                    </p>
+                    <p className="text-xl font-bold leading-none mt-0.5"
+                      style={{ color: "#a78bfa", textShadow: "0 0 15px rgba(139,92,246,0.5)" }}>
+                      {points.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </aside>
 
       <SummarizingParaphrasing open={spOpen} onClose={() => setSpOpen(false)} />

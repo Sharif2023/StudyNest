@@ -1,20 +1,10 @@
 <?php
-require __DIR__ . '/db.php'; // provides $pdo + CORS
+require __DIR__ . '/db.php';
+require __DIR__ . '/auth.php';
+StudyNestAuth::init();
 
 try {
-    // Configure session with same settings as profile.php
-    session_set_cookie_params([
-        'lifetime' => 86400,
-        'path' => '/',
-        'domain' => $_SERVER['HTTP_HOST'] ?? 'localhost',
-        'secure' => false,
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ]);
-
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    // Session is already started and configured by db.php
 
     $data = json_decode(file_get_contents('php://input'), true) ?: [];
     $email    = strtolower(trim($data['email'] ?? ''));
@@ -26,32 +16,55 @@ try {
         exit;
     }
 
-    // Query with correct column names matching your schema
-    $stmt = $pdo->prepare("
-        SELECT 
-            id, 
-            student_id, 
-            email, 
-            username, 
-            profile_picture_url, 
-            bio,
-            password_hash, 
-            points,
-            created_at, 
-            updated_at,
-            role
-        FROM users
-        WHERE email = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
+    // ---------------------------------------------------------
+    // ✅ SPECIAL ADMIN LOGIN
+    // email: admin@studynest.com, password: admin123
+    // ---------------------------------------------------------
+    $isAdminLogin = ($email === 'admin@studynest.com' && $password === 'admin123');
 
-    // Validate password
-    if (!$user || !password_verify($password, $user['password_hash'])) {
-        http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials.']);
-        exit;
+    if ($isAdminLogin) {
+        // Ensure admin user exists in DB
+        $check = $pdo->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $check->execute([$email]);
+        $admin = $check->fetch();
+
+        if (!$admin) {
+            // Auto-create admin if missing
+            $stmt = $pdo->prepare("
+                INSERT INTO users (username, student_id, email, password_hash, role, status) 
+                VALUES ('System Admin', 'ADMIN-001', ?, ?, 'Admin', 'Active')
+                RETURNING id
+            ");
+            $stmt->execute([$email, password_hash($password, PASSWORD_DEFAULT)]);
+            $admin_id = $stmt->fetchColumn();
+        } else {
+            $admin_id = $admin['id'];
+            // Ensure role is Admin
+            $pdo->prepare("UPDATE users SET role='Admin' WHERE id=?")->execute([$admin_id]);
+        }
+        
+        // Re-query complete user data for the response
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$admin_id]);
+        $user = $stmt->fetch();
+    } else {
+        // Standard user login
+        $stmt = $pdo->prepare("
+            SELECT 
+                id, student_id, email, username, profile_picture_url, bio,
+                password_hash, points, created_at, updated_at, role
+            FROM users
+            WHERE email = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            http_response_code(401);
+            echo json_encode(['ok' => false, 'error' => 'Invalid credentials.']);
+            exit;
+        }
     }
 
     // ✅ Calculate login streak and points
@@ -73,11 +86,11 @@ try {
         "Login streak reward: {$pointsEarned} points"
     ]);
 
-    // ✅ CRITICAL: Store user_id in session for profile.php
     $_SESSION['user_id'] = (int)$user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['email'] = $user['email'];
     $_SESSION['student_id'] = $user['student_id'];
+    $_SESSION['role'] = $user['role'] ?? 'User';
 
     // Remove password hash before sending to client
     unset($user['password_hash']);
@@ -98,11 +111,24 @@ try {
         'role' => $user['role'] ?? 'User',
     ];
 
+    // JWT generation with role-based scopes
+    $token = null;
+    $refreshToken = null;
+    try {
+        $userScopes = (strtolower($user['role'] ?? 'user') === 'admin') ? ['admin', 'user'] : ['user'];
+        $token = generateToken($user['id'], $userScopes);
+        $refreshToken = generateToken($user['id'], ['refresh'], 604800);
+    } catch (Throwable $e) {
+        // Session-only auth
+    }
+
     echo json_encode([
-        'ok' => true, 
+        'ok' => true,
         'user' => $responseUser,
         'points_earned' => $pointsEarned,
-        'session_id' => session_id() // For debugging
+        'token' => $token,
+        'refresh_token' => $refreshToken,
+        'session_id' => session_id(),
     ]);
     exit;
 

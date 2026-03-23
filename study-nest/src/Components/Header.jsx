@@ -1,495 +1,665 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  MessageSquare,
+  LogOut,
+  User as UserIcon,
+  Settings,
+  History,
+  ChevronDown,
+  Search,
+  LayoutGrid,
+  Sparkles,
+  Video,
+  Menu,
+  X
+} from "lucide-react";
+import apiClient, { hasToken, toBackendUrl } from "../apiConfig";
 
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
 
-/* ===== Utility helpers ===== */
-function getBackendOrigin() {
-  try {
-    const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
-    if (m && m[0]) return m[0];
-  } catch { }
-  return (typeof window !== "undefined" && window.location.origin) || "http://localhost";
-}
-function toBackendUrl(url) {
-  if (!url) return null;
-  const ORIGIN = getBackendOrigin();
-  if (/^https?:\/\//i.test(url)) return url;
-  if (url.startsWith("/")) return ORIGIN + url;
-  return ORIGIN + "/" + url.replace(/^\/+/, "");
-}
-
-/* ===== Small UI button helper ===== */
-const Button = ({ variant = "soft", size = "sm", className = "", ...props }) => {
-  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-3.5 py-2 text-sm" };
-  const variants = {
-    soft:
-      "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50",
-  };
-  return (
-    <button
-      className={`${sizes[size]} rounded-lg font-medium transition-colors ${variants[variant]} ${className}`}
-      {...props}
-    />
-  );
+const PAGE_MAP = {
+  "/home":            ["Dashboard",      "Study Hub"],
+  "/notes":           ["Notes",          "Academic Library"],
+  "/forum":           ["Q&A Forum",      "Student Discussion"],
+  "/rooms":           ["Study Rooms",    "Live Collaboration"],
+  "/to-do-list":      ["Planner",        "Task Manager"],
+  "/messages":        ["Messages",       "Chat & Feedback"],
+  "/groups":          ["Groups",         "Student Communities"],
+  "/profile":         ["Profile",        "My Account"],
+  "/resources":       ["Resources",      "Resource Hub"],
+  "/my-resources":     ["My Resources",   "Uploaded Files"],
+  "/search":          ["Search",         "Global Discovery"],
+  "/ai-check":        ["AI Detector",    "Academic Integrity"],
+  "/humanize":        ["AI Humanizer",   "Writing Tools"],
+  "/ai-usage":        ["AI Usage",       "Checker Tool"],
+  "/points-leaderboard": ["Leaderboard", "Top Students"],
+  "/admin":              ["Admin Panel",    "System Management"],
 };
 
-/* ===== Header Component ===== */
-export default function Header({ sidebarWidth = 72 }) {
+export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /* Profile & Auth State */
   const [profile, setProfile] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("studynest.profile")) || null;
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem("studynest.profile")) || null; } catch { return null; }
   });
   const [auth, setAuth] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("studynest.auth")) || null;
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem("studynest.auth")) || null; } catch { return null; }
   });
-
-  /* Dropdown States */
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const profileRef = useRef(null);
-  const notifRef = useRef(null);
-
-  /* Notifications State */
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const profileRef = useRef(null);
+  const searchRef = useRef(null);
+  const notificationsRef = useRef(null);
 
-  /* ===== Sync profile/auth between tabs ===== */
   useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === "studynest.profile") {
-        try {
-          setProfile(JSON.parse(e.newValue) || null);
-        } catch {
-          setProfile(null);
-        }
-      }
-      if (e.key === "studynest.auth") {
-        try {
-          setAuth(JSON.parse(e.newValue) || null);
-        } catch {
-          setAuth(null);
-        }
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* ===== Fetch latest profile once ===== */
+  useEffect(() => {
+    const syncFromStorage = () => {
+      try {
+        setProfile(JSON.parse(localStorage.getItem("studynest.profile")) || null);
+        setAuth(JSON.parse(localStorage.getItem("studynest.auth")) || null);
+      } catch {
+        setProfile(null);
+        setAuth(null);
+      }
+    };
+    const onStorage = (e) => {
+      if (e.key === "studynest.profile") setProfile(JSON.parse(e.newValue) || null);
+      if (e.key === "studynest.auth") setAuth(JSON.parse(e.newValue) || null);
+    };
+    const onAuthChanged = () => syncFromStorage();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("studynest:auth-changed", onAuthChanged);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("studynest:auth-changed", onAuthChanged);
+    };
+  }, []);
+
   useEffect(() => {
     (async () => {
+      // 401 Guard: Don't call profile.php if we are definitely not logged in
+      if (!auth && !hasToken()) return;
+      
       try {
-        const res = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
-        const j = await res.json().catch(() => null);
+        const res = await apiClient.get("profile.php");
+        const j = res.data;
         const incoming = j?.ok ? j.profile : j;
-        if (incoming && (incoming.id || incoming.student_id || incoming.email)) {
+        if (incoming?.email) {
           setProfile(incoming);
           localStorage.setItem("studynest.profile", JSON.stringify(incoming));
+          let prevAuth = null;
+          try {
+            prevAuth = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+          } catch { }
+          const base = prevAuth && typeof prevAuth === "object" ? prevAuth : {};
+          const nextAuth = {
+            ...base,
+            id: incoming.id,
+            email: incoming.email,
+            name: incoming.name,
+            username: incoming.username ?? incoming.name ?? base.username,
+            profile_picture_url: incoming.profile_picture_url ?? base.profile_picture_url,
+            bio: incoming.bio ?? base.bio,
+            student_id: incoming.student_id ?? base.student_id,
+          };
+          setAuth(nextAuth);
+          localStorage.setItem("studynest.auth", JSON.stringify(nextAuth));
+          window.dispatchEvent(new Event("studynest:auth-changed"));
         }
-      } catch { }
-    })();
-  }, []);
 
-  /* ===== Real-Time Notifications (SSE) ===== */
-  /* useEffect(() => {
-    const sid = profile?.student_id || auth?.student_id;
-    if (!sid) return;
-
-    // Initial load
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/notifications.php?action=list&student_id=${sid}&limit=30`, {
-          credentials: "include",
+        const uid = incoming?.id || auth?.id;
+        if (!uid) return;
+        const nRes = await apiClient.get("notifications.php", {
+           params: { action: "list", student_id: uid }
         });
-        const j = await res.json().catch(() => null);
-        if (j?.ok) {
-          setNotifications(j.notifications || []);
-          setUnreadCount(j.unread || 0);
+        const nData = nRes.data;
+        if (nData.ok) {
+          setNotifications(nData.notifications || []);
+          setUnreadCount(nData.unread || 0);
         }
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("studynest.jwt");
+        }
       }
     })();
-
-    // Setup SSE with reconnect logic
-    let es;
-    let reconnectTimeout;
-
-    const setupSSE = () => {
-      es = new EventSource(`${API_BASE}/notifications.php?action=stream&student_id=${sid}`, {
-        withCredentials: true,
-      });
-
-      es.onopen = () => {
-        console.log('SSE connected');
-      };
-
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.type === "new_notification" && data.notification) {
-            setNotifications((prev) => [data.notification, ...prev]);
-            setUnreadCount((c) => c + 1);
-          }
-        } catch (error) {
-          console.error('SSE message error:', error);
-        }
-      };
-
-      es.onerror = (e) => {
-        console.log('SSE error, reconnecting...');
-        es.close();
-
-        // Reconnect after 5 seconds
-        reconnectTimeout = setTimeout(setupSSE, 5000);
-      };
-    };
-
-    setupSSE();
-
-    return () => {
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (es) es.close();
-    };
-  }, [profile?.student_id, auth?.student_id]); */
-
-  /* ===== Mark all notifications read ===== */
-  /* async function markAllRead() {
-    const sid = profile?.student_id || auth?.student_id;
-    if (!sid) return;
-
-    console.log('Marking all notifications as read for student:', sid);
-    console.log('Current unread count:', unreadCount);
-
-    try {
-      const response = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ student_id: sid, mark_all: true }),
-      });
-
-      const data = await response.json();
-      console.log('Mark all read response:', data);
-
-      if (data.ok) {
-        setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
-        setUnreadCount(0);
-        console.log('Successfully marked all as read');
-      } else {
-        console.error('Failed to mark all as read:', data);
-      }
-    } catch (error) {
-      console.error('Failed to mark notifications as read:', error);
-    }
-  } */
-
-  /* function handleNotificationClick(n) {
-    // Don't mark as read here - it's already handled by markAllRead when dropdown opens
-    // Or mark individual notification if needed
-    if (!n.read_at) {
-      // Mark single notification as read via API
-      const sid = profile?.student_id || auth?.student_id;
-      if (sid) {
-        fetch(`${API_BASE}/notifications.php?action=mark_read`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ student_id: sid, notification_id: n.id }),
-        }).catch(console.error);
-      }
-    }
-
-    // Navigate if link exists
-    if (n.link) {
-      navigate(n.link);
-    }
-    setNotifOpen(false);
-  } */
-
-  /* ===== Close dropdowns on click outside / ESC ===== */
-  useEffect(() => {
-    function handleDocClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
-    }
-    function handleEsc(e) {
-      if (e.key === "Escape") {
-        setProfileOpen(false);
-        setNotifOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleDocClick);
-    document.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleDocClick);
-      document.removeEventListener("keydown", handleEsc);
-    };
   }, []);
 
-  /* ===== Logout ===== */
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchFocused(false);
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) setNotificationsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Global Search Logic
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await apiClient.get("search.php", {
+          params: { q: searchQuery, type: "global" }
+        });
+        if (res.data && res.data.results) {
+          setSearchResults(res.data.results);
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleLogout = () => {
-    localStorage.removeItem("studynest.auth");
-    localStorage.removeItem("studynest.profile");
-    fetch(`${API_BASE}/logout.php`, { credentials: "include" }).catch(() => { });
-    navigate("/login");
+    apiClient.post("logout.php").finally(() => {
+      localStorage.removeItem("studynest.auth");
+      localStorage.removeItem("studynest.profile");
+      localStorage.removeItem("studynest.jwt");
+      localStorage.removeItem("studynest.refresh");
+      localStorage.removeItem("studynest.user");
+      setAuth(null);
+      setProfile(null);
+      window.dispatchEvent(new Event("studynest:auth-changed"));
+      navigate("/login");
+    });
   };
 
   const rawPic = profile?.profile_picture_url || auth?.profile_picture_url;
-  const profile_pic = rawPic ? `${toBackendUrl(rawPic)}?v=${encodeURIComponent(profile?.updated_at || Date.now())}` : null;
-  const email = profile?.email || auth?.email || "";
-  const studentId = profile?.student_id || auth?.student_id || auth?.id || "—";
+  const profile_pic = rawPic ? toBackendUrl(rawPic) + `?v=${profile?.updated_at || '1'}` : null;
 
-  /* ===== Left Dynamic Section (Route Title) ===== */
-  const renderLeftSection = () => {
-    const path = location.pathname;
-    const map = {
-      "/home": ["StudyNest", "Your collaborative study platform."],
-      "/notes": ["Lecture Notes", "Browse and upload your notes."],
-      "/forum": ["Q&A Forum", "Ask and answer academic questions."],
-      "/rooms": ["Study Rooms", "Join or create virtual study spaces."],
-      "/search": ["Search & Tags", "Explore notes, forums, and resources."],
-      "/resources": ["Shared Resources", "Access and share course materials."],
-      "/to-do-list": ["To-Do List", "Organize your academic tasks."],
-      "/ai-check": ["AI File Check", "Analyze documents using AI tools."],
-      "/ai-usage": ["AI Usage Checker", "Detect AI-written content."],
-      "/humanize": ["Humanize Writing", "Make AI text sound natural."],
-      "/messages": ["Messages", "Chat with classmates."],
-      "/groups": ["Study Groups", "Collaborate and share ideas."],
-      "/profile": ["Your Profile", "Manage your info and settings."],
-      "/points-leaderboard": ["Points Leaderboard", "See how you rank among other students"],
-      "/myresource": ["My Resources", "Your personal uploads and room recordings. Share recordings or files to the Shared feed when you’re ready."],
-    };
-
-    const [title, subtitle] = Object.entries(map).find(([key]) => path.startsWith(key))?.[1] || [
-      "StudyNest",
-      "Empower your study journey.",
-    ];
-
-    return (
-      <div>
-        <h1 className="text-xl font-bold text-white">{title}</h1>
-        <p className="text-sm text-slate-300">{subtitle}</p>
-      </div>
-    );
+  const markAllAsRead = async () => {
+    const uid = profile?.id || auth?.id;
+    if (!uid) return;
+    try {
+      await apiClient.post("notifications.php?action=mark_read", {
+        student_id: uid,
+        mark_all: true
+      });
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+    } catch (err) {
+      console.error("Mark read error:", err);
+    }
   };
 
-  /* ===== Render ===== */
+  const [pageTitle, pageSubtitle] = Object.entries(PAGE_MAP).find(([key]) =>
+    location.pathname.startsWith(key)
+  )?.[1] || ["StudyNest", "UIU Platform"];
+
+  const navActions = useMemo(() => {
+    const role = auth?.role || "User";
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid size={18} />, path: auth?.role?.toLowerCase() === 'admin' ? '/admin' : '/home' },
+      { icon: <MessageSquare className="w-5 h-5" />, path: "/messages", label: "Messages" },
+      { icon: <Bell className="w-5 h-5" />, path: "/profile", label: "Alerts", badge: true },
+    ];
+  }, [auth]);
+
   return (
-    <div
-      className="sticky top-0 z-40 backdrop-blur bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700 shadow-sm"
-      style={{ paddingLeft: sidebarWidth }}
+    <header
+      className="sticky top-0 z-40 transition-all duration-500"
+      style={{
+        paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth,
+        background: scrolled
+          ? "rgba(8,9,14,0.92)"
+          : "rgba(8,9,14,0.75)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        borderBottom: scrolled
+          ? "1px solid rgba(139,92,246,0.12)"
+          : "1px solid rgba(255,255,255,0.05)",
+        boxShadow: scrolled ? "0 4px 32px rgba(0,0,0,0.4)" : "none",
+      }}
     >
-      <div className="flex items-center justify-between px-4 py-3 gap-3">
-        {/* Left Side */}
-        {renderLeftSection()}
+      <div className="flex items-center justify-between h-20 px-6 lg:px-12">
+        {/* Mobile Menu Toggle */}
+        <button
+          onClick={() => setNavOpen(!navOpen)}
+          className="lg:hidden p-2 rounded-xl text-slate-400 hover:bg-white/5 transition-colors mr-2"
+        >
+          {navOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-3">
-          {/* Groups */}
-          <button
-            className="text-slate-300 hover:text-cyan-300 rounded-lg p-1.5 transition"
-            onClick={() => navigate("/groups")}
+        {/* Left: Page Title */}
+        <motion.div
+          initial={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          key={location.pathname}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col"
+        >
+          <h1 className="text-lg font-bold tracking-tight leading-none"
+            style={{
+              background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text"
+            }}>
+            {pageTitle}
+          </h1>
+          <p className="text-[10px] font-bold uppercase tracking-widest mt-1"
+            style={{ color: "#475569" }}>
+            {pageSubtitle}
+          </p>
+        </motion.div>
+
+        {/* Center: Search */}
+        <div className="hidden lg:flex items-center flex-1 max-w-2xl mx-12">
+          <div
+            className="relative w-full transition-all duration-500"
+            ref={searchRef}
+            style={{ filter: searchFocused ? "drop-shadow(0 0 20px rgba(139,92,246,0.2))" : "none" }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4h-1m-4 6v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2h9zm3-6a4 4 0 100-8 4 4 0 000 8zM6 8a4 4 0 118 0 4 4 0 01-8 0z" />
-            </svg>
-          </button>
-
-          {/* Messages */}
-          <button
-            className="text-slate-300 hover:text-cyan-300 rounded-lg p-1.5 transition"
-            onClick={() => navigate("/messages")}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.068.157 2.148.279 3.238.364.466.037.893.281 1.153.671L12 21l2.652-3.978c.26-.39.687-.634 1.153-.67 1.09-.086 2.17-.208 3.238-.365 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-            </svg>
-          </button>
-
-          {/* Notifications */}
-          {/* <div className="relative" ref={notifRef}>
-            <button
-              className="relative text-slate-300 hover:text-cyan-300 rounded-lg p-1.5 transition"
-              onClick={() => {
-                const next = !notifOpen;
-                setNotifOpen(next);
-                // Only mark as read when opening, not when closing
-                if (next && unreadCount > 0) {
-                  markAllRead();
-                }
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all duration-300"
+              style={{ color: searchFocused ? "#a78bfa" : "#475569" }}
+            />
+            <input
+              type="text"
+              placeholder="Search courses, resources, groups..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              className="w-full rounded-xl py-3 pl-11 pr-16 text-sm font-medium outline-none transition-all duration-300"
+              style={{
+                background: searchFocused ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.04)",
+                border: searchFocused
+                  ? "1px solid rgba(139,92,246,0.4)"
+                  : "1px solid rgba(255,255,255,0.07)",
+                color: "#e2e8f0",
               }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] leading-[18px] text-center">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/60">
-                  <div className="text-slate-200 text-sm font-medium">Notifications</div>
-                  <button onClick={markAllRead} className="text-xs text-cyan-300 hover:text-cyan-200">
-                    Mark all read
-                  </button>
-                </div>
-                <ul className="max-h-80 overflow-auto divide-y divide-slate-700/60">
-                  {notifications.length === 0 && (
-                    <li className="px-3 py-4 text-slate-400 text-sm">No notifications yet</li>
-                  )}
-                  {notifications.map((n) => (
-                    <li
-                      key={`notification-${n.id}-${n.created_at}`} // More unique key
-                      onClick={() => handleNotificationClick(n)}
-                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-slate-700/70 transition ${n.read_at ? "text-slate-300" : "text-white"
-                        }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div
-                          className={`mt-1 h-2 w-2 rounded-full ${n.read_at ? "bg-slate-600" : "bg-cyan-400"
-                            }`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{n.title}</div>
-                          {n.message && <div className="text-slate-400 truncate">{n.message}</div>}
-                          <div className="text-[10px] text-slate-500">
-                            {new Date(n.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+            />
+            {isSearching && (
+              <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-          </div> */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <kbd className="px-2 py-0.5 text-[10px] font-semibold rounded"
+                style={{ background: "rgba(255,255,255,0.06)", color: "#475569", border: "1px solid rgba(255,255,255,0.07)" }}>
+                /
+              </kbd>
+            </div>
 
-          {/* Profile Dropdown */}
-          <div className="relative" ref={profileRef}>
-            <button
-              onClick={() => setProfileOpen((v) => !v)}
-              className="h-9 w-9 rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-            >
-              {profile_pic ? (
-                <img src={profile_pic} alt="Profile" className="h-9 w-9 object-cover" />
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-9 w-9 text-slate-300"
+            {/* Search Results Dropdown */}
+            <AnimatePresence>
+              {searchFocused && searchQuery.trim() !== "" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute left-0 right-0 mt-2 max-h-[400px] overflow-y-auto rounded-2xl p-2 z-50"
+                  style={{
+                    background: "rgba(13,15,26,0.98)",
+                    border: "1px solid rgba(139,92,246,0.2)",
+                    backdropFilter: "blur(20px)",
+                    boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+                  }}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                  />
-                </svg>
-              )}
-            </button>
-
-            {profileOpen && (
-              <ul className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-800/95 border border-slate-700 shadow-xl backdrop-blur-md z-50 py-1">
-                <li className="px-3 py-2">
-                  <div className="flex items-center gap-3">
-                    {profile_pic ? (
-                      <img
-                        src={profile_pic}
-                        alt="Profile"
-                        className="h-10 w-10 rounded-full border border-cyan-500/40 object-cover"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center border border-cyan-500/40">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={2}
-                          stroke="currentColor"
-                          className="h-6 w-6 text-slate-300"
+                  {searchResults.length > 0 ? (
+                    <div className="space-y-1">
+                      {searchResults.map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSearchFocused(false);
+                            if (item.type === 'note') navigate(`/notes?id=${item.id}`);
+                            else if (item.type === 'resource') navigate(`/resources?id=${item.id}`);
+                            else if (item.type === 'forum') navigate(`/forum?id=${item.id}`);
+                            else if (item.type === 'room') navigate(`/rooms?id=${item.id}`);
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left"
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(139,92,246,0.08)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                          />
-                        </svg>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                            {item.type === 'note' && <LayoutGrid className="w-4 h-4 text-emerald-400" />}
+                            {item.type === 'resource' && <Sparkles className="w-4 h-4 text-violet-400" />}
+                            {item.type === 'forum' && <MessageSquare className="w-4 h-4 text-amber-400" />}
+                            {item.type === 'room' && <Video className="w-4 h-4 text-sky-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-200 truncate">{item.title}</h4>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{item.course || item.type}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    !isSearching && (
+                      <div className="p-8 text-center">
+                        <p className="text-sm text-gray-500">No results found for "{searchQuery}"</p>
                       </div>
-                    )}
-                    <div className="break-words pr-2">
-                      <div className="text-white text-xs whitespace-normal">{email || "guest@example.com"}</div>
-                      <div className="text-slate-400 text-xs whitespace-normal">ID: {studentId}</div>
+                    )
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Right: Actions + Profile */}
+        <div className="flex items-center gap-3">
+
+          {/* Action Icons */}
+          <div className="flex items-center gap-1 mr-2">
+            {navActions.map((action, i) => (
+              <motion.button
+                key={i}
+                whileHover={{ y: -2, scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                   if (action.label === "Alerts") {
+                     setNotificationsOpen(!notificationsOpen);
+                     setProfileOpen(false);
+                   } else if (action.path !== "#") {
+                     navigate(action.path);
+                   }
+                }}
+                className={`relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 group ${
+                   (action.label === "Alerts" && notificationsOpen) ? "text-violet-400 bg-violet-400/10" : "text-slate-400"
+                }`}
+                ref={action.label === "Alerts" ? notificationsRef : null}
+              >
+                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: "rgba(255,255,255,0.05)" }} />
+                {action.icon}
+                {(action.badge && unreadCount > 0) && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: "#a78bfa", boxShadow: "0 0 8px rgba(139,92,246,0.8)" }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                    <span className="absolute inset-0 rounded-full animate-ping"
+                      style={{ background: "#a78bfa", opacity: 0.5 }} />
+                  </span>
+                )}
+
+                {/* Notifications Dropdown */}
+                <AnimatePresence>
+                  {action.label === "Alerts" && notificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                      transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                      className="absolute right-0 top-full mt-3 w-80 rounded-2xl overflow-hidden cursor-default"
+                      style={{
+                        background: "rgba(13,15,26,0.98)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        backdropFilter: "blur(24px)",
+                        boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.1)",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                        <h3 className="text-sm font-bold text-slate-200">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={markAllAsRead}
+                            className="text-[10px] font-bold text-violet-400 hover:text-violet-300 transition-colors uppercase tracking-wider"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                        {notifications.length > 0 ? (
+                          <div className="divide-y divide-white/5">
+                            {notifications.map((n, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`p-4 transition-colors hover:bg-white/5 cursor-pointer ${!n.read_at ? 'bg-violet-500/5' : ''}`}
+                                onClick={() => {
+                                  if (n.link) navigate(n.link);
+                                  setNotificationsOpen(false);
+                                }}
+                              >
+                                <div className="flex gap-3">
+                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                       style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                                    <Bell className="w-4 h-4 text-violet-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-200 truncate">{n.title}</p>
+                                    <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">{n.message}</p>
+                                    <p className="text-[9px] text-slate-500 mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                  {!n.read_at && <div className="w-2 h-2 rounded-full bg-violet-400 mt-1 self-start" />}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center">
+                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                              <Bell className="w-6 h-6 text-slate-600" />
+                            </div>
+                            <p className="text-sm text-slate-500">No new alerts</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Recommended Actions / Feature Highlights */}
+                      {auth?.role?.toLowerCase() !== 'admin' && (
+                        <div className="p-4 bg-violet-500/5 border-t border-white/5">
+                          <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-3">Student Highlights</p>
+                          <div className="grid grid-cols-2 gap-2">
+                             <button 
+                               onClick={() => { navigate("/rooms"); setNotificationsOpen(false); }}
+                               className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+                             >
+                               <Video className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                               <span className="text-[10px] font-bold text-slate-300">Join a Room</span>
+                             </button>
+                             <button 
+                               onClick={() => { navigate("/points-leaderboard"); setNotificationsOpen(false); }}
+                               className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+                             >
+                               <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                               <span className="text-[10px] font-bold text-slate-300">Leaderboard</span>
+                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-3 text-center border-t border-white/5">
+                         <button 
+                           onClick={() => { navigate("/profile"); setNotificationsOpen(false); }}
+                           className="text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                         >
+                           View all history
+                         </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {/* Profile Button */}
+          <div className="relative ml-2" ref={profileRef}>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 group"
+              style={{
+                background: profileOpen ? "rgba(139,92,246,0.1)" : "transparent",
+                border: profileOpen ? "1px solid rgba(139,92,246,0.3)" : "1px solid transparent",
+              }}
+            >
+              {/* Avatar */}
+              <div className="relative w-8 h-8 rounded-lg overflow-hidden flex-shrink-0"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 0 15px rgba(139,92,246,0.2)"
+                }}>
+                {profile_pic ? (
+                  <img src={profile_pic} alt="Me" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>
+                    <UserIcon className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full"
+                  style={{ background: "#34d399", border: "1px solid #08090e", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+              </div>
+
+              <div className="hidden xl:block text-left">
+                <p className="text-xs font-bold leading-none" style={{ color: "#e2e8f0" }}>
+                  {profile?.username || profile?.name || "Student"}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>
+                  Online
+                </p>
+              </div>
+
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${profileOpen ? "rotate-180" : ""}`}
+                style={{ color: "#475569" }}
+              />
+            </motion.button>
+
+            {/* Dropdown */}
+            <AnimatePresence>
+              {profileOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                  className="absolute right-0 mt-3 w-72 rounded-2xl overflow-hidden"
+                  style={{
+                    background: "rgba(13,15,26,0.95)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(24px)",
+                    boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.1)",
+                  }}
+                >
+                  {/* Profile Summary */}
+                  <div className="p-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0"
+                        style={{ border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}>
+                        {profile_pic ? (
+                          <img src={profile_pic} alt="Me" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center"
+                            style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>
+                            <UserIcon className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: "#f1f5f9" }}>
+                          {profile?.username || "Guest"}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "#475569" }}>
+                          {profile?.email || "student@uiu.ac.bd"}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: "#34d399", boxShadow: "0 0 5px rgba(52,211,153,0.7)" }} />
+                          <span className="text-[10px] font-semibold" style={{ color: "#34d399" }}>Active</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </li>
-                <li className="border-t border-slate-700/60 my-1" />
-                <li>
-                  <Link
-                    to="/profile"
-                    className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/groups"
-                    className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    Group Chat
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/history"
-                    className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    History
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/settings"
-                    className="block px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/80"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    Settings & Privacy
-                  </Link>
-                </li>
-                <li className="px-3 pt-1 pb-2">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center rounded-lg bg-gradient-to-r from-rose-600 to-red-600 text-white text-sm py-2 hover:from-rose-500 hover:to-red-500"
-                  >
-                    Log out
-                  </button>
-                </li>
-              </ul>
-            )}
+
+                  {/* Menu Items */}
+                  <div className="p-2">
+                    {[
+                      { label: "My Profile", icon: <UserIcon className="w-4 h-4" />, path: "/profile" },
+                      { label: "My Resources", icon: <History className="w-4 h-4" />, path: "/my-resources" },
+                      { label: "Study Rooms", icon: <Video className="w-4 h-4" />, path: "/rooms" },
+                      { label: "Settings", icon: <Settings className="w-4 h-4" />, path: "/profile" },
+                    ].map((item, i) => (
+                      <motion.button
+                        key={i}
+                        whileHover={{ x: 4 }}
+                        onClick={() => { navigate(item.path); setProfileOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                        style={{ color: "#94a3b8" }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = "rgba(139,92,246,0.08)";
+                          e.currentTarget.style.color = "#e2e8f0";
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = "transparent";
+                          e.currentTarget.style.color = "#94a3b8";
+                        }}
+                      >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          {item.icon}
+                        </div>
+                        {item.label}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {/* Logout */}
+                  <div className="p-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                    <motion.button
+                      whileHover={{ x: 4 }}
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                      style={{ color: "#94a3b8" }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "rgba(244,63,94,0.08)";
+                        e.currentTarget.style.color = "#fb7185";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "#94a3b8";
+                      }}
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.1)" }}>
+                        <LogOut className="w-4 h-4" style={{ color: "#fb7185" }} />
+                      </div>
+                      Sign Out
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </div>
+    </header>
   );
 }

@@ -1,333 +1,246 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import Header from '../Components/Header';
 import LeftNav from '../Components/LeftNav';
 import Footer from '../Components/Footer';
+import { Trophy, RefreshCw, Crown, Medal, Award, Zap, Users } from 'lucide-react';
+import apiClient from "../apiConfig";
 
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+const RANK_CONFIG = {
+  1: { label: "Gold",   icon: Crown,  color: "#fbbf24", glow: "rgba(251,191,36,0.5)",  bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", height: 160 },
+  2: { label: "Silver", icon: Medal,  color: "#94a3b8", glow: "rgba(148,163,184,0.4)", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.2)", height: 130 },
+  3: { label: "Bronze", icon: Award,  color: "#f97316", glow: "rgba(249,115,22,0.4)",  bg: "rgba(249,115,22,0.1)",  border: "rgba(249,115,22,0.25)", height: 100 },
+};
+
+const POINT_ACTIONS = [
+  { label: "Daily Login",   pts: "+5" },
+  { label: "3-Day Streak", pts: "+8" },
+  { label: "7-Day Streak", pts: "+12" },
+  { label: "20-Day Streak",pts: "+20" },
+  { label: "Create Room",  pts: "+30" },
+  { label: "Join Meeting", pts: "+15" },
+  { label: "Share Resource",pts:"+25" },
+  { label: "Share Notes",  pts: "+20" },
+  { label: "Ask Question", pts: "+15" },
+  { label: "Accept Answer",pts: "+5" },
+  { label: "Give Answer",  pts: "+2" },
+];
 
 export default function PointsLeaderboard() {
-    const [leaderboard, setLeaderboard] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [currentUser, setCurrentUser] = useState(null);
-    const [isDemoMode, setIsDemoMode] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const SIDEBAR_W = navOpen ? 280 : 80;
 
-    //leftBar
-    const [navOpen, setNavOpen] = useState(false);
-    const [anonymous, setAnonymous] = useState(false);
+  useEffect(() => {
+    const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
+    const profile = JSON.parse(localStorage.getItem('studynest.profile') || '{}');
+    setCurrentUser({ id: auth?.id || profile?.id, name: profile?.name || auth?.name || 'You', points: auth?.points || 0 });
+    fetchLeaderboard();
+  }, []);
 
-    // Match LeftNav’s expected widths
-    const COLLAPSED_W = 72;   // px
-    const EXPANDED_W = 248;  // px
-    const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get("getLeaderboard.php");
+      const data = res.data;
+      if (data.success) setLeaderboard(data.leaderboard || []);
+    } catch {
+      setLeaderboard([
+        { id: 1, name: 'John Doe',      student_id: 'STU001', points: 1250, rank: 1 },
+        { id: 2, name: 'Jane Smith',    student_id: 'STU002', points: 980,  rank: 2 },
+        { id: 3, name: 'Mike Johnson',  student_id: 'STU003', points: 875,  rank: 3 },
+        { id: 4, name: 'Sarah Wilson',  student_id: 'STU004', points: 760,  rank: 4 },
+        { id: 5, name: 'Alex Chen',     student_id: 'STU005', points: 650,  rank: 5 },
+      ]);
+    } finally { setLoading(false); }
+  };
 
-    useEffect(() => {
-        // Get current user from localStorage
-        const auth = JSON.parse(localStorage.getItem('studynest.auth') || '{}');
-        const profile = JSON.parse(localStorage.getItem('studynest.profile') || '{}');
+  const top3 = leaderboard.filter(u => u.rank <= 3).sort((a,b) => {
+    // Display order: 2-1-3 for podium effect
+    const order = { 1: 1, 2: 0, 3: 2 };
+    return order[a.rank] - order[b.rank];
+  });
+  const rest = leaderboard.filter(u => u.rank > 3);
 
-        const userData = {
-            id: auth?.id || profile?.id,
-            name: profile?.name || auth?.name || 'Current User',
-            student_id: profile?.student_id || auth?.student_id || 'STU001',
-            points: auth?.points || 0
-        };
+  const userEntry = currentUser && leaderboard.find(u => u.id === currentUser.id);
 
-        setCurrentUser(userData);
-        fetchLeaderboard();
-    }, []);
+  return (
+    <div className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: SIDEBAR_W, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+      {/* Aurora */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/3 w-96 h-64 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #fbbf24, transparent)", filter: "blur(80px)" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+      </div>
 
-    const fetchLeaderboard = async () => {
-        try {
-            setLoading(true);
-            setError('');
-            setIsDemoMode(false);
+      <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={SIDEBAR_W} />
+      <Header sidebarWidth={SIDEBAR_W} />
 
-            const response = await fetch(`${API_BASE}/getLeaderboard.php`);
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10 relative z-10">
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+        {/* Header */}
+        <div className="flex items-center justify-between mb-10">
+          <div>
+            <h1 className="text-4xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #fbbf24, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              Scholar Rankings
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "#475569" }}>{leaderboard.length} scholars competing</p>
+          </div>
+          <button onClick={fetchLeaderboard}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(251,191,36,0.25)"; e.currentTarget.style.color = "#fbbf24"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+        </div>
 
-            const data = await response.json();
-
-            if (data.success) {
-                setLeaderboard(data.leaderboard || []);
-                if (data.message && data.message.includes('sample')) {
-                    setIsDemoMode(true);
-                }
-            } else {
-                throw new Error(data.message || 'Failed to load leaderboard');
-            }
-
-        } catch (err) {
-            console.error('Error fetching leaderboard:', err);
-            setError('Connected to database but using sample data');
-            setIsDemoMode(true);
-            // Use fallback data from the PHP response if available, otherwise use local fallback
-            if (err.message.includes('sample')) {
-                setLeaderboard([
-                    { id: 1, name: 'John Doe', student_id: 'STU001', points: 1250, rank: 1 },
-                    { id: 2, name: 'Jane Smith', student_id: 'STU002', points: 980, rank: 2 },
-                    { id: 3, name: 'Mike Johnson', student_id: 'STU003', points: 875, rank: 3 },
-                    { id: 4, name: 'Sarah Wilson', student_id: 'STU004', points: 760, rank: 4 },
-                    { id: 5, name: 'Alex Chen', student_id: 'STU005', points: 650, rank: 5 },
-                ]);
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const getRankIcon = (rank) => {
-        switch (rank) {
-            case 1:
-                return '🥇';
-            case 2:
-                return '🥈';
-            case 3:
-                return '🥉';
-            default:
-                return `#${rank}`;
-        }
-    };
-
-    const getRankColor = (rank) => {
-        switch (rank) {
-            case 1:
-                return 'from-amber-500 to-yellow-500 border-amber-400';
-            case 2:
-                return 'from-gray-400 to-gray-500 border-gray-400';
-            case 3:
-                return 'from-amber-700 to-amber-800 border-amber-600';
-            default:
-                return 'from-slate-700 to-slate-800 border-slate-600';
-        }
-    };
-
-    const getUserRank = () => {
-        if (!currentUser) return null;
-        const userInLeaderboard = leaderboard.find(user => user.id === currentUser.id);
-        if (userInLeaderboard) return userInLeaderboard;
-
-        // If user not in top ranks, show their current data
-        return {
-            ...currentUser,
-            rank: leaderboard.length + 1
-        };
-    };
-
-    const userRank = getUserRank();
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 pt-20">
-                <div className="max-w-4xl mx-auto">
-                    <div className="animate-pulse">
-                        <div className="h-8 bg-slate-700 rounded w-1/3 mb-6"></div>
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="h-20 bg-slate-800 rounded-xl mb-3"></div>
-                        ))}
-                    </div>
+        {/* Your Rank Card */}
+        {currentUser && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="mb-8 p-5 rounded-2xl relative overflow-hidden"
+            style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}>
+            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at right, rgba(6,182,212,0.06), transparent 60%)" }} />
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", boxShadow: "0 0 20px rgba(124,58,237,0.4)" }}>
+                  <Users className="w-5 h-5 text-white" />
                 </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748b" }}>Your Standing</p>
+                  <p className="text-base font-bold" style={{ color: "#f1f5f9" }}>{currentUser.name}</p>
+                  {userEntry && <p className="text-xs" style={{ color: "#475569" }}>Rank #{userEntry.rank}</p>}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-display font-black" style={{ color: "#a78bfa", textShadow: "0 0 20px rgba(139,92,246,0.5)" }}>
+                  {(userEntry?.points || currentUser.points || 0).toLocaleString()}
+                </p>
+                <p className="text-xs" style={{ color: "#475569" }}>Scholar Points</p>
+              </div>
             </div>
-        );
-    }
+          </motion.div>
+        )}
 
-    return (
-        <main className="min-h-screen bg-gradient-to-b from-slate-400 to-slate-600 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
-            <LeftNav
-                navOpen={navOpen}
-                setNavOpen={setNavOpen}
-                anonymous={anonymous}
-                setAnonymous={setAnonymous}
-                sidebarWidth={sidebarWidth}
-            />
-
-            {/* Header */}
-            <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
-
-            <div className="mx-auto max-w-3x1 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
-                {/* Demo Mode Notice */}
-                {isDemoMode && (
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                        <div className="flex items-center gap-3">
-                            <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <div>
-                                <p className="text-blue-400 text-sm font-medium">Demo Data Loaded</p>
-                                <p className="text-blue-300 text-xs">Showing sample data. Real user data will appear when users are registered.</p>
-                            </div>
+        {loading ? (
+          <div className="space-y-4">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-20 rounded-2xl shimmer" style={{ animationDelay: `${i * 0.1}s` }} />
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* Podium */}
+            {top3.length > 0 && (
+              <div className="mb-10">
+                <div className="flex items-end justify-center gap-6 mb-8" style={{ height: 220 }}>
+                  {top3.map((user) => {
+                    const cfg = RANK_CONFIG[user.rank] || RANK_CONFIG[3];
+                    const Icon = cfg.icon;
+                    return (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: user.rank * 0.1, type: "spring", stiffness: 200 }}
+                        className="relative flex flex-col items-center"
+                        style={{ width: 130 }}
+                      >
+                        {/* User Name */}
+                        <p className="text-xs font-bold text-center mb-3 leading-tight" style={{ color: "#e2e8f0", maxWidth: 100 }}>
+                          {user.name}
+                        </p>
+                        {/* Avatar */}
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-display font-black"
+                          style={{ background: `linear-gradient(135deg, ${cfg.color}30, ${cfg.color}15)`, border: `2px solid ${cfg.color}`, boxShadow: `0 0 20px ${cfg.glow}`, color: cfg.color }}>
+                          {user.name.substring(0, 1)}
                         </div>
-                    </div>
-                )}
-
-                {/* Current User Stats */}
-                {userRank && (
-                    <div className="bg-slate-800/20 border border-slate-700 rounded-2xl p-6 mb-8">
-                        <h2 className="text-3xl font-semibold text-black mb-4">Your Ranking</h2>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getRankColor(userRank.rank)} border-2 flex items-center justify-center text-black font-bold`}>
-                                    {getRankIcon(userRank.rank)}
-                                </div>
-                                <div>
-                                    <h3 className="text-black text-lg font-semibold">{userRank.name}</h3>
-                                    <p className="text-slate-100 text-sm">ID: {userRank.student_id}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-bold text-amber-400">{userRank.points.toLocaleString()}</div>
-                                <div className="text-slate-100 text-sm">points</div>
-                            </div>
+                        {/* Podium block */}
+                        <div className="w-full flex flex-col items-center justify-end rounded-t-2xl py-4 relative overflow-hidden"
+                          style={{ height: cfg.height, background: cfg.bg, border: `1px solid ${cfg.border}`, borderBottom: "none" }}>
+                          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at top, ${cfg.color}10, transparent 70%)` }} />
+                          <Icon className="w-6 h-6 mb-2 relative z-10" style={{ color: cfg.color }} />
+                          <p className="text-2xl font-display font-black leading-none relative z-10" style={{ color: cfg.color }}>#{user.rank}</p>
+                          <p className="text-xs font-bold mt-1 relative z-10" style={{ color: cfg.color }}>{user.points.toLocaleString()} pts</p>
                         </div>
-                    </div>
-                )}
-
-                {/* Error Message */}
-                {error && !isDemoMode && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
-                        <div className="flex items-center gap-3">
-                            <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                            <div>
-                                <p className="text-red-400 text-sm font-medium">Connection Issue</p>
-                                <p className="text-red-300 text-xs">{error}</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Leaderboard */}
-                <div className="bg-slate-800/30 border border-slate-700 rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-slate-700">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-semibold text-white">Top Students</h2>
-                            <span className="text-slate-100 text-sm">
-                                {leaderboard.length} students
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="divide-y divide-slate-700">
-                        {leaderboard.map((user) => (
-                            <div
-                                key={user.id}
-                                className={`p-4 flex items-center justify-between transition-colors ${user.id === currentUser?.id
-                                    ? 'bg-cyan-500/10 border-l-4 border-cyan-400'
-                                    : 'hover:bg-slate-700/30'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${getRankColor(user.rank)} border-2 flex items-center justify-center text-white font-bold text-sm`}>
-                                        {getRankIcon(user.rank)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-white font-medium">
-                                            {user.name}
-                                            {user.id === currentUser?.id && (
-                                                <span className="ml-2 text-cyan-400 text-xs">(You)</span>
-                                            )}
-                                        </h3>
-                                        <p className="text-slate-100 text-sm">ID: {user.student_id}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-lg font-semibold text-amber-400">{user.points.toLocaleString()}</div>
-                                    <div className="text-slate-100 text-sm">points</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
+              </div>
+            )}
 
-                {/* How to Earn Points */}
-                <div className="mt-8 bg-slate-800/30 border border-slate-700 rounded-2xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">How to Earn Points</h3>
-                    <div className="grid md:grid-cols-4 gap-4 text-sm">
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+5</span>
-                            </div>
-                            <span>Daily login streak</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+8</span>
-                            </div>
-                            <span>3 day login streak</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+12</span>
-                            </div>
-                            <span>7 day login streak</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+20</span>
-                            </div>
-                            <span>20 day login streak</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+30</span>
-                            </div>
-                            <span>Meeting Creation</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+15</span>
-                            </div>
-                            <span>Join a Meeting</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+25</span>
-                            </div>
-                            <span>Sharing resources</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+20</span>
-                            </div>
-                            <span>Sharing Notes</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+15</span>
-                            </div>
-                            <span>Asking Questions</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+5</span>
-                            </div>
-                            <span>Accepted Answers</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-green-400 text-xs">+2</span>
-                            </div>
-                            <span>Giving Answers</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Refresh Button */}
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={fetchLeaderboard}
-                        className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-white transition-colors font-medium"
+            {/* Full ranked list */}
+            <div className="rounded-2xl overflow-hidden mb-8" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="flex items-center justify-between px-6 py-4 border-b" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#475569" }}>All Rankings</p>
+                <div className="badge-violet text-[10px]"><Trophy className="w-3 h-3" /> {leaderboard.length} Scholars</div>
+              </div>
+              <div>
+                {leaderboard.map((user, i) => {
+                  const isUser = user.id === currentUser?.id;
+                  const medal = user.rank <= 3 ? ["🥇","🥈","🥉"][user.rank - 1] : null;
+                  return (
+                    <motion.div key={user.id}
+                      initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04, ease: "easeOut" }}
+                      className="flex items-center px-6 py-4 border-b transition-colors duration-200"
+                      style={{
+                        borderColor: "rgba(255,255,255,0.04)",
+                        background: isUser
+                          ? "rgba(124,58,237,0.08)"
+                          : "transparent",
+                        borderLeft: isUser ? "3px solid rgba(124,58,237,0.6)" : "3px solid transparent",
+                      }}
+                      onMouseEnter={e => !isUser && (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+                      onMouseLeave={e => !isUser && (e.currentTarget.style.background = "transparent")}
                     >
-                        Refresh Leaderboard
-                    </button>
-                </div>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-display font-black mr-4 flex-shrink-0"
+                        style={user.rank <= 3
+                          ? { background: `${RANK_CONFIG[user.rank].color}18`, color: RANK_CONFIG[user.rank].color, border: `1px solid ${RANK_CONFIG[user.rank].border}` }
+                          : { background: "rgba(255,255,255,0.04)", color: "#475569", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        {medal || `#${user.rank}`}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold flex items-center gap-2" style={{ color: "#e2e8f0" }}>
+                          {user.name} {isUser && <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)" }}>You</span>}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "#475569" }}>ID: {user.student_id}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-display font-black" style={{ color: user.rank <= 3 ? RANK_CONFIG[user.rank].color : "#94a3b8" }}>
+                          {user.points.toLocaleString()}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-widest" style={{ color: "#334155" }}>pts</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-            <Footer />
-        </main>
-    );
+          </>
+        )}
+
+        {/* How to Earn Points */}
+        <div className="rounded-2xl p-6 overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}>
+              <Zap className="w-4 h-4" style={{ color: "#a78bfa" }} />
+            </div>
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: "#64748b" }}>How to Earn Points</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {POINT_ACTIONS.map((action, i) => (
+              <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <span className="text-xs font-black" style={{ color: "#34d399" }}>{action.pts}</span>
+                <span className="text-xs" style={{ color: "#64748b" }}>{action.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <Footer sidebarWidth={SIDEBAR_W} />
+    </div>
+  );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 import Header from "../Components/Header";
+import apiClient from "../apiConfig";
 
 export default function AIUsageChecker() {
     const navigate = useNavigate();
@@ -11,13 +12,10 @@ export default function AIUsageChecker() {
     const [loading, setLoading] = useState(false);
     const inputRef = useRef();
 
-    //leftBar
     const [navOpen, setNavOpen] = useState(false);
     const [anonymous, setAnonymous] = useState(false);
-
-    // Match LeftNav’s expected widths
-    const COLLAPSED_W = 72;   // px
-    const EXPANDED_W = 248;  // px
+    const COLLAPSED_W = 72;
+    const EXPANDED_W = 248;
     const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
 
     async function handleFile(f) {
@@ -31,96 +29,84 @@ export default function AIUsageChecker() {
         try {
             const form = new FormData();
             form.append("file", file);
-
-            const res = await fetch("http://localhost:8000/src/api/check_ai.php", {
-                method: "POST",
-                body: form,
-            });
-
-            const text = await res.text(); // read raw text first
-            let data;
-            try {
-                data = text ? JSON.parse(text) : null;
-            } catch (e) {
-                throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 300)}`);
-            }
-
-            if (!res.ok) {
-                throw new Error(data?.error || `HTTP ${res.status}`);
-            }
-
+            const res = await apiClient.post("check_ai.php", form);
+            const data = res.data;
             setResult({ score: data.score, feedback: data.feedback });
         } catch (err) {
-            setResult({
-                score: 0,
-                feedback:
-                    err?.message ||
-                    "Request failed. Check the Network tab for the response body.",
-            });
-        } finally {
-            setLoading(false);
-        }
+            setResult({ score: 0, feedback: err?.message || "Request failed. Check the Network tab for the response body." });
+        } finally { setLoading(false); }
     }
 
-
-
     return (
-        <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl" style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}>
-            <LeftNav
-                navOpen={navOpen}
-                setNavOpen={setNavOpen}
-                anonymous={anonymous}
-                setAnonymous={setAnonymous}
-                sidebarWidth={sidebarWidth}
-            />
-            {/* Header */}
+        <main className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 left-1/3 w-80 h-64 rounded-full opacity-[0.06]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+                <div className="absolute bottom-1/3 right-1/3 w-64 h-64 rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, #fb7185, transparent)", filter: "blur(80px)" }} />
+            </div>
+
+            <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} anonymous={anonymous} setAnonymous={setAnonymous} sidebarWidth={sidebarWidth} />
             <Header navOpen={navOpen} sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} />
 
-            <div className="mx-auto max-w-2xl px-6 py-10 space-y-6">
-                <div className="rounded-2xl border-2 border-dashed border-zinc-300 p-6 text-center bg-white">
-                    {!file ? (
-                        <>
-                            <p className="text-sm text-zinc-600">Upload your essay or notes (PDF, DOCX, TXT)</p>
-                            <label className="mt-3 inline-flex cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                                Choose file
-                                <input ref={inputRef} type="file" className="hidden" onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
-                            </label>
-                        </>
-                    ) : (
-                        <div>
-                            <p className="text-sm font-semibold">{file.name}</p>
-                            <button onClick={() => setFile(null)} className="mt-2 text-xs rounded border border-zinc-300 px-2 py-1 hover:bg-zinc-50">Remove</button>
-                        </div>
-                    )}
+            <div className="mx-auto max-w-2xl px-6 py-10 relative z-10">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #fb7185, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>AI Usage Checker</h1>
+                    <p className="text-sm mt-1" style={{ color: "#475569" }}>Detect AI-generated content in your documents</p>
                 </div>
 
-                <button disabled={!file || loading} onClick={runCheck}
-                    className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
-                    {loading ? "Analyzing…" : "Check AI Usage"}
-                </button>
-                {result && (
-                    <div className="rounded-2xl bg-white p-6 shadow ring-1 ring-zinc-200">
-                        <h2 className="text-lg font-semibold">Results</h2>
-                        <p className="mt-2 text-sm">AI likelihood: <span className="font-bold">{Math.round(result.score * 100)}%</span></p>
-                        <p className="mt-1 text-sm text-zinc-600">{result.feedback}</p>
+                <div className="space-y-5">
+                    <div className="rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}>
+                        {!file ? (
+                            <>
+                                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)" }}>
+                                    <span className="text-2xl">🔍</span>
+                                </div>
+                                <p className="text-sm mb-3" style={{ color: "#475569" }}>Upload your essay or notes (PDF, DOCX, TXT)</p>
+                                <label className="inline-flex cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "#fb7185" }}>
+                                    Choose file
+                                    <input ref={inputRef} type="file" className="hidden" onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
+                                </label>
+                            </>
+                        ) : (
+                            <div>
+                                <p className="text-sm font-bold" style={{ color: "#e2e8f0" }}>{file.name}</p>
+                                <p className="text-xs mt-1" style={{ color: "#475569" }}>{file.type || "file"} · {(file.size / 1024).toFixed(0)} KB</p>
+                                <button onClick={() => setFile(null)} className="mt-3 px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.2)", color: "#fb7185" }}>Remove</button>
+                            </div>
+                        )}
                     </div>
-                )}
-                <button
-                    disabled={!result}
-                    onClick={() => {
-                        localStorage.setItem(
-                            "studynest.humanize.pending",
-                            JSON.stringify({
-                                text: result?.excerpt || "Please paste the text you want to humanize.",
-                                notes: result?.feedback, // optional: carry tips forward
-                            })
-                        );
-                        navigate("/humanize");
-                    }}
-                    className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                >
-                    Humanize this
-                </button>
+
+                    <button disabled={!file || loading} onClick={runCheck}
+                        className="w-full py-3 rounded-xl text-sm font-bold transition-all duration-300 disabled:opacity-40"
+                        style={{ background: "linear-gradient(135deg, #fb7185, #7c3aed)", color: "white", boxShadow: "0 8px 24px rgba(251,113,133,0.25)" }}>
+                        {loading ? "🔍 Analyzing…" : "Check AI Usage"}
+                    </button>
+
+                    {result && (
+                        <div className="rounded-2xl p-6 space-y-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#475569" }}>Results</h2>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm" style={{ color: "#94a3b8" }}>AI Likelihood</span>
+                                    <span className="text-2xl font-display font-black" style={{ color: result.score > 0.5 ? "#fb7185" : "#34d399" }}>{Math.round(result.score * 100)}%</span>
+                                </div>
+                                <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.round(result.score * 100)}%`, background: result.score > 0.5 ? "linear-gradient(90deg, #fbbf24, #fb7185)" : "linear-gradient(90deg, #34d399, #06b6d4)" }} />
+                                </div>
+                            </div>
+                            <p className="text-sm" style={{ color: "#64748b" }}>{result.feedback}</p>
+                        </div>
+                    )}
+
+                    <button disabled={!result}
+                        onClick={() => {
+                            localStorage.setItem("studynest.humanize.pending", JSON.stringify({ text: result?.excerpt || "Please paste the text you want to humanize.", notes: result?.feedback }));
+                            navigate("/humanize");
+                        }}
+                        className="w-full py-3 rounded-xl text-sm font-bold transition-all duration-300 disabled:opacity-30"
+                        style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.25)" }}>
+                        ✨ Humanize This
+                    </button>
+                </div>
             </div>
             <Footer />
         </main>

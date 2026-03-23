@@ -5,7 +5,7 @@ import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api";
+import apiClient from "../apiConfig";
 const COLLAPSED_W = 72;
 const EXPANDED_W = 248;
 
@@ -42,8 +42,8 @@ export default function NewMeetingForm() {
     (async () => {
       try {
         setLoading(true);
-        const r = await fetch(`${API_BASE}/courses.php?type=programs`);
-        const j = await r.json();
+        const res = await apiClient.get("/courses.php", { params: { type: "programs" } });
+        const j = res.data;
         if (!cancel && j.ok) setPrograms(j.programs || []);
       } catch {
         if (!cancel) setErr("Failed to load programs");
@@ -57,16 +57,28 @@ export default function NewMeetingForm() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/profile.php`, { credentials: "include" });
-        const j = await r.json();
-        if (j.ok && j.name) setName(j.name);
+        const response = await apiClient.get("profile.php");
+        const j = response.data;
+        const display =
+          (j.ok && j.profile && (j.profile.name || j.profile.username)) ||
+          (j.ok && j.name);
+        if (display) setName(display);
         else {
           const local = JSON.parse(localStorage.getItem("studynest.profile") || "null");
-          if (local?.name) setName(local.name);
+          if (local?.name || local?.username) setName(local.name || local.username);
+        }
+        if (j.ok && j.profile) {
+          localStorage.setItem("studynest.profile", JSON.stringify(j.profile));
         }
       } catch {
-        const local = JSON.parse(localStorage.getItem("studynest.auth") || "null");
-        if (local?.name) setName(local.name);
+        try {
+          const prof = JSON.parse(localStorage.getItem("studynest.profile") || "null");
+          if (prof?.name || prof?.username) setName(prof.name || prof.username);
+          else {
+            const au = JSON.parse(localStorage.getItem("studynest.auth") || "null");
+            if (au?.name || au?.username) setName(au.name || au.username);
+          }
+        } catch { }
       }
     })();
   }, []);
@@ -81,8 +93,10 @@ export default function NewMeetingForm() {
     setErr("");
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/courses.php?type=departments&program=${encodeURIComponent(p)}`);
-      const j = await r.json();
+      const res = await apiClient.get("/courses.php", { 
+        params: { type: "departments", program: p } 
+      });
+      const j = res.data;
       if (j.ok) setDepartments(j.departments || []);
     } catch {
       setErr("Failed to load departments");
@@ -99,8 +113,10 @@ export default function NewMeetingForm() {
     setErr("");
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/courses.php?type=courses&department=${encodeURIComponent(d)}`);
-      const j = await r.json();
+      const res = await apiClient.get("/courses.php", { 
+        params: { type: "courses", department: d } 
+      });
+      const j = res.data;
       if (j.ok) setCourses(j.courses || []);
     } catch {
       setErr("Failed to load courses");
@@ -115,13 +131,17 @@ export default function NewMeetingForm() {
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(
-          `${API_BASE}/courses.php?type=courses&department=${encodeURIComponent(department)}&q=${encodeURIComponent(q)}`,
-          { signal: ctrl.signal }
-        );
-        const j = await r.json();
+        const res = await apiClient.get("/courses.php", {
+          params: { type: "courses", department, q },
+          signal: ctrl.signal,
+        });
+        const j = res.data;
         if (j.ok) setCourses(j.courses || []);
-      } catch { }
+      } catch (e) {
+        if (e.name !== "CanceledError") {
+          // console.error("Search failed", e);
+        }
+      }
     }, 250);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [q, step, department]);
@@ -143,23 +163,20 @@ export default function NewMeetingForm() {
         starts_at: scheduleType === "scheduled" ? startsAt : null,
         display_name: name || ""
       };
-      const res = await fetch(`${API_BASE}/meetings.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload)
-      });
-      const j = await res.json();
+      const response = await apiClient.post("meetings.php", payload);
+      const j = response.data;
+
       if (j.ok && j.id) {
         window.dispatchEvent(new CustomEvent('studynest:points-updated', {
-            detail: { points: j.newPoints } // You'll need to return newPoints from API
+            detail: { points: j.newPoints }
         }));
-        navigate(`/rooms/${j.id}`, { state: { title: payload.title } });
+        navigate(`/rooms/${j.id}`, { state: { title: payload.title, createdThisSession: true } });
       } else {
         setErr(j.error || "Failed to create meeting");
       }
-    } catch {
-      setErr("Network error while creating meeting");
+    } catch (err) {
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message;
+      setErr(msg === "Network Error" ? "Network error while creating meeting" : msg);
     } finally {
       setLoading(false);
     }
@@ -202,7 +219,7 @@ useEffect(() => {
   ];
 
   return (
-    <div className="min-h-screen text-gray-100 bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(14,165,233,0.14),transparent),radial-gradient(800px_400px_at_80%_-20%,rgba(59,130,246,0.12),transparent)]">
+    <div className="min-h-screen relative" style={{ background: "#08090e" }}>
       {/* Left sidebar (fixed) */}
       <LeftNav
         navOpen={navOpen}
@@ -217,17 +234,13 @@ useEffect(() => {
 
       <main style={{ paddingLeft: SIDEBAR_W }} className="transition-[padding] duration-300">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          {/* Title row */}
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-black">Create a Study Room</h1>
-              <p className="text-sm text-gray-400 mt-1">Pick a course, add details, and invite peers.</p>
+              <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #a78bfa, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Create a Study Room</h1>
+              <p className="text-sm mt-1" style={{ color: "#475569" }}>Pick a course, add details, and invite peers.</p>
             </div>
-            <Link
-              to="/rooms"
-              className="hidden sm:inline-block rounded-xl border border-gray-700 bg-cyan-900 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
-            >
-              Back to rooms
+            <Link to="/rooms" className="hidden sm:inline-block rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200" style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)", color: "#a78bfa" }}>
+              ← Back to Rooms
             </Link>
           </div>
 
@@ -239,22 +252,12 @@ useEffect(() => {
                 const done = s.id < step;
                 return (
                   <li key={s.id} className="flex items-center">
-                    <div
-                      className={
-                        "h-8 w-8 rounded-full grid place-items-center text-xs font-bold " +
-                        (done
-                          ? "bg-indigo-600 text-white"
-                          : active
-                            ? "bg-blue-600 text-white"
-                            : "bg-slate-800 text-gray-400")
-                      }
-                    >
+                    <div className="h-8 w-8 rounded-full grid place-items-center text-xs font-bold transition-all duration-300"
+                      style={{ background: done ? "rgba(52,211,153,0.2)" : active ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)", border: `1px solid ${done ? "rgba(52,211,153,0.4)" : active ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}`, color: done ? "#34d399" : active ? "#a78bfa" : "#475569" }}>
                       {s.id}
                     </div>
-                    <span className={"ml-2 mr-4 text-sm " + (active ? "text-blue-700 font-semibold" : "text-gray-400")}>
-                      {s.label}
-                    </span>
-                    {i < steps.length - 1 && <span className="h-px w-12 bg-slate-700/60 hidden sm:block" />}
+                    <span className="ml-2 mr-4 text-sm" style={{ color: active ? "#a78bfa" : done ? "#34d399" : "#475569", fontWeight: active ? 700 : 400 }}>{s.label}</span>
+                    {i < steps.length - 1 && <span className="h-px w-12 hidden sm:block" style={{ background: "rgba(255,255,255,0.07)" }} />}
                   </li>
                 );
               })}
@@ -435,22 +438,12 @@ useEffect(() => {
                       </div>
 
                       <div className="sm:col-span-2 flex items-center justify-between pt-1">
-                        <Link
-                          to="/rooms"
-                          className="rounded-xl border border-gray-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-900"
-                        >
+                        <Link to="/rooms" className="rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}>
                           Cancel
                         </Link>
-                        <button
-                          onClick={startMeeting}
-                          disabled={!canSubmit || loading}
-                          className={
-                            "rounded-xl px-4 py-2 text-sm font-semibold transition " +
-                            (canSubmit && !loading
-                              ? "bg-blue-600 hover:bg-blue-500 text-white"
-                              : "bg-slate-800 text-gray-400 cursor-not-allowed")
-                          }
-                        >
+                        <button onClick={startMeeting} disabled={!canSubmit || loading}
+                          className="rounded-xl px-5 py-2 text-sm font-bold transition-all duration-300 disabled:opacity-40"
+                          style={ canSubmit && !loading ? { background: "linear-gradient(135deg, #7c3aed, #22d3ee)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" } : { background: "rgba(255,255,255,0.06)", color: "#334155" } }>
                           {loading ? "Creating…" : "Start Room"}
                         </button>
                       </div>
@@ -517,7 +510,7 @@ useEffect(() => {
 /* ---------- small UI helpers ---------- */
 function Card({ children }) {
   return (
-    <div className="bg-gray-950/60 backdrop-blur rounded-2xl border border-gray-700 shadow-[0_1px_0_0_rgba(255,255,255,0.04),0_10px_20px_-10px_rgba(0,0,0,0.6)]">
+    <div className="rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
       {children}
     </div>
   );
@@ -525,10 +518,10 @@ function Card({ children }) {
 
 function HeaderRow({ title, right, sub }) {
   return (
-    <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+    <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
       <div>
-        <h2 className="text-sm font-semibold text-gray-300 uppercase">{title}</h2>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+        <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#475569" }}>{title}</h2>
+        {sub && <p className="text-xs mt-0.5" style={{ color: "#334155" }}>{sub}</p>}
       </div>
       {right}
     </div>

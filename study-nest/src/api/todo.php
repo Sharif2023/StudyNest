@@ -1,49 +1,15 @@
 <?php
-require_once "db.php";
+// todo.php
 
-// Since db.php already sets CORS headers, we don't need to set them again here
-// Just handle the specific API logic
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+require_once __DIR__ . '/auth.php'; // Provides JWT/Session validation
 
-// Custom error handler to return JSON
-set_exception_handler(function ($e) {
-    echo json_encode(["ok" => false, "error" => $e->getMessage()]);
-    exit;
-});
-
-// ---------- CREATE TODOS TABLE ----------
-try {
-    // Create the 'todos' table (if not exists)
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS todos (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            user_id INT UNSIGNED NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            description TEXT NULL,
-            type ENUM('default', 'assignment', 'report', 'exam', 'class_test', 'midterm', 'final') DEFAULT 'default',
-            status ENUM('pending', 'in-progress', 'completed') DEFAULT 'pending',
-            due_date DATE NULL,
-            due_time TIME NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_user (user_id),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-} catch (Exception $e) {
-    echo json_encode(["ok" => false, "error" => "DB init failed: " . $e->getMessage()]);
-    exit;
-}
+// --- Authentication Check ---
+$user_id = requireAuth(); // Automatically handles 401 if missing
 
 $method = $_SERVER["REQUEST_METHOD"];
-$user_id = $_GET["user_id"] ?? null;
 
-if (!$user_id) {
-    echo json_encode(["ok" => false, "error" => "Missing user_id"]);
-    exit;
-}
 
 // Verify user exists before proceeding
 try {

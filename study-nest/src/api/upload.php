@@ -1,15 +1,6 @@
 <?php
-// --- CORS + JSON ---
-$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
-header("Access-Control-Allow-Origin: $origin");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=utf-8");
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  http_response_code(204);
-  exit;
-}
+// upload.php
+require_once __DIR__ . '/db.php'; // Provides CORS headers and session_start()
 
 function respond($ok, $data = []) {
   echo json_encode($ok ? array_merge(['ok' => true], $data)
@@ -80,9 +71,10 @@ if (!move_uploaded_file($tmp, $targetPath)) {
 }
 
 // --- Public URL ---
-// Build a relative web path based on this script’s URL.
-$basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
-$publicUrl = $basePath . '/uploads/' . $filename; // e.g. /StudyNest/study-nest/src/api/uploads/xxxx.jpg
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$script = $_SERVER['SCRIPT_NAME'];
+$publicUrl = "{$protocol}://{$host}" . rtrim(dirname($script), '/\\') . '/uploads/' . $filename;
 
 respond(true, [
   'url' => $publicUrl,

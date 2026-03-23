@@ -1,45 +1,27 @@
 // Pages/MyResources.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 import MyResourceUpload from "../Components/MyResourceUpload";
+import apiClient from "../apiConfig";
 
-/**
- * StudyNest — My Resources (Personal Library)
- * - Shows ONLY the signed-in user's content
- * - Data source: profile.php?content=1 (notes, resources, recordings, etc.)
- * - Includes search, filters, preview, delete (rec + resource), and Share→Shared feed
- * - Upload modal (file → backend → Cloudinary, or external link)
- * - Shell: LeftNav + Header + Footer
- */
+import { 
+  uniq 
+} from "../Components/MyResources/MyResourceUtils";
+import { 
+  SearchIcon, 
+  Select, 
+  Card, 
+  EmptyState 
+} from "../Components/MyResources/MyResourceComponents";
+import { 
+  PreviewModal 
+} from "../Components/MyResources/MyResourceModals";
 
-const API_ROOT = "http://localhost/StudyNest/study-nest/src/api";
-const API_BASE = API_ROOT;
-const RES_LIBRARY_API = `${API_ROOT}/ResourceLibrary.php`;
-
-/* ----------------- Helpers for Cloudinary URLs & file types ----------------- */
-function isPdfLike(url = "", mime = "") {
-  if (!url && !mime) return false;
-  if (mime?.toLowerCase().includes("pdf")) return true;
-  return /\.pdf($|[?#])/i.test(url);
-}
-
-function isImageUrl(url = "", mime = "") {
-  if (mime?.startsWith("image/")) return true;
-  return /\.(jpg|jpeg|png|gif|webp)(?:$|[?#])/i.test(url || "");
-}
-
-function isCloudinary(url = "") {
-  return /(^https?:)?\/\/res\.cloudinary\.com\//i.test(url || "");
-}
-
-/** Force “download” (content-disposition attachment) and keep filename if present */
-function cloudinaryDownload(url = "") {
-  if (!isCloudinary(url)) return url;
-  return url.replace(/\/upload\/(?!fl_)/, "/upload/fl_attachment/");
-}
+const RES_LIBRARY_API = "ResourceLibrary.php";
 
 export default function MyResources() {
   // LeftNav shell
@@ -52,7 +34,7 @@ export default function MyResources() {
   // Page state
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [content, setContent] = useState({ resources: [], recordings: [] });
+  const [content, setContent] = useState({ resources: [], recordings: [], notes: [] });
 
   // UI state
   const [tab, setTab] = useState("resources"); // 'resources' | 'recordings'
@@ -68,7 +50,7 @@ export default function MyResources() {
   // Upload modal state
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  // Open correct tab via URL params: ?tab=recordings or legacy ?kind=recording
+  // Open correct tab via URL params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get("tab");
@@ -77,7 +59,7 @@ export default function MyResources() {
     else if (tabParam === "resources") setTab("resources");
   }, [location.search]);
 
-  // Current user (for ownership checks). Try id + name.
+  // Current user (for ownership checks)
   const auth = JSON.parse(localStorage.getItem("studynest.auth") || "null") || {};
   const profile = JSON.parse(localStorage.getItem("studynest.profile") || "null") || {};
   const currentUser = profile?.name || auth?.name || "Unknown";
@@ -87,13 +69,13 @@ export default function MyResources() {
     setLoading(true);
     setErr("");
     try {
-      const r = await fetch(`${API_BASE}/profile.php?content=1`, { credentials: "include" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
+      const res = await apiClient.get("profile.php", { params: { content: 1 } });
+      const j = res.data;
       if (!j?.ok || !j?.content) throw new Error("Invalid content response");
       setContent({
         resources: Array.isArray(j.content.resources) ? j.content.resources : [],
         recordings: Array.isArray(j.content.recordings) ? j.content.recordings : [],
+        notes: Array.isArray(j.content.notes) ? j.content.notes : [],
       });
     } catch (e) {
       console.error(e);
@@ -108,7 +90,27 @@ export default function MyResources() {
   }, []);
 
   // Options for filters based on visible tab
-  const rawItems = tab === "resources" ? content.resources : content.recordings;
+  const rawItems = useMemo(() => {
+    if (tab === "recordings") {
+      return (content.recordings || []).map(r => ({
+        ...r,
+        uniqueKey: `rec-${r.id}`
+      }));
+    }
+    // Merge resources and notes for the resources tab
+    const normalizedResources = (content.resources || []).map(r => ({
+      ...r,
+      uniqueKey: `res-${r.id}`
+    }));
+    const normalizedNotes = (content.notes || []).map(n => ({
+      ...n,
+      url: n.file_url,
+      kind: n.kind || 'note',
+      isNote: true,
+      uniqueKey: `note-${n.id}`
+    }));
+    return [...normalizedResources, ...normalizedNotes];
+  }, [content, tab]);
 
   const types = useMemo(() => {
     if (tab !== "resources") return ["All"];
@@ -152,14 +154,12 @@ export default function MyResources() {
   }, [rawItems, q, type, course, semester, tag, sort]);
 
   // Actions
-  const deleteRecording = async (id) => {
+  const deleteRecording = async (item) => {
+    const id = item.id;
     if (!window.confirm("Delete this recording? This cannot be undone.")) return;
     try {
-      const res = await fetch(`${API_ROOT}/recordings.php?id=${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const j = await res.json();
+      const res = await apiClient.delete("recordings.php", { params: { id } });
+      const j = res.data;
       if (j?.status === "success") {
         await fetchMine();
         alert("✅ Recording deleted");
@@ -167,45 +167,44 @@ export default function MyResources() {
         alert("❌ " + (j?.message || "Failed to delete"));
       }
     } catch (e) {
+      console.error(e);
       alert("❌ " + e.message);
     }
   };
 
-  // delete a personal resource (non-recording)
-  const deleteResource = async (id) => {
-    if (!window.confirm("Delete this resource? This cannot be undone.")) return;
+  const deleteResource = async (item) => {
+    const id = item.id;
+    if (!window.confirm("Delete this " + (item.isNote ? "note" : "resource") + "? This cannot be undone.")) return;
     try {
       const form = new FormData();
       form.append("action", "delete_resource");
       form.append("resource_id", id);
-      const r = await fetch(RES_LIBRARY_API, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const j = await r.json();
+      if (item.isNote) {
+        form.append("is_note", "1");
+        form.append("note_id", id);
+      }
+      const res = await apiClient.post(RES_LIBRARY_API, form);
+      const j = res.data;
       if (j?.status === "success") {
         await fetchMine();
-        alert("✅ Resource deleted");
+        alert("✅ " + (item.isNote ? "Note" : "Resource") + " deleted");
       } else {
-        alert("❌ " + (j?.message || "Failed to delete resource"));
+        alert("❌ " + (j?.message || "Failed to delete"));
       }
     } catch (e) {
+      console.error(e);
       alert("❌ " + e.message);
     }
   };
 
-  const shareRecording = async (id) => {
+  const shareRecording = async (item) => {
+    const id = item.id;
     try {
       const form = new FormData();
       form.append("action", "share_recording");
       form.append("recording_id", id);
-      const r = await fetch(RES_LIBRARY_API, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const j = await r.json();
+      const res = await apiClient.post(RES_LIBRARY_API, form);
+      const j = res.data;
       if (j?.status === "success") {
         if (j.points_awarded) bumpLocalPoints(j.points_awarded);
         alert("✅ " + (j.message || "Shared to Shared Resources"));
@@ -213,22 +212,24 @@ export default function MyResources() {
         alert("❌ " + (j?.message || "Share failed"));
       }
     } catch (e) {
+      console.error(e);
       alert("❌ " + e.message);
     }
   };
 
-  // Share a personal (non-recording) resource to the Shared feed
-  const shareResource = async (id) => {
+  const shareResource = async (item) => {
+    const id = item.id;
     try {
       const form = new FormData();
-      form.append("action", "share_resource");
-      form.append("resource_id", id);
-      const r = await fetch(RES_LIBRARY_API, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      const j = await r.json();
+      if (item.isNote) {
+        form.append("action", "share_note");
+        form.append("note_id", id);
+      } else {
+        form.append("action", "share_resource");
+        form.append("resource_id", id);
+      }
+      const res = await apiClient.post(RES_LIBRARY_API, form);
+      const j = res.data;
       if (j?.status === "success") {
         if (j.points_awarded) bumpLocalPoints(j.points_awarded);
         await fetchMine();
@@ -237,6 +238,7 @@ export default function MyResources() {
         alert("❌ " + (j?.message || "Share failed"));
       }
     } catch (e) {
+      console.error(e);
       alert("❌ " + e.message);
     }
   };
@@ -251,93 +253,107 @@ export default function MyResources() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-200 to-cyan-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-500">
+    <div className="min-h-screen bg-[#08090e] selection:bg-cyan-500/30 selection:text-white relative">
       <LeftNav
         navOpen={navOpen}
         setNavOpen={setNavOpen}
-        anonymous={anonymous}
-        setAnonymous={setAnonymous}
         sidebarWidth={sidebarWidth}
       />
 
-      <Header navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={sidebarWidth} />
+      <Header sidebarWidth={sidebarWidth} />
 
       <main
-        className="pt-6 pb-10"
-        style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}
+        style={{ paddingLeft: sidebarWidth }}
+        className="transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-screen relative pb-32"
       >
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-          {/* Title / tabs */}
-          <div className="rounded-2xl bg-white/80 dark:bg-slate-900/70 ring-1 ring-zinc-200 dark:ring-slate-800 shadow-md backdrop-blur-lg p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              {/* Tab buttons - now properly aligned to the left */}
-              <div className="inline-flex rounded-xl bg-zinc-100 p-1 dark:bg-slate-800/70">
-                {[
-                  ["resources", "My Uploads"],
-                  ["recordings", "My Recordings"],
-                ].map(([val, label]) => (
-                  <button
-                    key={val}
-                    onClick={() => setTab(val)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${tab === val
-                        ? "bg-white dark:bg-slate-900 text-zinc-900 dark:text-zinc-100 shadow"
-                        : "text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100"
-                      }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+        <section className="max-w-[1600px] mx-auto px-12 py-32 relative z-10">
+          {/* Header Section */}
+          <div className="mb-16 space-y-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+              <div className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10"
+                >
+                  <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Academic Assets</span>
+                </motion.div>
+                <motion.h1 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none"
+                >
+                  MY<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 uppercase font-black">Resources.</span>
+                </motion.h1>
               </div>
 
-              {/* Action buttons - now properly aligned to the right */}
-              <div className="flex items-center gap-2 self-stretch sm:self-auto">
-                <button
+              <div className="flex items-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setUploadOpen(true)}
-                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 whitespace-nowrap"
-                  title="Upload a file or save a link"
+                  className="group relative px-8 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-[10px] overflow-hidden shadow-2xl shadow-white/5"
                 >
-                  + Upload
-                </button>
-                <Link
-                  to="/resources"
-                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:text-cyan-700 hover:border-cyan-500 hover:bg-cyan-50 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:text-cyan-400 dark:hover:bg-slate-800 whitespace-nowrap"
-                  title="Browse Shared resources"
-                >
-                  Shared Resources →
-                </Link>
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <span className="relative z-10 flex items-center gap-3 group-hover:text-white transition-colors">
+                    Upload Resource
+                  </span>
+                </motion.button>
               </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10 w-fit">
+              {[
+                ["resources", "My Library"],
+                ["recordings", "Lectures"],
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setTab(val)}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    tab === val
+                      ? "bg-white text-black shadow-xl"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Filters */}
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
-            <div className="relative w-full md:max-w-md">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+          {/* Filters Bar */}
+          <div className="flex flex-col lg:flex-row items-center gap-6 mb-12 relative z-10">
+            <div className="relative w-full lg:max-w-xl group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search title, description, or #tag"
-                className="w-full rounded-xl border border-zinc-300 bg-white pl-10 pr-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
+                placeholder="Secure search through your academic assets..."
+                className="w-full rounded-2xl border border-white/5 bg-white/[0.03] pl-14 pr-6 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all backdrop-blur-3xl"
               />
             </div>
 
-            {tab === "resources" && <Select label="Type" value={type} onChange={setType} options={types} />}
-            <Select label="Course" value={course} onChange={setCourse} options={courses} />
-            <Select label="Semester" value={semester} onChange={setSemester} options={semesters} />
-            <Select label="Tag" value={tag} onChange={setTag} options={tags} />
-            <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+              {tab === "resources" && <Select label="Type" value={type} onChange={setType} options={types} />}
+              <Select label="Course" value={course} onChange={setCourse} options={courses} />
+              <Select label="Tag" value={tag} onChange={setTag} options={tags} />
+              <Select label="Sort" value={sort} onChange={setSort} options={["New", "Top", "A-Z"]} />
+            </div>
           </div>
-
 
           {/* Content */}
           <div className="min-h-[40vh]">
             {loading ? (
-              <div className="rounded-2xl bg-white p-6 text-center text-zinc-500 dark:bg-slate-900 dark:text-zinc-400">
+              <div className="rounded-2xl bg-[rgba(255,255,255,0.02)] p-6 text-center text-slate-300 dark:bg-slate-900 dark:text-slate-400">
                 Loading your items…
               </div>
             ) : err ? (
-              <div className="rounded-2xl bg-white p-6 text-center text-red-600 dark:bg-slate-900">
+              <div className="rounded-2xl bg-[rgba(255,255,255,0.02)] p-6 text-center text-red-600 dark:bg-slate-900">
                 Error: {err}
               </div>
             ) : filtered.length === 0 ? (
@@ -345,7 +361,7 @@ export default function MyResources() {
             ) : (
               <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((it) => (
-                  <li key={it.id}>
+                  <li key={it.uniqueKey}>
                     <Card
                       item={it}
                       tab={tab}
@@ -357,9 +373,9 @@ export default function MyResources() {
                         })
                       }
                       onDeleteRecording={deleteRecording}
-                      onDeleteResource={deleteResource}
+                      onDeleteResource={() => deleteResource(it)}
                       onShareRecording={shareRecording}
-                      onShareResource={shareResource}
+                      onShareResource={() => shareResource(it)}
                       currentUser={currentUser}
                       currentUserId={currentUserId}
                     />
@@ -388,364 +404,4 @@ export default function MyResources() {
       )}
     </div>
   );
-}
-
-function Select({ label, value, onChange, options }) {
-  return (
-    <label className="inline-flex items-center gap-2 text-sm">
-      <span className="text-zinc-600 dark:text-zinc-300">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100"
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function Card({
-  item,
-  tab,
-  onPreview,
-  onDeleteRecording,
-  onDeleteResource,
-  onShareRecording,
-  onShareResource,
-  currentUser,
-  currentUserId,
-}) {
-  const isRecording = tab === "recordings";
-  const url = item.url || "";
-  const pdf = isPdfLike(url, item.mime);
-  const image = isImageUrl(url, item.mime);
-
-  // Consider both name + id for ownership
-  const isOwnerByName = item.author === currentUser || item.owner === currentUser;
-  const isOwnerById = Number(item.user_id || 0) === Number(currentUserId || -1);
-  const isOwner = isOwnerById || isOwnerByName;
-
-  const isSharedFlag = item.shared === true || item.visibility === "public";
-
-  return (
-    <article className="group flex flex-col rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 hover:shadow-lg transition dark:bg-slate-900 dark:ring-slate-800">
-      {/* Thumb */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-zinc-50 dark:bg-slate-800 grid place-items-center">
-        {isRecording ? (
-          <div className="flex flex-col items-center text-zinc-400">
-            <VideoIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">Recording</span>
-          </div>
-        ) : image ? (
-          <img src={url} alt={item.title} className="h-full w-full object-contain rounded-t-2xl" />
-        ) : pdf ? (
-          <div className="flex flex-col items-center text-zinc-400">
-            <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">PDF</span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center text-zinc-400">
-            <FileIcon className="h-10 w-10" />
-            <span className="mt-1 text-xs font-medium">{item.src_type === "link" ? "Link" : "File"}</span>
-          </div>
-        )}
-
-        <button
-          onClick={onPreview}
-          className="absolute inset-0 hidden items-center justify-center bg-black/30 text-white backdrop-blur-sm transition group-hover:flex"
-        >
-          <span className="rounded-xl bg-white/20 px-3 py-1 text-sm font-semibold ring-1 ring-white/40">
-            {isRecording ? "Play" : image || pdf ? "Preview" : "Open"}
-          </span>
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center gap-2">
-          <span
-            className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-100"
-            title={item.title}
-          >
-            {item.title || "(Untitled)"}
-          </span>
-        </div>
-
-        {item.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{item.description}</p>
-        )}
-
-        {item.src_type === "file" && !image && !pdf && (
-          <div className="mt-2">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-            >
-              View / Download
-            </a>
-          </div>
-        )}
-
-        {item.src_type === "link" && url && (
-          <div className="mt-2">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-            >
-              🌐 Visit Link
-            </a>
-          </div>
-        )}
-
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-          {item.kind && <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.kind}</span>}
-          {item.course && <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.course}</span>}
-          {item.semester && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-slate-800">{item.semester}</span>
-          )}
-          {(item.course || item.semester) && <span>•</span>}
-          <span>by {item.author || "You"}</span>
-        </div>
-
-        <div className="mt-2 flex flex-wrap gap-1">
-          {(item.tags || "")
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map((t) => (
-              <span
-                key={t}
-                className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:border-slate-700 dark:hover:bg-slate-800"
-              >
-                #{t}
-              </span>
-            ))}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between border-t border-zinc-100 dark:border-slate-800 px-4 py-3 text-xs">
-        <div className="text-zinc-500 dark:text-zinc-400">{safeDate(item.created_at || item.updated_at)}</div>
-        <div className="flex items-center gap-2">
-          {isRecording && isOwner && (
-            <>
-              <button
-                onClick={() => onShareRecording(item.id)}
-                className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
-                title="Share to Shared Resources"
-              >
-                Share
-              </button>
-              <button
-                onClick={() => onDeleteRecording(item.id)}
-                className="rounded-md border border-red-200 bg-red-50 px-2 py-1 font-medium text-red-700 hover:bg-red-100 transition-colors"
-                title="Delete recording"
-              >
-                Delete
-              </button>
-            </>
-          )}
-
-          {!isRecording && isOwner && onShareResource && (
-            <button
-              onClick={() => onShareResource(item.id)}
-              disabled={isSharedFlag === true}
-              className={`rounded-md border px-2 py-1 font-medium transition-colors ${isSharedFlag
-                  ? "border-zinc-200 bg-zinc-50 text-zinc-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                }`}
-              title={isSharedFlag ? "Already shared" : "Share to Shared Resources"}
-            >
-              {isSharedFlag ? "Shared" : "Share"}
-            </button>
-          )}
-
-          {!isRecording && isOwner && onDeleteResource && (
-            <button
-              onClick={() => onDeleteResource(item.id)}
-              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 font-medium text-red-700 hover:bg-red-100 transition-colors"
-              title="Delete resource"
-            >
-              Delete
-            </button>
-          )}
-
-          {!isRecording && url && (
-            <a
-              href={isPdfLike(url, item.mime) ? cloudinaryDownload(url) : url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-md border border-zinc-200 bg-white px-2 py-1 font-medium text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-200 dark:hover:bg-slate-800"
-            >
-              Download
-            </a>
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function EmptyState({ tab }) {
-  const label = tab === "resources" ? "No uploads yet" : "No recordings yet";
-  return (
-    <div className="grid place-items-center rounded-3xl border border-dashed border-zinc-300 bg-white/60 dark:bg-slate-900/60 py-16">
-      <div className="text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-cyan-100 text-cyan-700">📦</div>
-        <h3 className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">{label}</h3>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {tab === "resources"
-            ? "Upload resources with the button above."
-            : "Your room recordings will appear here after sessions end."}
-        </p>
-        {tab === "resources" && (
-          <Link
-            to="/resources"
-            className="mt-4 inline-flex rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
-          >
-            Browse Shared Resources
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PreviewModal({ file, onClose }) {
-  const pdf = isPdfLike(file.url, file.mime);
-  const image = isImageUrl(file.url, file.mime);
-  const previewUrl = file.url;
-
-  return (
-    <div className="fixed inset-0 z-40 bg-black/70 p-4" onClick={onClose}>
-      <div
-        className="mx-auto max-w-5xl max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{file.name}</h3>
-          <button
-            onClick={onClose}
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-slate-800"
-            aria-label="Close"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-3">
-          {image ? (
-            <img
-              src={previewUrl}
-              alt={file.name}
-              className="max-h-[78vh] w-full object-contain rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
-            />
-          ) : pdf ? (
-            <object
-              data={previewUrl + "#toolbar=1"}
-              type="application/pdf"
-              className="h-[78vh] w-full rounded-lg ring-1 ring-zinc-200 dark:ring-slate-800"
-            >
-              <div className="grid place-items-center h-[78vh] text-sm text-zinc-600 dark:text-zinc-300">
-                Unable to preview this PDF here.
-                <div className="mt-3 space-x-2">
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                  >
-                    Open in new tab
-                  </a>
-                  <a
-                    href={cloudinaryDownload(file.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl border border-zinc-300 bg-white px-4 py-2 font-semibold text-zinc-700 hover:bg-zinc-50 dark:bg-slate-900 dark:border-slate-700 dark:text-zinc-100 dark:hover:bg-slate-800"
-                  >
-                    Download
-                  </a>
-                </div>
-              </div>
-            </object>
-          ) : (
-            <div className="grid place-items-center rounded-lg border border-dashed border-zinc-300 dark:border-slate-700 p-10 text-center text-sm text-zinc-600 dark:text-zinc-300">
-              Preview not supported. Use download instead.
-              <a
-                href={file.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex rounded-xl bg-zinc-900 px-4 py-2 font-semibold text-white hover:bg-zinc-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-              >
-                Open / Download
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Icons & utils ---------- */
-function SearchIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
-      <path
-        fill="currentColor"
-        d="M10 2a8 8 0 1 0 4.9 14.3l5 5 1.4-1.4-5-5A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12A6 6 0 0 1 10 4z"
-      />
-    </svg>
-  );
-}
-function XIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" {...props}>
-      <path
-        fill="currentColor"
-        d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.29-6.3 6.3 1.42 1.41 6.29-6.29 6.3 6.3 1.41-1.41-6.29-6.3 6.29-6.29z"
-      />
-    </svg>
-  );
-}
-function FileIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
-      <path
-        fill="currentColor"
-        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5z"
-      />
-    </svg>
-  );
-}
-function VideoIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-10 w-10" {...props}>
-      <path
-        fill="currentColor"
-        d="M17 10.5V7a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3.5l4 4v-9l-4 4z"
-      />
-    </svg>
-  );
-}
-function safeDate(d) {
-  try {
-    return new Date(d).toLocaleDateString();
-  } catch {
-    return "—";
-  }
-}
-function uniq(arr) {
-  return [...new Set(arr.filter(Boolean))];
 }

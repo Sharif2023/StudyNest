@@ -1,32 +1,121 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Music } from "lucide-react";
-import Header from "../Components/Header";
+// src/pages/GroupChat.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
+import Header from "../Components/Header";
+import apiClient, { API_BASE } from "../apiConfig";
+import { 
+  MessageSquare, 
+  Paperclip, 
+  Mic, 
+  Send, 
+  X, 
+  Play, 
+  FileText, 
+  Video as VideoIcon, 
+  Music,
+  Users,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  MoreVertical,
+  LogOut,
+  ChevronRight
+} from "lucide-react";
 
-const API_BASE = "http://localhost/StudyNest/study-nest/src/api/group_api.php";
 const POLL_MS = 2500;
 
-// Helpers
+/* ---------- URL + type helpers (Synced with Messages.jsx) ---------- */
+const absUrl = (p) => {
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    return `${API_BASE}/${String(p).replace(/^\/+/, "")}`;
+};
+
 const getExt = (url = "") => {
     const s = String(url).toLowerCase();
     const q = s.split("?")[0];
     const i = q.lastIndexOf(".");
     return i >= 0 ? q.slice(i + 1) : "";
 };
+
 const isImage = (url) => /^(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(getExt(url));
 const isAudio = (url) => /^(mp3|wav|ogg|m4a|aac|flac)$/.test(getExt(url));
 const isVideo = (url) => /^(mp4|webm|ogg|mov|mkv|m4v)$/.test(getExt(url));
 const isPDF = (url) => getExt(url) === "pdf";
 
-const FileChip = ({ name, ext }) => (
-    <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-slate-700/30 text-slate-200 text-sm">
-        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-black/20 text-[10px] font-semibold">
-            {ext.toUpperCase()}
+/* ---------- Filename prettifiers ---------- */
+const fileBaseName = (p) => {
+    if (!p) return "attachment";
+    try {
+        const u = new URL(absUrl(p));
+        const seg = u.pathname.split("/").pop() || "attachment";
+        return decodeURIComponent(seg);
+    } catch {
+        const seg = String(p).split("?")[0].split("/").pop() || "attachment";
+        return decodeURIComponent(seg);
+    }
+};
+
+const prettyName = (p) => {
+    const base = fileBaseName(p);
+    const m = base.match(/^(.+?)_[0-9a-f]{8,}\.(\w+)$/i);
+    if (m) return `${m[1]}.${m[2]}`;
+    return base;
+};
+
+// mm:ss
+const fmtTime = (ms) => {
+    const s = Math.floor(ms / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+};
+
+/* ---------- UI Components ---------- */
+const fileBadgeForExt = (ext) => {
+    const e = (ext || "").toLowerCase();
+    if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].includes(e)) return { label: "IMG", color: "bg-fuchsia-600/20 text-fuchsia-300 border-fuchsia-500/30" };
+    if (["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(e)) return { label: "AUD", color: "bg-violet-600/20 text-violet-300 border-violet-500/30" };
+    if (["mp4", "webm", "ogg", "mov", "mkv", "m4v"].includes(e)) return { label: "VID", color: "bg-indigo-600/20 text-indigo-300 border-indigo-500/30" };
+    if (e === "pdf") return { label: "PDF", color: "bg-red-600/20 text-red-300 border-red-500/30" };
+    if (["ppt", "pptx"].includes(e)) return { label: "PPT", color: "bg-orange-600/20 text-orange-300 border-orange-500/30" };
+    if (["doc", "docx"].includes(e)) return { label: "DOC", color: "bg-blue-600/20 text-blue-300 border-blue-500/30" };
+    if (["xls", "xlsx", "csv"].includes(e)) return { label: "XLS", color: "bg-emerald-600/20 text-emerald-300 border-emerald-500/30" };
+    if (["zip", "rar", "7z"].includes(e)) return { label: "ZIP", color: "bg-amber-600/20 text-amber-300 border-amber-500/30" };
+    return { label: "FILE", color: "bg-slate-600/20 text-slate-300 border-slate-500/30" };
+};
+
+const FileChip = ({ name, ext, className = "" }) => {
+    const { label, color } = fileBadgeForExt(ext);
+    return (
+        <span className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${color} ${className}`}>
+            <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-black/20 text-[10px] font-semibold">
+                {label}
+            </span>
+            <span className="truncate max-w-[220px]">{name}</span>
         </span>
-        <span className="truncate max-w-[220px]">{name}</span>
-    </span>
-);
+    );
+};
+
+// ---- MediaRecorder helpers ----
+const AUDIO_MIME_CANDIDATES = [
+    "audio/webm;codecs=opus",
+    "audio/mp4;codecs=mp4a.40.2",
+    "audio/ogg;codecs=opus",
+    "audio/webm",
+];
+const pickAudioMime = () => {
+    if (typeof MediaRecorder === "undefined") return "";
+    for (const m of AUDIO_MIME_CANDIDATES) {
+        try { if (MediaRecorder.isTypeSupported?.(m)) return m; } catch { }
+    }
+    return "";
+};
+const extFromMime = (m) =>
+    m?.includes("webm") ? "webm" :
+        m?.includes("ogg") ? "ogg" :
+            m?.includes("mp4") ? "m4a" : "webm";
+
 
 export default function GroupChat() {
     const { id } = useParams(); // group_id
@@ -38,12 +127,20 @@ export default function GroupChat() {
     const fileInputRef = useRef(null);
     const listRef = useRef(null);
     const [loading, setLoading] = useState(false);
-    const [recording, setRecording] = useState(false);
-    const [mediaRecorder, setMediaRecorder] = useState(null);
-    const [audioBlob, setAudioBlob] = useState(null);
-    const [recordingStart, setRecordingStart] = useState(null);
-    const [elapsed, setElapsed] = useState(0);
-    const [showMenu, setShowMenu] = useState(false);
+    
+    // Voice/Recording
+    const [isRecording, setIsRecording] = useState(false);
+    const [recMs, setRecMs] = useState(0);
+    const [recError, setRecError] = useState("");
+    const mediaStreamRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const recChunksRef = useRef([]);
+    const recTimerRef = useRef(null);
+    const recMimeRef = useRef("");
+    const recCancelledRef = useRef(false);
+
+    // Sidebar/Menu
+    const [showSidebar, setShowSidebar] = useState(false);
     const [activeTab, setActiveTab] = useState("members");
 
     // Logged-in user
@@ -51,111 +148,58 @@ export default function GroupChat() {
     const me = stored ? JSON.parse(stored) : null;
     const myUserId = me?.id;
 
-    // Load messages
     const loadMessages = async () => {
         try {
-            const res = await fetch(`${API_BASE}?action=messages&group_id=${id}`, {
-                credentials: "include",
+            const res = await apiClient.get("group_api.php", {
+                params: { action: "messages", group_id: id }
             });
-            const j = await res.json();
+            const j = res.data;
             if (j.ok) setMessages(j.messages || []);
         } catch (e) {
             console.warn("loadMessages failed", e);
         }
     };
 
-    // Load group meta
-    useEffect(() => {
-        fetch(`http://localhost/StudyNest/study-nest/src/api/admin_api.php?action=list_groups&k=MYKEY123`)
-            .then((r) => r.json())
-            .then((j) => {
-                if (j.ok) {
-                    const g = j.groups.find((x) => String(x.id) === String(id));
-                    setGroup(g);
-                }
+    const loadGroupMeta = async () => {
+        try {
+            const res = await apiClient.get("admin_api.php", {
+                params: { action: "list_groups", k: "MYKEY123" }
             });
-    }, [id]);
+            const j = res.data;
+            if (j.ok) {
+                const g = j.groups.find((x) => String(x.id) === String(id));
+                setGroup(g);
+            }
+        } catch (e) { console.warn(e); }
+    };
 
-    // Load members (try group_api first; fallback to group.members if present)
     const loadMembers = async () => {
         try {
-            const r = await fetch(`${API_BASE}?action=members&group_id=${id}`, { credentials: "include" });
-            const j = await r.json();
+            const res = await apiClient.get("group_api.php", {
+                params: { action: "members", group_id: id }
+            });
+            const j = res.data;
             if (j.ok && Array.isArray(j.members)) {
                 setMembers(j.members);
-                return;
             }
         } catch (_) { }
-        if (group?.members) setMembers(group.members);
     };
 
     useEffect(() => {
+        loadGroupMeta();
+        loadMembers();
         loadMessages();
         const t = setInterval(loadMessages, POLL_MS);
         return () => clearInterval(t);
     }, [id]);
 
     useEffect(() => {
-        loadMembers();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, group?.id]);
-
-    // Auto-scroll when near bottom
-    useEffect(() => {
-        const el = listRef.current;
-        if (!el) return;
-        const scrollHeight = el.scrollHeight || 0;
-        const scrollTop = el.scrollTop || 0;
-        const clientHeight = el.clientHeight || 0;
-        const nearBottom = scrollHeight - scrollTop - clientHeight < 100;
-        if (nearBottom) el.scrollTo({ top: scrollHeight, behavior: "smooth" });
+        listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
     }, [messages]);
 
-    // Recording
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
-            let chunks = [];
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: "audio/webm" });
-                setAudioBlob(blob);
-                chunks = [];
-            };
-            recorder.start();
-            setMediaRecorder(recorder);
-            setRecording(true);
-            setRecordingStart(Date.now());
-            setElapsed(0);
-        } catch (err) {
-            console.error("Mic error:", err);
-            alert("Microphone access is blocked. Please allow it in your browser.");
-        }
-    };
-    const stopRecording = () => {
-        if (mediaRecorder) {
-            mediaRecorder.stop();
-            setRecording(false);
-            setRecordingStart(null);
-            setElapsed(0);
-        }
-    };
-    useEffect(() => {
-        let timer;
-        if (recording && recordingStart) {
-            timer = setInterval(() => setElapsed(Math.floor((Date.now() - recordingStart) / 1000)), 1000);
-        }
-        return () => clearInterval(timer);
-    }, [recording, recordingStart]);
-
-    // Send message
+    /* ---------- Actions ---------- */
     const sendMessage = async () => {
-        if (!text.trim() && !file && !audioBlob) return;
-        if (!myUserId) {
-            alert("You must be logged in to send messages.");
-            return;
-        }
+        if (!text.trim() && !file) return;
         setLoading(true);
         try {
             const fd = new FormData();
@@ -163,409 +207,243 @@ export default function GroupChat() {
             fd.append("user_id", String(myUserId));
             if (text.trim()) fd.append("message", text.trim());
             if (file) fd.append("attachment", file);
-            if (audioBlob) fd.append("attachment", audioBlob, "voice_message.webm");
 
-            const res = await fetch(`${API_BASE}?action=send_message`, {
-                method: "POST",
-                body: fd,
-                credentials: "include",
-            });
-            const j = await res.json();
-            if (j.ok) {
+            const res = await apiClient.post("group_api.php?action=send_message", fd);
+            if (res.data.ok) {
                 setText("");
                 setFile(null);
-                setAudioBlob(null);
                 loadMessages();
             }
-        } catch (e) {
-            console.warn("sendMessage failed", e);
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.warn(e); }
+        finally { setLoading(false); }
     };
 
-    // Derived data for sidebar
-    // Media: only images + videos
-    const media = messages.filter(
-        (m) =>
-            m.attachment_url &&
-            (isImage(m.attachment_url) || isVideo(m.attachment_url))
-    );
+    const startRecording = async () => {
+        setRecError("");
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setRecError("Recording not supported.");
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            const mime = pickAudioMime();
+            recMimeRef.current = mime;
+            const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+            mediaRecorderRef.current = mr;
+            recChunksRef.current = [];
+            recCancelledRef.current = false;
 
-    // Files: everything else (pdf, audio, docs, zips, etc.)
-    const files = messages.filter(
-        (m) =>
-            m.attachment_url &&
-            !isImage(m.attachment_url) &&
-            !isVideo(m.attachment_url)
-    );
+            mr.ondataavailable = (e) => { if (e.data.size > 0) recChunksRef.current.push(e.data); };
+            mr.onstop = async () => {
+                clearInterval(recTimerRef.current);
+                (mediaStreamRef.current?.getTracks() || []).forEach(t => t.stop());
+                setIsRecording(false);
+                if (recCancelledRef.current) { setRecMs(0); return; }
+                
+                const blob = new Blob(recChunksRef.current, { type: recMimeRef.current || "audio/webm" });
+                const fd = new FormData();
+                fd.append("group_id", String(id));
+                fd.append("user_id", String(myUserId));
+                fd.append("attachment", new File([blob], `voice_${Date.now()}.${extFromMime(recMimeRef.current)}`));
+                
+                await apiClient.post("group_api.php?action=send_message", fd);
+                setRecMs(0);
+                loadMessages();
+            };
+            mr.start(250);
+            setIsRecording(true);
+            setRecMs(0);
+            recTimerRef.current = setInterval(() => setRecMs(m => m + 1000), 1000);
+        } catch (e) { setRecError("Mic permission denied."); }
+    };
 
+    const stopRecording = () => mediaRecorderRef.current?.stop();
+    const cancelRecording = () => { recCancelledRef.current = true; mediaRecorderRef.current?.stop(); };
 
-
-    const linkRegex = /https?:\/\/[^\s<>()"]+/gi;
-    const links = messages
-        .flatMap((m) => (m.message ? (m.message.match(linkRegex) || []) : []))
-        .map((u, idx) => ({ id: idx + "-" + u, url: u }));
-
-
-    // Leave group
     const handleLeaveGroup = async () => {
-        if (!confirm("Are you sure you want to leave this group?")) return;
+        if (!confirm("Leave this group?")) return;
         try {
             const fd = new FormData();
             fd.append("group_id", String(id));
-            fd.append("user_id", String(myUserId || ""));
-            const r = await fetch(`${API_BASE}?action=leave_group`, {
-                method: "POST",
-                body: fd,
-                credentials: "include",
-            });
-            const j = await r.json();
-            if (j.ok) {
-                alert("You left the group.");
-                setShowMenu(false);
-                // Optional: navigate away or refresh members/messages
-                loadMembers();
-            } else {
-                alert(j.error || "Failed to leave group.");
-            }
-        } catch (e) {
-            alert("Network error while leaving the group.");
-        }
+            fd.append("user_id", String(myUserId));
+            const r = await apiClient.post("group_api.php?action=leave_group", fd);
+            if (r.data.ok) window.location.href = "/groups";
+        } catch (e) { alert("Error leaving group"); }
     };
 
+    // Derived sidebar media
+    const media = messages.filter(m => m.attachment_url && (isImage(m.attachment_url) || isVideo(m.attachment_url)));
+    const files = messages.filter(m => m.attachment_url && !isImage(m.attachment_url) && !isVideo(m.attachment_url));
+    const linkRegex = /https?:\/\/[^\s<>()"]+/gi;
+    const links = messages.flatMap(m => m.message?.match(linkRegex) || []).map((u, i) => ({ id: i, url: u }));
+
     return (
-        <div className="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-            <LeftNav sidebarWidth={72} />
-            <Header sidebarWidth={72} />
+        <div className="min-h-screen relative" style={{ background: "#08090e", color: "#e2e8f0" }}>
+            {/* Blurry Background Spots */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(100px)" }} />
+                <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(100px)" }} />
+            </div>
 
-            {/* Full-height chat area; only the message list scrolls */}
-            <div className="flex" style={{ paddingLeft: 72, height: "calc(100vh - 64px)" }}>
-                <main className="flex-1 flex flex-col relative h-full">
+            <LeftNav sidebarWidth={72} navOpen={false} />
+            <Header sidebarWidth={72} navOpen={false} />
 
-                    {/* Header (fixed) */}
-                    <div className="shrink-0 border-b border-slate-700 p-3 flex justify-between items-center bg-slate-900">
-                        <div className="text-sm font-semibold truncate">
-                            {group ? group.section_name : "Loading..."}
+            <div className="flex relative z-10" style={{ paddingLeft: 72, height: "100vh", paddingTop: 64 }}>
+                {/* Chat Column */}
+                <main className="flex-1 flex flex-col h-full bg-[rgba(0,0,0,0.2)]">
+                    {/* Header */}
+                    <div className="border-b p-4 flex-shrink-0 backdrop-blur-md flex justify-between items-center" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(8,9,14,0.6)" }}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-display font-black shadow-lg" style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", color: "white" }}>
+                                {group?.section_name?.charAt(0).toUpperCase() || "G"}
+                            </div>
+                            <div>
+                                <div className="text-base font-bold text-white leading-tight">{group ? group.section_name : "Loading Group..."}</div>
+                                <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{members.length} Members Online</div>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setShowMenu(true)}
-                            className="p-2 rounded-lg hover:bg-slate-700"
-                            title="Group Info"
-                        >
-                            ⋮
+                        <button onClick={() => setShowSidebar(true)} className="p-2 rounded-xl hover:bg-white/10 transition-all text-slate-400">
+                            <MoreVertical size={20} />
                         </button>
                     </div>
 
-                    {/* Messages (scrollable) */}
-                    <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {/* Message List */}
+                    <div ref={listRef} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
                         {messages.map((m) => {
                             const mine = m.user_id === myUserId;
                             return (
-                                <div
-                                    key={m.id}
-                                    className={`max-w-[72%] md:max-w-[70%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap border ${mine
-                                        ? "ml-auto bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-transparent"
-                                        : "bg-slate-800/90 text-slate-100 border-slate-700/60"
-                                        }`}
-                                >
-                                    <div className="font-semibold mb-1">{m.username}</div>
-                                    {m.message && <div>{m.message}</div>}
-
-                                    {m.attachment_url &&
-                                        (() => {
-                                            const url = m.attachment_url;
-                                            const name = url.split("/").pop();
-                                            const ext = getExt(url);
-                                            return (
-                                                <div className="mt-2 space-y-2">
-                                                    {isImage(url) && (
-                                                        <img src={url} alt={name} className="rounded-lg max-h-72 object-contain" />
-                                                    )}
-                                                    {isAudio(url) && (
-                                                        <div className="flex items-center gap-3 p-2 bg-slate-700/40 rounded-lg">
-                                                            {/* 🎵 Audio icon */}
-                                                            <div className="h-10 w-10 flex items-center justify-center rounded-full bg-emerald-600 text-white">
-                                                                <Music size={20} />
-                                                            </div>
-
-
-                                                            {/* File name + player */}
-                                                            <div className="flex-1">
-                                                                <div className="text-sm font-medium truncate">{name}</div>
-                                                                <audio controls className="w-full mt-1">
-                                                                    <source src={url} />
-                                                                </audio>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {isVideo(url) && (
-                                                        <video controls className="w-full max-h-80 rounded-lg">
-                                                            <source src={url} />
-                                                        </video>
-                                                    )}
-                                                    {isPDF(url) ||
-                                                        (!isImage(url) && !isAudio(url) && !isVideo(url)) ? (
-                                                        <a href={url} target="_blank" rel="noreferrer" download={name}>
-                                                            <FileChip name={name} ext={ext} />
-                                                        </a>
-                                                    ) : null}
-                                                </div>
-                                            );
-                                        })()}
-
-                                    <div className="text-[11px] mt-1 text-right opacity-70">
-                                        {new Date(m.created_at).toLocaleTimeString([], {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })}
+                                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                                    <div className="max-w-[70%] group">
+                                        {!mine && <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">{m.username}</div>}
+                                        <div className={`p-4 rounded-2xl text-sm shadow-xl transition-all ${mine ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-br-none" : "bg-white/5 border border-white/10 text-slate-100 rounded-bl-none"}`}>
+                                            {m.message && <div className="whitespace-pre-wrap leading-relaxed">{m.message}</div>}
+                                            {m.attachment_url && (() => {
+                                                const url = absUrl(m.attachment_url);
+                                                const name = prettyName(m.attachment_url);
+                                                const ext = getExt(m.attachment_url);
+                                                return (
+                                                    <div className="mt-3 space-y-2">
+                                                        {isImage(url) && <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} className="rounded-xl max-h-64 object-contain border border-white/10 shadow-lg" /></a>}
+                                                        {isAudio(url) && <audio controls className="w-full h-10 rounded-lg outline-none [&::-webkit-media-controls-panel]:bg-white/90 shadow-md"><source src={url} /></audio>}
+                                                        {isVideo(url) && <video controls className="w-full max-h-64 rounded-xl shadow-lg border border-white/10"><source src={url} /></video>}
+                                                        {(isPDF(url) || (!isImage(url) && !isAudio(url) && !isVideo(url))) && (
+                                                            <a href={url} target="_blank" rel="noreferrer" download={name}>
+                                                                <FileChip name={name} ext={ext} className={mine ? "bg-black/20 border-white/10" : "bg-white/5 border-white/10"} />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                            <div className="text-[10px] mt-2 opacity-50 text-right font-medium">
+                                                {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* Composer (fixed) */}
-                    <div className="shrink-0 border-t border-slate-700 p-3 flex flex-wrap gap-2 items-center bg-slate-900">
-                        <input
-                            className="flex-1 min-w-[220px] bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                            placeholder="Write a message…"
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                            onKeyDown={(e) =>
-                                e.key === "Enter" && !e.shiftKey ? (e.preventDefault(), sendMessage()) : null
-                            }
-                            disabled={loading}
-                        />
-
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            style={{ display: "none" }}
-                            onChange={(e) => setFile(e.target.files?.[0] || null)}
-                        />
-
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-600 to-blue-600 text-white grid place-items-center"
-                            title="Attach a file"
-                            disabled={loading}
-                        >
-                            📎
-                        </button>
-
-                        {/* Mic + Recording */}
-                        <div className="flex gap-2 items-center">
-                            {!recording ? (
-                                <button
-                                    onClick={startRecording}
-                                    className="h-10 w-10 rounded-full bg-emerald-600 text-white grid place-items-center"
-                                    title="Start Recording"
-                                >
-                                    🎤
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={stopRecording}
-                                    className="h-10 w-10 rounded-full bg-red-600 text-white grid place-items-center animate-pulse"
-                                    title="Stop Recording"
-                                >
-                                    ⏹️
-                                </button>
-                            )}
-
-                            {audioBlob && (
-                                <div className="flex items-center gap-2">
-                                    <audio controls src={URL.createObjectURL(audioBlob)} />
-                                    <button onClick={() => setAudioBlob(null)} className="text-xs px-2 py-1 bg-red-600 rounded-md">
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {recording && (
-                            <div className="flex items-center gap-2 bg-red-600/20 px-3 py-2 rounded-lg text-red-400 text-sm">
-                                🔴 Recording... {elapsed}s
-                                <button onClick={stopRecording} className="ml-3 px-2 py-1 bg-red-600 text-white rounded-md text-xs">
-                                    Stop
-                                </button>
-                            </div>
-                        )}
-
-                        {file && (
-                            <div className="flex items-center gap-2">
-                                <FileChip name={file.name} ext={getExt(file.name)} />
-                                <button onClick={() => setFile(null)} className="px-1.5 py-0.5 text-xs rounded-md bg-slate-700 hover:bg-slate-600">
-                                    ✕
-                                </button>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={sendMessage}
-                            disabled={loading || (!text.trim() && !file && !audioBlob)}
-                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white text-sm shadow"
-                        >
-                            Send
-                        </button>
-                    </div>
-
-                    {/* Right Sidebar */}
-                    <div
-                        className={`fixed top-0 right-0 h-full w-80 bg-slate-900 border-l border-slate-700 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col
-            ${showMenu ? "translate-x-0" : "translate-x-full"}`}
-                    >
-                        {/* Sidebar Header */}
-                        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-700 bg-slate-800">
-                            <h2 className="text-base font-semibold">
-                                {group ? group.section_name : "Group Info"}
-                            </h2>
-                            <button onClick={() => setShowMenu(false)} className="p-1 hover:bg-slate-700 rounded-lg">
-                                ✕
+                    {/* Composer */}
+                    <div className="p-4 border-t backdrop-blur-md" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(8,9,14,0.6)" }}>
+                        <div className="max-w-4xl mx-auto bg-white/5 border border-white/10 rounded-2xl p-2 shadow-2xl flex flex-wrap gap-3 items-end">
+                            <input type="file" ref={fileInputRef} style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0])} />
+                            
+                            <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all text-slate-400">
+                                <Paperclip size={20} />
                             </button>
-                        </div>
 
-                        {/* Tabs */}
-                        <div className="flex border-b border-slate-700 text-sm bg-slate-800">
-                            {[
-                                { key: "members", label: "Members" },
-                                { key: "media", label: "Media" },
-                                { key: "files", label: "Files" },
-                                { key: "links", label: "Links" },
-                            ].map((t) => (
-                                <button
-                                    key={t.key}
-                                    onClick={() => setActiveTab(t.key)}
-                                    className={`flex-1 px-3 py-2 ${activeTab === t.key ? "bg-slate-700 text-cyan-400" : "hover:bg-slate-700"}`}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
+                            <button onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center transition-all ${isRecording ? "bg-rose-500 text-white animate-pulse" : "hover:bg-white/10 text-slate-400"}`}>
+                                <Mic size={20} />
+                            </button>
 
-                        {/* Content (scrollable) */}
-                        <div className="p-4 overflow-y-auto flex-1 text-sm space-y-2">
-                            {activeTab === "members" && (
-                                <div className="space-y-2">
-                                    {members?.length > 0 ? (
-                                        members.map((m) => (
-                                            <div key={m.id} className="flex items-center gap-3 p-2 bg-slate-700/40 rounded-lg">
-                                                <div className="h-8 w-8 rounded-full bg-slate-600 grid place-items-center text-xs">
-                                                    {String(m.username || "U").slice(0, 2).toUpperCase()}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="font-medium">{m.username}</div>
-                                                    {m.email && <div className="text-[11px] text-slate-400">{m.email}</div>}
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-slate-400">No members found.</p>
-                                    )}
-                                </div>
-                            )}
+                            <div className="flex-1 min-w-[200px] flex flex-col">
+                                {file && (
+                                    <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-white/5 border border-white/10">
+                                        <FileChip name={file.name} ext={getExt(file.name)} />
+                                        <button onClick={() => setFile(null)} className="ml-auto p-1 text-slate-500 hover:text-white transition-all"><X size={14} /></button>
+                                    </div>
+                                )}
+                                {isRecording && (
+                                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg mb-2 bg-rose-500/10 border border-rose-500/20">
+                                        <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                                        <span className="text-xs font-bold text-rose-400">Recording... {fmtTime(recMs)}</span>
+                                        <button onClick={cancelRecording} className="ml-auto text-xs font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/40 transition">Cancel</button>
+                                    </div>
+                                )}
+                                <textarea
+                                    className="w-full bg-transparent outline-none resize-none text-sm py-2 px-1 max-h-32 scrollbar-hide text-white placeholder-slate-600"
+                                    placeholder="Communicate with your cohort..."
+                                    value={text}
+                                    onChange={(e) => setText(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey ? (e.preventDefault(), sendMessage()) : null}
+                                />
+                            </div>
 
-                            {activeTab === "media" && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    {media.length === 0 && <p className="col-span-2 text-slate-400">No media yet.</p>}
-                                    {media.map((m, i) => (
-                                        <a key={i} href={m.attachment_url} target="_blank" rel="noreferrer">
-                                            {isImage(m.attachment_url) ? (
-                                                <img src={m.attachment_url} alt="" className="rounded-lg" />
-                                            ) : (
-                                                <video src={m.attachment_url} className="rounded-lg" />
-                                            )}
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-
-                            {activeTab === "files" && (
-                                <div className="space-y-2">
-                                    {files.length === 0 && <p className="text-slate-400">No files yet.</p>}
-                                    {files.map((m, i) => {
-                                        const url = m.attachment_url;
-                                        const name = url.split("/").pop();
-                                        const ext = getExt(url);
-
-                                        // 🎵 Audio files
-                                        if (isAudio(url)) {
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className="flex items-center gap-3 p-2 bg-slate-700/40 rounded-lg"
-                                                >
-                                                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-emerald-600 text-white text-2xl leading-none">
-                                                        🎵
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium truncate">{name}</div>
-                                                        <audio controls className="w-full mt-1">
-                                                            <source src={url} />
-                                                        </audio>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-
-                                        // 📄 Other file types (pdf, docx, zip, etc.)
-                                        return (
-                                            <a
-                                                key={i}
-                                                href={url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex items-center gap-3 p-2 bg-slate-700/40 rounded-lg hover:bg-slate-600"
-                                            >
-                                                <div className="h-8 w-8 rounded-md bg-slate-600 grid place-items-center text-xs font-bold">
-                                                    {ext.toUpperCase()}
-                                                </div>
-                                                <span className="truncate">{name}</span>
-                                            </a>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-
-
-                            {activeTab === "links" && (
-                                <div className="space-y-2">
-                                    {links.length === 0 && <p className="text-slate-400">No links yet.</p>}
-                                    {links.map((l) => (
-                                        <a
-                                            key={l.id}
-                                            href={l.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="block p-2 bg-slate-700/40 rounded-lg hover:bg-slate-600 break-all"
-                                        >
-                                            🔗 {l.url}
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Leave Group (sticky bottom) */}
-                        <div className="border-t border-slate-700 p-3 bg-slate-800">
-                            <button
-                                onClick={handleLeaveGroup}
-                                className="w-full px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white"
-                            >
-                                🚪 Leave group
+                            <button onClick={sendMessage} disabled={loading || (!text.trim() && !file)} className="h-10 px-6 rounded-xl text-sm font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+                                Send
                             </button>
                         </div>
                     </div>
-
-                    {/* Overlay */}
-                    {showMenu && (
-                        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowMenu(false)}></div>
-                    )}
                 </main>
+
+                {/* Right Sidebar */}
+                <aside className={`fixed top-0 right-0 h-full w-80 bg-[#08090e] border-l border-white/10 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${showSidebar ? "translate-x-0" : "translate-x-full"}`}>
+                    <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                        <h2 className="text-lg font-display font-black text-white italic">Group Space</h2>
+                        <button onClick={() => setShowSidebar(false)} className="p-2 rounded-xl hover:bg-white/10 text-slate-500"><X size={20} /></button>
+                    </div>
+
+                    <div className="flex border-b border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        {["members", "media", "files", "links"].map(t => (
+                            <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-4 border-b-2 transition-all ${activeTab === t ? "border-cyan-500 text-cyan-400 bg-white/5" : "border-transparent hover:text-white"}`}>{t}</button>
+                        ))}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {activeTab === "members" && members.map(m => (
+                            <div key={m.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all">
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center font-bold text-xs shadow-lg">{m.username?.charAt(0).toUpperCase()}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-bold text-slate-100 truncate">{m.username}</div>
+                                    <div className="text-[10px] text-slate-500 truncate">{m.email}</div>
+                                </div>
+                                <ChevronRight size={14} className="text-slate-600" />
+                            </div>
+                        ))}
+
+                        {activeTab === "media" && (
+                            <div className="grid grid-cols-2 gap-2">
+                                {media.map((m, i) => (
+                                    <a key={i} href={absUrl(m.attachment_url)} target="_blank" rel="noreferrer" className="aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-cyan-500/50 transition-all">
+                                        {isImage(m.attachment_url) ? <img src={absUrl(m.attachment_url)} className="w-full h-full object-cover" /> : <video src={absUrl(m.attachment_url)} className="w-full h-full object-cover" />}
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === "files" && files.map((m, i) => (
+                            <a key={i} href={absUrl(m.attachment_url)} target="_blank" rel="noreferrer" download className="block p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all">
+                                <FileChip name={prettyName(m.attachment_url)} ext={getExt(m.attachment_url)} />
+                            </a>
+                        ))}
+
+                        {activeTab === "links" && links.map(l => (
+                            <a key={l.id} href={l.url} target="_blank" rel="noreferrer" className="block p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all text-xs text-cyan-400 italic truncate italic">
+                                {l.url}
+                            </a>
+                        ))}
+                    </div>
+
+                    <div className="p-4 border-t border-white/10">
+                        <button onClick={handleLeaveGroup} className="w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-lg">
+                            <LogOut size={16} /> Exit This Node
+                        </button>
+                    </div>
+                </aside>
+
+                {showSidebar && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-all duration-500" onClick={() => setShowSidebar(false)} />}
             </div>
         </div>
     );

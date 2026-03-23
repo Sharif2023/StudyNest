@@ -1,6 +1,5 @@
-// =========================
 // FILE: src/realtime/useWebRTC.js
-// =========================
+import { API_BASE } from "../apiConfig";
 
 /*
 Key upgrades
@@ -32,13 +31,18 @@ const STUN = [
 
 // TIP: do NOT share a port with your dev server (e.g. Vite on 5173).
 // If your ws-server also runs on 5173, move it (e.g. 5174) and update this URL.
+console.log("WS signaling on ws://localhost:5173");
 const WS_URL = "ws://localhost:5173";
 
-export function useWebRTC(roomId, displayName) {
+export function useWebRTC(roomId, displayName, stableId) {
   const state = {
     ws: null,
     wsTimer: null,
-    me: null,
+    reconnectTimer: null,
+    /** When true, socket close must not auto-reconnect (user left / meeting ended) */
+    intentionalDisconnect: false,
+    me: null, // this will now be the stableId if available
+    clientId: null,
 
     // id -> { pc, dc, name, tracks, senders, tx, polite, makingOffer, ignoreOffer, iceQueue }
     peers: new Map(),
@@ -56,12 +60,18 @@ export function useWebRTC(roomId, displayName) {
     streamsCb: () => { },
     participantsCb: () => { },
     chatCb: () => { },
+    meetingEndedCb: () => { },
     speakingCb: () => { },
     statsCb: () => { },
 
     // VAD
     audioCtx: null,
     speakingIds: new Set(),
+    myClientId: Math.random().toString(36).slice(2, 9),
+
+    statsInterval: null,
+    /** Clears screen-share "ended" listeners registered by onShareEnded */
+    shareEndedUnsub: null,
   };
 
   /* ================= subscriptions ================= */
@@ -70,6 +80,7 @@ export function useWebRTC(roomId, displayName) {
   function subscribeSpeaking(cb) { state.speakingCb = cb; }
   function subscribeStats(cb) { state.statsCb = cb; }
   function onChat(cb) { state.chatCb = cb; }
+  function onMeetingEnded(cb) { state.meetingEndedCb = cb; }
 
   /* ================= emitters ================= */
   const hasLiveVideo = (stream) => {
@@ -102,11 +113,12 @@ export function useWebRTC(roomId, displayName) {
     }
 
     for (const [pid, p] of state.peers) {
+      const sid = p.stableId || pid;
       if (p.tracks.cam) {
-        list.push({ id: pid + "::cam", stream: p.tracks.cam, name: p.name || "Student", self: false, type: "cam" });
+        list.push({ id: sid + "::cam", stream: p.tracks.cam, name: p.name || "Student", self: false, type: "cam" });
       }
       if (hasLiveVideo(p.tracks.screen)) {
-        list.push({ id: pid + "::screen", stream: p.tracks.screen, name: (p.name || "Student") + " (screen)", self: false, type: "screen" });
+        list.push({ id: sid + "::screen", stream: p.tracks.screen, name: (p.name || "Student") + " (screen)", self: false, type: "screen" });
       }
     }
 
@@ -119,8 +131,9 @@ export function useWebRTC(roomId, displayName) {
       arr.push({ id: state.me, name: displayName || "You", hand: false, self: true, state: "connected" });
     }
     for (const [pid, p] of state.peers) {
+      const sid = p.stableId || pid;
       const connected = p.pc && p.pc.connectionState === "connected";
-      arr.push({ id: pid, name: p.name || "Student", hand: !!p.hand, self: false, state: connected ? "connected" : "joining" });
+      arr.push({ id: sid, name: p.name || "Student", hand: !!p.hand, self: false, state: connected ? "connected" : "joining" });
     }
     state.participantsCb(arr);
   }
@@ -130,35 +143,68 @@ export function useWebRTC(roomId, displayName) {
 
   /* ================= WS (signaling) ================= */
   function startWS() {
+    if (state.intentionalDisconnect) return;
     if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
+    if (state.reconnectTimer != null) {
+      try { clearTimeout(state.reconnectTimer); } catch { }
+      state.reconnectTimer = null;
+    }
     state.ws = new WebSocket(WS_URL);
 
     state.ws.onopen = () => {
-      sendWS({ type: "join", roomId, name: displayName || "Student" });
+      sendWS({
+        type: "join",
+        roomId,
+        name: displayName || "Student",
+        clientId: state.myClientId,
+        stableId: stableId != null && String(stableId).trim() !== "" ? String(stableId) : undefined,
+      });
       state.wsTimer && clearInterval(state.wsTimer);
       state.wsTimer = setInterval(() => sendWS({ type: "ping" }), 15000);
     };
 
-    state.ws.onclose = () => {
+    state.ws.onclose = (ev) => {
       state.wsTimer && clearInterval(state.wsTimer);
-      setTimeout(startWS, 1500);
+      state.wsTimer = null;
+      // Server replaced this tab with a newer connection (same stableId)
+      const replaced = ev && ev.code === 4000;
+      if (replaced) state.intentionalDisconnect = true;
+      if (state.intentionalDisconnect) return;
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = null;
+        startWS();
+      }, 1500);
     };
 
     state.ws.onmessage = async (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
 
       if (m.type === "joined") {
-        state.me = m.clientId;
-        (m.participants || []).forEach(p => {
-          if (p.id !== state.me && !state.peers.has(p.id)) state.peers.set(p.id, newPeerShell(p.name));
-        });
-        for (const [pid] of state.peers) { await ensurePeer(pid); }
+        state.clientId = m.clientId;
+        state.me = m.stableId || m.clientId;
+        const list = m.participants || [];
+        const remoteIds = new Set(list.map((p) => p.id).filter((id) => id && id !== state.me));
+        for (const pid of [...state.peers.keys()]) {
+          if (!remoteIds.has(pid)) cleanupPeer(pid);
+        }
+        for (const p of list) {
+          if (!p.id || p.id === state.clientId) continue;
+          if (!state.peers.has(p.id)) state.peers.set(p.id, newPeerShell(p.name || "Student", p.stableId));
+          else {
+            const sh = state.peers.get(p.id);
+            if (p.name && sh) sh.name = p.name;
+            if (p.stableId && sh) sh.stableId = p.stableId;
+          }
+        }
+        for (const pid of remoteIds) {
+          await ensurePeer(pid);
+        }
         emitParticipants(); emitStreams();
         return;
       }
 
       if (m.type === "peer-joined") {
-        if (!state.peers.has(m.id)) state.peers.set(m.id, newPeerShell(m.name));
+        if (!state.peers.has(m.id)) state.peers.set(m.id, newPeerShell(m.name, m.stableId));
         await ensurePeer(m.id);
         emitParticipants(); emitStreams();
         return;
@@ -176,7 +222,12 @@ export function useWebRTC(roomId, displayName) {
       }
 
       if (m.type === "chat") {
-        state.chatCb?.({ author: m.author, text: m.text, ts: m.ts, self: false });
+        state.chatCb?.({ ...m, self: false });
+        return;
+      }
+
+      if (m.type === "meeting-ended") {
+        state.meetingEndedCb?.(m);
         return;
       }
 
@@ -291,9 +342,10 @@ export function useWebRTC(roomId, displayName) {
   }
 
   /* ================= Peers ================= */
-  function newPeerShell(name) {
+  function newPeerShell(name, stableIdForPeer) {
     return {
       name,
+      stableId: stableIdForPeer,
       hand: false,
       pc: null,
       dc: null,
@@ -463,10 +515,7 @@ export function useWebRTC(roomId, displayName) {
     dc.onerror = () => { p.dcOpen = false; };
     dc.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.type === "chat") {
-        state.chatCb?.({ author: m.author, text: m.text, ts: m.ts, self: false });
-        return;
-      }
+      // Chat is delivered only via WebSocket (see sendChat) to avoid duplicate bubbles.
       if (String(m.type || "").startsWith("wb-")) {
         state.wbCb?.(m);
         return;
@@ -477,6 +526,8 @@ export function useWebRTC(roomId, displayName) {
 
   /* ================= Share control ================= */
   async function stopScreenInternal(/* fromEndedEvent = false */) {
+    try { state.shareEndedUnsub?.(); } catch { }
+    state.shareEndedUnsub = null;
     if (state.localScreenStream) {
       try { state.localScreenStream.getTracks().forEach(t => t.stop()); } catch { }
       state.localScreenStream = null;
@@ -550,20 +601,19 @@ export function useWebRTC(roomId, displayName) {
   /* ================= Public API ================= */
   return {
     async connect() {
+      state.intentionalDisconnect = false;
       startWS();
       try {
-        await fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/join", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ id: roomId, display_name: displayName || "Student" }),
-        });
+        await apiClient.post("meetings.php/join", { id: roomId, display_name: displayName || "Student" });
       } catch { }
 
       await ensureLocalMediaReady();
 
-      // stats loop (optional)
-      setInterval(async () => {
+      if (state.statsInterval != null) {
+        try { clearInterval(state.statsInterval); } catch { }
+        state.statsInterval = null;
+      }
+      state.statsInterval = setInterval(async () => {
         for (const [pid, p] of state.peers) {
           try {
             const stats = await p.pc.getStats();
@@ -579,7 +629,24 @@ export function useWebRTC(roomId, displayName) {
     },
 
     disconnect() {
+      state.intentionalDisconnect = true;
+      if (state.reconnectTimer != null) {
+        try { clearTimeout(state.reconnectTimer); } catch { }
+        state.reconnectTimer = null;
+      }
+      if (state.statsInterval != null) {
+        try { clearInterval(state.statsInterval); } catch { }
+        state.statsInterval = null;
+      }
+      try { state.shareEndedUnsub?.(); } catch { }
+      state.shareEndedUnsub = null;
+      try {
+        if (state.ws?.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: "leave-room" }));
+        }
+      } catch { }
       try { state.ws?.close(); } catch { }
+      state.ws = null;
       for (const [pid] of state.peers) cleanupPeer(pid);
       try { state.localMicStream?.getTracks().forEach(t => t.stop()); } catch { }
       try { state.localCamStream?.getTracks().forEach(t => t.stop()); } catch { }
@@ -590,12 +657,7 @@ export function useWebRTC(roomId, displayName) {
       state.camDenied = false;
       emitStreams(); emitParticipants();
       try {
-        fetch("http://localhost/StudyNest/study-nest/src/api/meetings.php/leave", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ id: roomId }),
-        });
+        apiClient.post("meetings.php/leave", { id: roomId });
       } catch { }
     },
 
@@ -644,13 +706,16 @@ export function useWebRTC(roomId, displayName) {
     },
 
     sendChat(payload) {
-      const msg = { type: "chat", ...payload, self: undefined };
-      for (const [, p] of state.peers) {
-        if (p.dcOpen) { try { p.dc.send(JSON.stringify(msg)); } catch { } }
-        else { p.dcQueue?.push?.(JSON.stringify(msg)); }
-      }
+      const id = payload.id || Math.random().toString(36).slice(2, 9);
+      const msg = { type: "chat", id, ...payload, self: undefined };
+      // Whiteboard uses DataChannel + wb-forward; chat uses WebSocket only (server broadcasts).
       sendWS(msg);
-      state.chatCb?.({ ...payload, self: true });
+      state.chatCb?.({ ...payload, id, self: true });
+    },
+
+    /** After host ends meeting via API — notifies everyone in the signaling room */
+    notifyMeetingEnded() {
+      sendWS({ type: "meeting-ended", roomId });
     },
 
     async startShare() {
@@ -679,13 +744,27 @@ export function useWebRTC(roomId, displayName) {
     subscribeStreams,
     subscribeParticipants,
     onChat,
+    onMeetingEnded,
     subscribeSpeaking,
     subscribeStats,
 
     onShareEnded(cb) {
-      if (cb && state.localScreenStream) {
-        state.localScreenStream.getTracks().forEach(t => t.addEventListener("ended", cb));
-      }
+      try { state.shareEndedUnsub?.(); } catch { }
+      state.shareEndedUnsub = null;
+      if (!cb || !state.localScreenStream) return;
+      let done = false;
+      const wrapped = () => {
+        if (done) return;
+        done = true;
+        try { state.shareEndedUnsub?.(); } catch { }
+        state.shareEndedUnsub = null;
+        cb();
+      };
+      const tracks = state.localScreenStream.getTracks();
+      tracks.forEach((t) => t.addEventListener("ended", wrapped));
+      state.shareEndedUnsub = () => {
+        tracks.forEach((t) => t.removeEventListener("ended", wrapped));
+      };
     },
   };
 }

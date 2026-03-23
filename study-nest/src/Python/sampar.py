@@ -1,10 +1,9 @@
-#Run with:
+# Run with:
+# cd "e:\Live Link Projects\StudyNest\study-nest"
 # python -m venv .venv
-# .venv\Scripts\activate
- #Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-# Press Ctrl+Shift+P → Python: Select Interpreter → choose: .venv\Scripts\python.exe
-# pip install -r flask flask-cors nltk
-# python sampar.py
+# .\.venv\bin\Activate.ps1
+# pip install flask flask-cors nltk
+# python src\Python\sampar.py
 
 
 # sampar.py

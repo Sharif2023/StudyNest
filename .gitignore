@@ -9,4 +9,29 @@
 composer.json
 composer.lock
 
+# PHP dependencies
 vendor/*
+
+# Data and Secrets
+.env
+.env.*
+sql.txt
+important_terminal_command.txt
+
+# Scratch Scripts and Debug Logs
+study-nest/test_db_out.txt
+study-nest/build_error.txt
+study-nest/build_log.txt
+study-nest/check_schema.php
+study-nest/data_check.php
+study-nest/dump_db.php
+
+# Python / Virtualenvs
+.venv/
+study-nest/.venv/
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db

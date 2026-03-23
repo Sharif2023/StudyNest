@@ -1,50 +1,5 @@
-<?php
-session_start();
-
-/*************** CORS ***************/
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-/*************** JSON + error handling ***************/
-header("Content-Type: application/json; charset=utf-8");
-ini_set('display_errors', '0');
-ini_set('html_errors', '0');
-error_reporting(E_ALL);
-
-// Debug helper (optional, remove in production)
-error_log("SESSION USER_ID: " . ($_SESSION['user_id'] ?? 'none'));
-
-set_exception_handler(function ($e) {
-    http_response_code(500);
-    echo json_encode([
-        'ok' => false,
-        'error' => 'exception',
-        'message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
-    ]);
-    exit;
-});
-
-/*************** Require login ***************/
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(["ok" => false, "error" => "Not logged in"]);
-    exit;
-}
-
-$user_id = $_SESSION['user_id']; // ✅ always from session
-
-
-/*************** DB Connection ***************/
-require "db.php"; // must define $pdo (PDO connection)
+require_once __DIR__ . '/auth.php'; // Provides JWT/Session validation
+$user_id = requireAuth();
 
 /*************** Helpers ***************/
 function j($data)
@@ -53,41 +8,6 @@ function j($data)
     exit;
 }
 
-/*************** Auto-create tables ***************/
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS groups (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        section_name VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB;
-");
-
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS group_members (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        group_id INT UNSIGNED NOT NULL,
-        user_id INT UNSIGNED NOT NULL,
-        status ENUM('pending','accepted','rejected') DEFAULT 'pending',
-        proof_url VARCHAR(500) DEFAULT NULL,
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_member (group_id, user_id),
-        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB;
-");
-
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS group_messages (
-        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        group_id INT UNSIGNED NOT NULL,
-        user_id INT UNSIGNED NOT NULL,
-        message TEXT NOT NULL,
-        attachment_url VARCHAR(255) DEFAULT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB;
-");
 
 /*************** Routing ***************/
 $action = $_GET['action'] ?? '';
@@ -116,7 +36,10 @@ switch ($action) {
             $target = $uploadDir . $filename;
 
             if (move_uploaded_file($_FILES['proof']['tmp_name'], $target)) {
-                $proofUrl = "http://localhost/StudyNest/study-nest/src/api/proofs/" . $filename;
+                $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $script = $_SERVER['SCRIPT_NAME'];
+                $proofUrl = "{$protocol}://{$host}" . rtrim(dirname($script), '/\\') . "/proofs/" . $filename;
             }
         }
 
@@ -215,7 +138,10 @@ switch ($action) {
             $target = $uploadDir . $filename;
 
             if (move_uploaded_file($_FILES['attachment']['tmp_name'], $target)) {
-                $attachmentUrl = "http://localhost/StudyNest/study-nest/src/api/uploads/" . $filename;
+                $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $script = $_SERVER['SCRIPT_NAME'];
+                $attachmentUrl = "{$protocol}://{$host}" . rtrim(dirname($script), '/\\') . "/uploads/" . $filename;
             }
         }
 

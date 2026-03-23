@@ -1,12 +1,6 @@
 <?php
-require_once "db.php";
+require_once "db.php"; // Provides $pdo, CORS headers, and session_start()
 date_default_timezone_set('Asia/Dhaka');
-
-$allowedOrigin = "http://localhost:5173";
-header("Access-Control-Allow-Origin: $allowedOrigin");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 
 try {
     // Find due reminders that haven't been sent
@@ -15,7 +9,7 @@ try {
         FROM notifications 
         WHERE type = 'todo_reminder'
           AND sent_at IS NULL
-          AND scheduled_at <= NOW()
+          AND scheduled_at <= CURRENT_TIMESTAMP
     ");
     $stmt->execute();
     $dueReminders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -30,7 +24,7 @@ try {
         // Mark as sent first to avoid duplicates
         $updateStmt = $pdo->prepare("
             UPDATE notifications 
-            SET sent_at = NOW() 
+            SET sent_at = CURRENT_TIMESTAMP 
             WHERE id = ? AND sent_at IS NULL
         ");
         $updateStmt->execute([$reminder['id']]);
@@ -43,7 +37,7 @@ try {
         $insertStmt = $pdo->prepare("
             INSERT INTO notifications 
             (student_id, title, message, type, reference_id, created_at, link)
-            VALUES (?, ?, ?, 'todo_reminder', ?, NOW(), ?)
+            VALUES (?, ?, ?, 'todo_reminder', ?, CURRENT_TIMESTAMP, ?)
         ");
         
         $title = "⏰ Task Reminder: " . $reminder['title'];

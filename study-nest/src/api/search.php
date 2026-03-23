@@ -1,10 +1,5 @@
 <?php
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-
-require_once "db.php"; // ✅ correct file name
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
 $q = isset($_GET['q']) ? trim($_GET['q']) : "";
 $tag = isset($_GET['tag']) ? trim($_GET['tag']) : "";
@@ -47,20 +42,36 @@ $result = [
 ];
 
 try {
-    if ($type === "all" || $type === "notes")
-        $result["notes"] = searchQuery($pdo, "notes", ["title", "description", "course", "semester"], $q, $tag, "updated_at");
+    if ($type === "global") {
+        $notes = searchQuery($pdo, "notes", ["title", "description", "course", "semester"], $q, $tag, "updated_at");
+        $resources = searchQuery($pdo, "resources", ["title", "description", "course", "semester"], $q, $tag, "created_at");
+        $forum = searchQuery($pdo, "questions", ["title", "body", "author"], $q, $tag, "created_at");
+        $rooms = searchQuery($pdo, "meetings", ["title", "course_title", "course"], $q, $tag, "created_at");
 
-    if ($type === "all" || $type === "resources")
-        $result["resources"] = searchQuery($pdo, "resources", ["title", "description", "course", "semester"], $q, $tag, "created_at");
+        $globalResults = [];
+        foreach ($notes as $n) { $n['type'] = 'note'; $globalResults[] = $n; }
+        foreach ($resources as $r) { $r['type'] = 'resource'; $globalResults[] = $r; }
+        foreach ($forum as $f) { $f['type'] = 'forum'; $globalResults[] = $f; }
+        foreach ($rooms as $rm) { $rm['type'] = 'room'; $globalResults[] = $rm; }
 
-    if ($type === "all" || $type === "forum")
-        $result["forum"] = searchQuery($pdo, "questions", ["title", "body", "author"], $q, $tag, "created_at");
+        echo json_encode(["results" => $globalResults], JSON_PRETTY_PRINT);
+    } else {
+        if ($type === "all" || $type === "notes")
+            $result["notes"] = searchQuery($pdo, "notes", ["title", "description", "course", "semester"], $q, $tag, "updated_at");
 
-    if ($type === "all" || $type === "rooms")
-        $result["rooms"] = searchQuery($pdo, "meetings", ["title", "course_title", "course"], $q, $tag, "created_at");
+        if ($type === "all" || $type === "resources")
+            $result["resources"] = searchQuery($pdo, "resources", ["title", "description", "course", "semester"], $q, $tag, "created_at");
 
-    echo json_encode($result, JSON_PRETTY_PRINT);
+        if ($type === "all" || $type === "forum")
+            $result["forum"] = searchQuery($pdo, "questions", ["title", "body", "author"], $q, $tag, "created_at");
+
+        if ($type === "all" || $type === "rooms")
+            $result["rooms"] = searchQuery($pdo, "meetings", ["title", "course_title", "course"], $q, $tag, "created_at");
+
+        echo json_encode($result, JSON_PRETTY_PRINT);
+    }
 } catch (Exception $e) {
+    http_response_code(500);
     echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

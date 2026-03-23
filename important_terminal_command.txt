@@ -1,5 +1,5 @@
 To run the project:
-cd StudyNest
+cd study-nest
 npm run dev
 
 to run AI_checker run this command:
@@ -16,14 +16,11 @@ npm i
 npm start
 
 # Run Paraphasing & Summarizing Tool with:
-# python -m venv .venv
 # cd study-nest
-# .venv\Scripts\activate
- #Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-# Press Ctrl+Shift+P → Python: Select Interpreter → choose: .venv\Scripts\python.exe
-# pip install -r flask flask-cors nltk
-# python src/Python/sampar.py
-
+# python -m venv .venv
+# .\.venv\bin\Activate.ps1
+# pip install flask flask-cors nltk
+# python src\Python\sampar.py
 # for run the whiteboard
 npm i fabric jspdf uuid
 

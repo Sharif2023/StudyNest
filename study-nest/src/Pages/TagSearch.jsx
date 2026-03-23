@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
 import Header from "../Components/Header";
+import apiClient from "../apiConfig";
 
 /**
  * StudyNest — Tagging & Topic Search (Live API version)
@@ -45,8 +46,8 @@ export default function TagSearch() {
         if (activeTag) query.set("tag", activeTag);
         if (type) query.set("type", type);
 
-        const res = await fetch(`http://localhost/StudyNest/study-nest/src/api/search.php?${query.toString()}`);
-        const json = await res.json();
+        const res = await apiClient.get("search.php", { params: Object.fromEntries(query) });
+        const json = res.data;
         setData(json);
       } catch (err) {
         console.error("Search error:", err);

@@ -1,20 +1,5 @@
 <?php
-session_start();
-require_once "db.php";
-
-// Set CORS headers FIRST for ALL requests
-$allowedOrigin = "http://localhost:5173";
-header("Access-Control-Allow-Origin: $allowedOrigin");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header("Access-Control-Allow-Credentials: true");
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
 $action = $_GET['action'] ?? '';
 
@@ -72,7 +57,7 @@ if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($data['mark_all'])) {
             $stmt = $pdo->prepare("
                 UPDATE notifications 
-                SET read_at = NOW() 
+                SET read_at = CURRENT_TIMESTAMP 
                 WHERE student_id = ? AND read_at IS NULL
             ");
             $stmt->execute([$sid]);
@@ -80,7 +65,7 @@ if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else if (!empty($data['notification_id'])) {
             $stmt = $pdo->prepare("
                 UPDATE notifications 
-                SET read_at = NOW() 
+                SET read_at = CURRENT_TIMESTAMP 
                 WHERE id = ? AND student_id = ?
             ");
             $stmt->execute([$data['notification_id'], $sid]);

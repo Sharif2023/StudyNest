@@ -1,59 +1,7 @@
 <?php
 // recordings.php
 
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-session_start();
-
-// DB connection
-$host = "localhost";
-$db_name = "studynest";
-$user = "root";
-$pass = "";
-$charset = "utf8mb4";
-
-$dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-];
-
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (Throwable $e) {
-    echo json_encode(["status" => "error", "message" => "DB connection failed"]);
-    exit;
-}
-
-// Create recordings table if not exists
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS recordings (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        room_id VARCHAR(64) NOT NULL,
-        video_url TEXT NOT NULL,
-        user_name VARCHAR(255) NOT NULL,
-        user_id INT,
-        duration INT DEFAULT 0,
-        recorded_at DATETIME NOT NULL,
-        title VARCHAR(500) NOT NULL,
-        description TEXT,
-        course VARCHAR(100),
-        semester VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_user_id (user_id),
-        INDEX idx_room_id (room_id),
-        INDEX idx_created_at (created_at)
-    )
-");
+require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
 // POST - Save recording metadata
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -83,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO resources 
                 (title, kind, course, semester, description, author, src_type, url, votes, bookmarks, flagged, created_at)
             VALUES 
-                (:title, 'recording', :course, :semester, :description, :author, 'link', :url, 0, 0, 0, NOW())
+                (:title, 'recording', :course, :semester, :description, :author, 'link', :url, 0, 0, false, NOW())
         ");
         
         $resource_stmt->execute([
@@ -244,7 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
                     $public_id = preg_replace('/\.[^.]*$/', '', $public_id);
                     
                     // Load Cloudinary configuration
-                    $cloudinary_config = require_once __DIR__ . '/cloudinary_config.php';
+                    require_once __DIR__ . '/cloudinary_helper.php';
+                    $cloudinary_config = get_cloudinary_config();
                     $cloud_name = $cloudinary_config['cloud_name'];
                     $api_key = $cloudinary_config['api_key'];
                     $api_secret = $cloudinary_config['api_secret'];
