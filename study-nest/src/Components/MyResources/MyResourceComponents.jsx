@@ -138,40 +138,40 @@ export function Card({
         </div>
 
         <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/5 flex items-center justify-center text-[10px] font-black text-white uppercase">
-              {String(item.author || "U").charAt(0)}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-white uppercase tracking-wider">{item.author || "You"}</span>
-              <span className="text-[9px] font-bold text-slate-500 uppercase">{safeDate(item.created_at || item.updated_at)}</span>
-            </div>
-          </div>
-
           <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/5 flex items-center justify-center text-[10px] font-black text-white uppercase flex-shrink-0">
+            {String(item.author || "U").charAt(0)}
+          </div>
+          <div className="flex flex-col justify-center min-w-0">
+            <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none mb-1 truncate">{item.author || "You"}</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase leading-none">{safeDate(item.created_at || item.updated_at)}</span>
+          </div>
+        </div>
+
+          <div className="flex items-center gap-1.5 h-8">
             {isRecording && isOwner && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 h-full">
                 <button 
                   onClick={(e) => { e.stopPropagation(); onShareRecording(item); }} 
-                  className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
+                  className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center flex-shrink-0"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onDeleteRecording(item); }} 
-                  className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+                  className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center flex-shrink-0"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
               </div>
             )}
             {!isRecording && isOwner && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 h-full">
                 {onShareResource && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onShareResource(item); }} 
                     disabled={isSharedFlag === true}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    className={`px-3 h-8 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center flex-shrink-0 ${
                       isSharedFlag 
                         ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed" 
                         : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:scale-105"
@@ -183,9 +183,9 @@ export function Card({
                 {onDeleteResource && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDeleteResource(item); }} 
-                    className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all font-black"
+                    className="w-8 h-8 rounded-xl bg-rose-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center font-black flex-shrink-0"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 )}
               </div>
@@ -196,9 +196,9 @@ export function Card({
                 href={isPdfLike(url, item.mime) ? cloudinaryDownload(toBackendUrl(url)) : toBackendUrl(url)} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white hover:text-black transition-all"
+                className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white hover:text-black transition-all flex items-center justify-center flex-shrink-0"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               </a>
             )}
           </div>
@@ -212,7 +212,7 @@ export function EmptyState({ tab }) {
   const label = tab === "resources" ? "Vault Empty" : "No Archives";
   return (
     <div className="grid place-items-center py-32 rounded-[3.5rem] border border-dashed border-white/10 bg-white/[0.02] relative overflow-hidden group">
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
       <div className="text-center space-y-6">
         <div className="mx-auto w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl opacity-50 grayscale group-hover:grayscale-0 transition-all duration-700">
           {tab === "resources" ? "📚" : "🎬"}

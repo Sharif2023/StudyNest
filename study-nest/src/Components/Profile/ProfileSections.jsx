@@ -104,24 +104,26 @@ export function Overview({ user, displayName }) {
           </div>
           
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 relative z-10 gap-6">
-            <div>
+            <div className="flex-1">
               <h3 className="text-3xl font-black text-white tracking-tight mb-3">Academic Roadmap</h3>
               <p className="text-xs font-medium text-slate-400 max-w-lg leading-relaxed">
                 Centralized intelligence from your recent scholarly activities across the StudyNest ecosystem. 
                 Resume your journey exactly where you left off.
               </p>
             </div>
-            <Link to="/home" className="flex items-center gap-4 px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all group/btn shadow-xl shadow-white/5 active:scale-95">
+            <Link to="/home" className="flex items-center gap-4 px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all group/btn shadow-xl shadow-white/5 active:scale-95 flex-shrink-0">
               Live Feed <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
             <PreviewList title="Library" items={data.resources || []} icon={<Database className="w-4 h-4" />} to="/resources" accent="cyan" />
             <PreviewList title="Recordings" items={data.recordings || []} icon={<Video className="w-4 h-4" />} to="/resources" accent="violet" />
             <PreviewList title="Studios" items={data.rooms || []} icon={<Play className="w-4 h-4" />} to="/rooms" accent="emerald" />
             <PreviewList title="Artifacts" items={data.notes || []} icon={<FileText className="w-4 h-4" />} to="/notes" accent="amber" />
-            <PreviewList title="Inquiries" items={data.questions || []} icon={<MessageSquare className="w-4 h-4" />} to="/forum" accent="rose" />
+            <div className="lg:col-span-2">
+              <PreviewList title="Inquiries" items={data.questions || []} icon={<MessageSquare className="w-4 h-4" />} to="/forum" accent="rose" />
+            </div>
           </div>
         </div>
       </div>
@@ -140,39 +142,40 @@ function PreviewList({ title, items, icon, to, accent = "indigo" }) {
   };
 
   return (
-    <div className="flex flex-col h-full group/list">
-      <div className="flex items-center gap-4 mb-8">
-        <div className={`p-3 rounded-2xl border transition-all duration-500 ${accents[accent]} group-hover/list:scale-110 group-hover/list:shadow-[0_0_20px_rgba(0,0,0,0.3)]`}>
+    <div className="flex flex-col h-full group/list rounded-3xl border border-white/5 bg-white/[0.02] p-8 hover:bg-white/[0.04] transition-all duration-500">
+      <div className="flex items-center gap-5 mb-10">
+        <div className={`w-14 h-14 rounded-2xl border transition-all duration-500 ${accents[accent]} group-hover/list:scale-110 group-hover/list:shadow-[0_0_20px_rgba(0,0,0,0.3)] flex items-center justify-center flex-shrink-0`}>
           {icon}
         </div>
-        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">{title}</h4>
+        <div>
+          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] leading-tight mb-1">{title}</h4>
+          <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Recent Activity</p>
+        </div>
       </div>
       
-      <div className="flex-1 space-y-4">
+      <div className="flex-1 space-y-4 min-h-[140px]">
         {items.length === 0 ? (
-          <div className="h-full min-h-[160px] flex flex-col items-center justify-center p-8 rounded-3xl border border-dashed border-white/5 bg-white/[0.01] transition-colors hover:bg-white/[0.02]">
+          <div className="h-full flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.01]">
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Station Empty</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {items.slice(0, 4).map((it, i) => (
-              <Link key={it.id || i} to={to} className="block">
+              <Link key={it.id || i} to={to} className="block group/item">
                 <motion.div 
-                  whileHover={{ x: 6, backgroundColor: "rgba(255,255,255,0.03)" }}
-                  className="group/item p-4 rounded-2xl border border-transparent hover:border-white/5 transition-all"
+                  whileHover={{ x: 8 }}
+                  className="flex items-center justify-between gap-6 p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-transparent hover:border-white/5 transition-all text-sm text-slate-400 font-medium group-hover/item:text-white"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm text-slate-400 font-medium truncate group-hover/item:text-white transition-colors">
-                      {it.title || it.name || "(Untitled)"}
-                    </p>
-                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 scale-0 group-hover/item:scale-100 ${accents[accent].split(' ')[0]}`} />
-                  </div>
+                  <p className="truncate flex-1 py-1">
+                    {it.title || it.name || "(Untitled Node)"}
+                  </p>
+                  <ChevronRight className="w-4 h-4 text-slate-700 group-hover/item:text-white transition-all opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0" />
                 </motion.div>
               </Link>
             ))}
             {items.length > 4 && (
-              <Link to={to} className="block px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-white transition-colors">
-                + {items.length - 4} more
+              <Link to={to} className="block mt-4 px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] hover:text-indigo-400 transition-colors">
+                View All {title} Archive →
               </Link>
             )}
           </div>

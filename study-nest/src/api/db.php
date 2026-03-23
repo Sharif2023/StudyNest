@@ -1,7 +1,9 @@
 <?php
 // Centralized CORS, Session and DB configuration
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+// Security: In production, you SHOULD restrict $origin to your specific domain.
+// e.g. $allowed_origins = ["http://localhost:5173", "https://your-production-domain.com"];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*'; 
 header("Access-Control-Allow-Origin: $origin");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
@@ -15,12 +17,13 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS
 
 // Configure session with robust settings
 if (session_status() === PHP_SESSION_NONE) {
-    // Host-only cookie (omit domain) so the session works with the PHP API origin
-    // (e.g. localhost:8000) when the SPA runs on another port (e.g. :5173).
+    // Determine if we are on HTTPS
+    $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443);
+    
     session_set_cookie_params([
         'lifetime' => 86400,
         'path' => '/',
-        'secure' => false,
+        'secure' => $is_secure, // Automatically true if on HTTPS
         'httponly' => true,
         'samesite' => 'Lax',
     ]);

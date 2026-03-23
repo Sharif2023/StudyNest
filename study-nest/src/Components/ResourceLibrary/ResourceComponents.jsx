@@ -79,8 +79,8 @@ export function ResourceCard({
       whileHover={{ y: -12, transition: { duration: 0.5 } }}
       className="group relative flex flex-col h-full rounded-[2.5rem] bg-[rgba(255,255,255,0.02)] border border-white/10 hover:border-cyan-500/30 p-5 transition-all duration-700 shadow-xl overflow-hidden glass-card"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-cyan-900/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-cyan-900/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
       
       <div className="aspect-[16/10] w-full overflow-hidden rounded-[2rem] bg-[rgba(255,255,255,0.03)] mb-6 relative border border-white/5">
         {isRecording ? (
@@ -123,30 +123,30 @@ export function ResourceCard({
           </p>
       </div>
 
-      <div className="px-3 pb-3 mt-auto flex items-center justify-between border-t border-white/5 pt-6 gap-2">
-        <div className="flex items-center gap-1 bg-[rgba(255,255,255,0.03)] p-1 rounded-full border border-white/5">
+      <div className="px-2 pb-3 mt-auto flex items-center justify-between border-t border-white/5 pt-5 gap-2">
+        <div className="flex items-center gap-0.5 bg-[rgba(255,255,255,0.03)] p-0.5 rounded-full border border-white/5 h-9">
            <button onClick={() => onVote(item.id, 1)} className="p-2 text-slate-400 hover:text-white transition-colors"><ArrowUp className="w-4 h-4" /></button>
-           <span className="text-[11px] font-black text-white px-1 min-w-[20px] text-center ">{item.votes}</span>
+           <span className="text-[10px] font-black text-white px-1 min-w-[20px] text-center ">{item.votes}</span>
            <button onClick={() => onVote(item.id, -1)} className="p-2 text-slate-400 hover:text-white transition-colors"><ArrowDown className="w-4 h-4" /></button>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
            <button 
              onClick={() => onBookmark(item.id)} 
-             className={`p-3 rounded-full border transition-all duration-500 ${item.bookmarked ? 'bg-[rgba(255,255,255,0.1)] border-white/20 text-white shadow-xl' : 'bg-[rgba(255,255,255,0.03)] border-white/5 text-slate-400 hover:text-white'}`}
+             className={`rounded-full border transition-all duration-500 h-9 w-9 flex items-center justify-center ${item.bookmarked ? 'bg-[rgba(255,255,255,0.1)] border-white/20 text-white shadow-xl' : 'bg-[rgba(255,255,255,0.03)] border-white/5 text-slate-400 hover:text-white'}`}
            >
-              <Bookmark className={`w-4 h-4 ${item.bookmarked ? 'fill-current' : ''}`} />
+              <Bookmark className={`w-3.5 h-3.5 ${item.bookmarked ? 'fill-current' : ''}`} />
            </button>
            {isOwner && (
              <button 
                onClick={() => isRecording ? onDelete(item.id) : onDeleteResource(item.id)} 
-               className="p-3 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-500"
+               className="rounded-full bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-500 h-9 w-9 flex items-center justify-center"
              >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
              </button>
            )}
-           <button onClick={() => onFlag(item.id)} className="p-3 rounded-full bg-[rgba(255,255,255,0.03)] border border-white/5 text-slate-400 hover:text-white transition-all duration-500">
-               <Flag className="w-4 h-4" />
+           <button onClick={() => onFlag(item.id)} className="rounded-full bg-[rgba(255,255,255,0.03)] border border-white/5 text-slate-400 hover:text-white transition-all duration-500 h-9 w-9 flex items-center justify-center">
+               <Flag className="w-3.5 h-3.5" />
            </button>
         </div>
       </div>

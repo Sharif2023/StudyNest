@@ -29,10 +29,18 @@ const STUN = [
   },
 ];
 
-// TIP: do NOT share a port with your dev server (e.g. Vite on 5173).
-// If your ws-server also runs on 5173, move it (e.g. 5174) and update this URL.
-console.log("WS signaling on ws://localhost:5173");
-const WS_URL = "ws://localhost:5173";
+// WebSocket signaling configuration
+const getWSUrl = () => {
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  if (isLocal) return "ws://localhost:5173";
+  
+  // PRODUCTION: Assume signaling server is on the same host but different port (e.g. 5173 or proxied)
+  return `${proto}://${window.location.hostname}:5173`;
+};
+
+const WS_URL = getWSUrl();
+console.log("WS signaling on:", WS_URL);
 
 export function useWebRTC(roomId, displayName, stableId) {
   const state = {

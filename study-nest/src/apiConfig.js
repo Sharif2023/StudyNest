@@ -4,12 +4,17 @@ const isLocalhost = window.location.hostname === "localhost" || window.location.
 
 // Auto-detect the correct path
 const getApiBase = () => {
-  if (!isLocalhost) return "https://your-production-domain.com/api";
-  const port = 8000;
-  const hasStudyNestInPath = window.location.pathname.includes("study-nest");
-  return hasStudyNestInPath 
-    ? `http://localhost:${port}/study-nest/src/api` 
-    : `http://localhost:${port}/src/api`;
+  if (isLocalhost) {
+    const port = 8000;
+    const hasStudyNestInPath = window.location.pathname.includes("study-nest");
+    return hasStudyNestInPath 
+      ? `http://localhost:${port}/study-nest/src/api` 
+      : `http://localhost:${port}/src/api`;
+  }
+  
+  // PRODUCTION: Fall back to current origin + /src/api (standard structure)
+  // Or manually replace with "https://api.yourdomain.com" if hosted separately.
+  return window.location.origin + "/src/api";
 };
 
 export const API_BASE = getApiBase();

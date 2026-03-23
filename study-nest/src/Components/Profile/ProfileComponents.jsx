@@ -49,12 +49,12 @@ export function StatCard({ label, value, icon, trend }) {
       whileHover={{ y: -5 }}
       className="relative overflow-hidden rounded-3xl border border-white/5 bg-white/[0.03] p-8 transition-all hover:bg-white/[0.05] hover:border-white/10 shadow-lg"
     >
-      <div className="flex items-start justify-between mb-6">
-        <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400">
+      <div className="flex items-center justify-between mb-6 h-12">
+        <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
           {icon}
         </div>
         {trend && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
             <ChevronRight className="w-3 h-3 -rotate-90" />
             {trend}
           </div>
