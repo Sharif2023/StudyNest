@@ -3,9 +3,13 @@
 
 require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
 
-// === External tool paths ===
-const PDFTOTEXT_EXE = 'C:\\poppler\\bin\\pdftotext.exe'; // Poppler
-const ANTIWORD_EXE  = 'C:\\antiword\\antiword.exe';      // Antiword (for .doc)
+// === External tool paths (Environment-aware) ===
+$is_win = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+$pdf_exe = getenv('PDFTOTEXT_PATH') ?: ($is_win ? 'C:\\poppler\\bin\\pdftotext.exe' : '/usr/bin/pdftotext');
+$doc_exe = getenv('ANTIWORD_PATH')  ?: ($is_win ? 'C:\\antiword\\antiword.exe' : '/usr/bin/antiword');
+
+define('PDFTOTEXT_EXE', $pdf_exe);
+define('ANTIWORD_EXE',  $doc_exe);
 
 // ---------- Helpers ----------
 function json_fail($code, $msg, $extra = []) {
