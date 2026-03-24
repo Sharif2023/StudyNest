@@ -23,8 +23,7 @@ function body_json()
 }
 function user_id()
 {
-  // Try JWT first, then session
-  return StudyNestAuth::validate(['user'], false) ?: (isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null);
+  return current_user_id();
 }
 function uid_short($bytes = 6)
 {

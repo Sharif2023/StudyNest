@@ -11,15 +11,22 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        // Fetch all notes with user information
+        // Fetch notes belonging to the current user
         try {
+            $user_id = current_user_id();
+            if (!$user_id) {
+                echo json_encode(["status" => "error", "message" => "Authentication required"]);
+                exit;
+            }
+
             $stmt = $pdo->prepare("
                 SELECT n.*, u.username, u.student_id, u.profile_picture_url 
                 FROM notes n 
                 LEFT JOIN users u ON n.user_id = u.id 
+                WHERE n.user_id = ?
                 ORDER BY n.created_at DESC
             ");
-            $stmt->execute();
+            $stmt->execute([$user_id]);
             $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode(["status" => "success", "notes" => $notes ?: []]);

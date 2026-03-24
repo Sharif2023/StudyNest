@@ -9,10 +9,7 @@ require_once __DIR__ . '/cloudinary_helper.php';
 //////////////////////
 // Utility helpers  //
 //////////////////////
-function current_user_id(): ?int {
-    // Standardize: try JWT scope 'user' first, then session
-    return StudyNestAuth::validate(['user'], false) ?: (!empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
-}
+// Logical moved to auth.php as a global helper.
 
 // Centralized awardPoints is provided by db.php
 
@@ -23,11 +20,26 @@ function current_user_id(): ?int {
 /////////////////////////
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
+        $uid = current_user_id();
+        $showMine = isset($_GET['mine']) && $_GET['mine'] === '1' && $uid;
         $excludeRecordings = isset($_GET['exclude_recordings']) && $_GET['exclude_recordings'] === '1';
-        $sql = "SELECT * FROM resources WHERE visibility='public' ";
+
+        if ($showMine) {
+            $sql = "SELECT * FROM resources WHERE user_id = ? ";
+        } else {
+            $sql = "SELECT * FROM resources WHERE visibility='public' ";
+        }
+
         if ($excludeRecordings) $sql .= "AND (kind IS NULL OR kind <> 'recording') ";
         $sql .= "ORDER BY COALESCE(shared_at, created_at) DESC";
-        $rows = $pdo->query($sql)->fetchAll();
+
+        if ($showMine) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$uid]);
+            $rows = $stmt->fetchAll();
+        } else {
+            $rows = $pdo->query($sql)->fetchAll();
+        }
 
         $uid = current_user_id();
         if ($uid) {

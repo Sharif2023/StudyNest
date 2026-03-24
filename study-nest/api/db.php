@@ -15,22 +15,32 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS
     exit;
 }
 
-// Configure session with robust settings
-if (session_status() === PHP_SESSION_NONE) {
-    // Determine if we are on HTTPS
-    $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443);
-    
-    session_set_cookie_params([
-        'lifetime' => 86400,
-        'path' => '/',
-        'secure' => $is_secure, // Automatically true if on HTTPS
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    session_start();
-}
-
 header("Content-Type: application/json; charset=utf-8");
+
+// DB-Backed Session Handler Class
+class StudyNestSessionHandler implements SessionHandlerInterface {
+    private $pdo;
+    public function __construct($pdo) { $this->pdo = $pdo; }
+    public function open($path, $name): bool { return true; }
+    public function close(): bool { return true; }
+    public function read($id): string {
+        $stmt = $this->pdo->prepare("SELECT data FROM sessions WHERE id = ? AND expiry > ?");
+        $stmt->execute([$id, time()]);
+        return $stmt->fetchColumn() ?: '';
+    }
+    public function write($id, $data): bool {
+        $expiry = time() + (int)ini_get('session.gc_maxlifetime');
+        $stmt = $this->pdo->prepare("INSERT INTO sessions (id, data, expiry) VALUES (?, ?, ?) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, expiry = EXCLUDED.expiry");
+        return $stmt->execute([$id, $data, $expiry]);
+    }
+    public function destroy($id): bool {
+        return $this->pdo->prepare("DELETE FROM sessions WHERE id = ?")->execute([$id]);
+    }
+    public function gc($max_lifetime): int|false {
+        $stmt = $this->pdo->prepare("DELETE FROM sessions WHERE expiry < ?");
+        return $stmt->execute([time()]) ? 1 : false;
+    }
+}
 
 // Load .env variables (simplified manual loader)
 if (file_exists(__DIR__ . '/.env')) {
@@ -51,25 +61,36 @@ $user = getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? 'postgres');
 $pass = getenv('DB_PASS') ?: ($_ENV['DB_PASS'] ?? '');
 $port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '5432');
 
-// Database Credentials - Using variables from .env above
-
 try {
-$dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-    // Connection pooling + production settings
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::ATTR_PERSISTENT => true,  // Connection pooling
-        PDO::ATTR_TIMEOUT => 5,        // 5s timeout
-        PDO::PGSQL_ATTR_DISABLE_PREPARES => false,
+        PDO::ATTR_PERSISTENT => true,
+        PDO::ATTR_TIMEOUT => 5,
     ]);
-    
-    // Production: Enable query logging
-    if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'production') {
-        $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, ['StudyNest\\PDOStatement', []]);
-    }
 
+    // Ensure sessions table exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sessions (id VARCHAR(128) PRIMARY KEY, data TEXT, expiry INTEGER)");
+
+    // Register DB Session Handler
+    if (PHP_SAPI !== 'cli') {
+        session_set_save_handler(new StudyNestSessionHandler($pdo), true);
+        
+        // Configure session with robust settings
+        if (session_status() === PHP_SESSION_NONE) {
+            $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443);
+            session_set_cookie_params([
+                'lifetime' => 86400,
+                'path' => '/',
+                'secure' => $is_secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            session_start();
+        }
+    }
 
     // Bootstrap Schema (PostgreSQL Syntax)
     $pdo->exec("
@@ -426,21 +447,11 @@ $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
         ON CONFLICT (key) DO NOTHING;
     ");
 
-    try {
-        $pdo->exec('ALTER TABLE meetings ADD COLUMN IF NOT EXISTS creator_session_id VARCHAR(255)');
-    } catch (Throwable $e) { }
-    try {
-        $pdo->exec('ALTER TABLE meeting_participants ALTER COLUMN session_id TYPE VARCHAR(255)');
-    } catch (Throwable $e) { }
-    try {
-        $pdo->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0');
-    } catch (Throwable $e) { }
-    try {
-        $pdo->exec('ALTER TABLE meetings ALTER COLUMN course TYPE VARCHAR(255)');
-    } catch (Throwable $e) { }
-    try {
-        $pdo->exec('ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)');
-    } catch (Throwable $e) { }
+    $pdo->exec('ALTER TABLE meetings ADD COLUMN IF NOT EXISTS creator_session_id VARCHAR(255)');
+    $pdo->exec('ALTER TABLE meeting_participants ALTER COLUMN session_id TYPE VARCHAR(255)');
+    $pdo->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0');
+    $pdo->exec('ALTER TABLE meetings ALTER COLUMN course TYPE VARCHAR(255)');
+    $pdo->exec('ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)');
 
 } catch (Throwable $e) {
     if (!headers_sent()) {

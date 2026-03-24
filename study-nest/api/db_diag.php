@@ -1,21 +1,31 @@
 <?php
-// db_diag.php
 require_once __DIR__ . '/db.php';
 
-try {
-    $stmt = $pdo->prepare("SELECT id, username, email, role, status FROM users WHERE email = 'admin@studynest.com'");
-    $stmt->execute();
-    $user = $stmt->fetch();
+header('Content-Type: application/json');
 
-    echo json_encode([
-        "ok" => true,
-        "admin_user" => $user,
-        "server_info" => [
-            "php_version" => PHP_VERSION,
-            "server_software" => $_SERVER['SERVER_SOFTWARE'],
-            "session_status" => session_status() === PHP_SESSION_ACTIVE ? "Active" : "None"
-        ]
-    ], JSON_PRETTY_PRINT);
-} catch (Throwable $e) {
-    echo json_encode(["ok" => false, "error" => $e->getMessage()]);
+$response = [
+    'status' => 'unknown',
+    'env_checks' => [
+        'DB_HOST' => getenv('DB_HOST') ? 'SET' : 'MISSING',
+        'DB_NAME' => getenv('DB_NAME') ? 'SET' : 'MISSING',
+        'DB_USER' => getenv('DB_USER') ? 'SET' : 'MISSING',
+        'DB_PASS' => getenv('DB_PASS') ? 'SET' : 'MISSING',
+        'DB_PORT' => getenv('DB_PORT') ? 'SET' : 'MISSING',
+    ],
+    'pdo_initialized' => isset($pdo) ? 'YES' : 'NO',
+];
+
+try {
+    if (isset($pdo)) {
+        $stmt = $pdo->query("SELECT 1");
+        if ($stmt) {
+            $response['status'] = 'SUCCESS';
+            $response['message'] = 'Database connection verified.';
+        }
+    }
+} catch (Exception $e) {
+    $response['status'] = 'FAILED';
+    $response['error'] = $e->getMessage();
 }
+
+echo json_encode($response);

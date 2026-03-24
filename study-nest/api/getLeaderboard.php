@@ -11,9 +11,9 @@ try {
             username as name, 
             student_id, 
             COALESCE(points, 0) as points,
-            ROW_NUMBER() OVER (ORDER BY points DESC) as rank
+            RANK() OVER (ORDER BY COALESCE(points, 0) DESC) as rank
         FROM users
-        ORDER BY points DESC 
+        ORDER BY points DESC NULLS LAST
         LIMIT 50
     ");
     
