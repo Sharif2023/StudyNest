@@ -13,7 +13,7 @@ if ($action === 'list') {
                 id, 
                 student_id, 
                 title, 
-                COALESCE(message, body) as message, 
+                message, 
                 link, 
                 type, 
                 reference_id,

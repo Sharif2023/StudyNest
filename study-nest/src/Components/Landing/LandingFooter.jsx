@@ -16,11 +16,13 @@ export default function LandingFooter() {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <a href="#home" className="flex items-center gap-3">
-              <img src="/logo.png" alt="StudyNest" className="h-full w-full" />
-              <span className="text-xl font-black tracking-tight text-zinc-900">StudyNest</span>
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-100 p-1.5">
+                <img src="/logo.png" alt="StudyNest" className="h-full w-full object-contain rounded-lg" />
+              </div>
+              <span className="text-xl font-black tracking-tight text-zinc-900 uppercase">StudyNest</span>
             </a>
             <p className="mt-4 text-sm text-zinc-500 max-w-xs leading-relaxed">
-              The ultimate academic vault for UIU scholars. 
+              The ultimate academic vault for UIU students. 
               Synchronize your journey, master your courses.
             </p>
           </div>

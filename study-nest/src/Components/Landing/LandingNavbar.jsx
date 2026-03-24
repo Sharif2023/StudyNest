@@ -17,7 +17,7 @@ export default function LandingNavbar() {
         <div className="flex h-16 items-center justify-between">
           <a href="#home" className="flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-white font-bold">
-              <img src="/logo.png" alt="StudyNest" className="h-full w-full" />
+              <img src="/logo.png" alt="StudyNest" className="h-full w-full rounded-lg" />
             </span>
             <span className="font-semibold tracking-tight">StudyNest</span>
           </a>

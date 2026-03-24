@@ -4,6 +4,14 @@
  * Session always works; JWT works when firebase/php-jwt is installed (composer).
  */
 
+// Suppress visible errors in API responses
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
+
+$studyNestJwtPaths = [
+    __DIR__ . '/../../vendor/autoload.php',
+    __DIR__ . '/../../../vendor/autoload.php',
+];
 $STUDYNEST_JWT_AVAILABLE = false;
 foreach ($studyNestJwtPaths as $autoload) {
     if (is_file($autoload)) {

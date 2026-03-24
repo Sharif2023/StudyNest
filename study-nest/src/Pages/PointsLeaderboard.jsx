@@ -85,7 +85,7 @@ export default function PointsLeaderboard() {
             <h1 className="text-4xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #fbbf24, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               Scholar Rankings
             </h1>
-            <p className="text-sm mt-1" style={{ color: "#475569" }}>{leaderboard.length} scholars competing</p>
+            <p className="text-sm mt-1" style={{ color: "#475569" }}>{leaderboard.length} students competing</p>
           </div>
           <button onClick={fetchLeaderboard}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200"
@@ -175,7 +175,7 @@ export default function PointsLeaderboard() {
             <div className="rounded-2xl overflow-hidden mb-8" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-center justify-between px-6 py-4 border-b" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#475569" }}>All Rankings</p>
-                <div className="badge-violet text-[10px]"><Trophy className="w-3 h-3" /> {leaderboard.length} Scholars</div>
+                <div className="badge-violet text-[10px]"><Trophy className="w-3 h-3" /> {leaderboard.length} Students</div>
               </div>
               <div>
                 {leaderboard.map((user, i) => {

@@ -1,42 +1,42 @@
 import React from "react";
 import { MessageSquare, Users, Search } from "lucide-react";
 
-export default function ChatSidebar({ 
-    activeTab, 
-    setActiveTab, 
-    searchTerm, 
-    setSearchTerm, 
-    searchUsers, 
-    results, 
-    startChatWith, 
-    conversations, 
-    activeCid, 
-    setActiveCid, 
-    myGroups, 
-    activeGroupId, 
-    setActiveGroupId 
+export default function ChatSidebar({
+    activeTab,
+    setActiveTab,
+    searchTerm,
+    setSearchTerm,
+    searchUsers,
+    results,
+    startChatWith,
+    conversations,
+    activeCid,
+    setActiveCid,
+    myGroups,
+    activeGroupId,
+    setActiveGroupId
 }) {
     return (
-        <aside className="w-80 flex flex-col border-r h-full overflow-hidden" 
+        <aside className="w-80 flex flex-col border-r h-full overflow-hidden"
             style={{ background: "rgba(255,255,255,0.01)", borderColor: "rgba(255,255,255,0.05)" }}>
-            
+
             <div className="p-6 border-b flex-shrink-0" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                 <div className="text-2xl font-bold tracking-tight mb-6 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-lg shadow-cyan-500/20 transition-transform">
                         <MessageSquare size={18} className="text-white" />
                     </div>
-                    Messages <span className="text-gradient-brand">Hub</span>
+                    <span className="text-gradient-brand">Messages</span>
                 </div>
 
                 <div className="flex p-1 rounded-2xl bg-white/[0.03] border border-white/[0.05] mb-6">
-                    <button 
+                    <button
                         onClick={() => setActiveTab("private")}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${activeTab === 'private' ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg' : 'text-slate-500'}`}
                     >
                         <MessageSquare size={12} />
                         Private
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab("groups")}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${activeTab === 'groups' ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg' : 'text-slate-500'}`}
                     >

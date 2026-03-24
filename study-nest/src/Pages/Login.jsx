@@ -117,7 +117,7 @@ const Login = () => {
               <div className="relative flex items-center gap-5 mb-12">
                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-3 shadow-2xl relative group">
                    <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-0 group-hover:opacity-30 transition-opacity" />
-                  <img src={logo} alt="StudyNest" className="w-full h-full object-contain relative z-10" />
+                  <img src={logo} alt="StudyNest" className="w-full h-full object-contain relative z-10 rounded-lg" />
                 </div>
                 <div>
                   <h2 className="text-3xl font-black text-white tracking-tight uppercase">Login</h2>

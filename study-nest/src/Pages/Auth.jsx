@@ -139,7 +139,7 @@ const Auth = () => {
               </Link>
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 shadow-2xl">
-                  <img src={logo} alt="StudyNest" className="w-full h-full object-contain" />
+                  <img src={logo} alt="StudyNest" className="w-full h-full object-contain rounded-lg" />
                 </div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter">StudyNest</h2>
               </div>
@@ -153,7 +153,7 @@ const Auth = () => {
                     exit={{ opacity: 0, x: 20 }}
                     className="mt-8"
                   >
-                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.9] uppercase italic">Welcome<br/>Back</h1>
+                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.9] uppercase">Welcome<br/>Back</h1>
                     <p className="mt-8 text-white/40 max-w-sm leading-relaxed font-medium">Rejoin your study clusters and accelerate your academic journey in our digital ecosystem.</p>
                   </motion.div>
                 ) : (
@@ -172,7 +172,7 @@ const Auth = () => {
             </div>
 
             <div className="relative z-10 pt-12 flex items-center justify-between">
-               <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">Digital / Infrastructure</div>
+               <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">A Group Study Platform</div>
                <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.5em]">v3.2.0</div>
             </div>
           </div>

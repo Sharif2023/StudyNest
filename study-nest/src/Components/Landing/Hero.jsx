@@ -48,7 +48,7 @@ export default function Hero() {
               </h1>
               
               <p className="mt-8 text-xl text-zinc-500 max-w-lg leading-relaxed font-medium">
-                The high-performance collaborative environment for modern scholars at UIU. 
+                The high-performance collaborative environment for modern students at UIU. 
                 Synchronize, study, and succeed together.
               </p>
 

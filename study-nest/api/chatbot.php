@@ -5,14 +5,12 @@ require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_st
 
 // OpenAI configuration
 // We can use the .env loader from db.php which already populated $_ENV
-$apiKey = $_ENV['OPENAI_API_KEY'] ?? null;
+// OpenAI configuration
+$apiKey = getenv('OPENAI_API_KEY') ?: ($_ENV['OPENAI_API_KEY'] ?? null);
 $apiUrl = 'https://api.openai.com/v1/chat/completions';
 
-$apiKey = $_ENV['OPENAI_API_KEY']; // Load API key from .env file
-$apiUrl = 'https://api.openai.com/v1/chat/completions'; // OpenAI API URL for chat models
-
 // Log if API key is correctly loaded
-error_log("API Key loaded: " . (isset($apiKey) ? "Yes" : "No"));
+error_log("API Key loaded: " . ($apiKey ? "Yes" : "No"));
 
 // Function to handle chat messages and return OpenAI responses
 function getOpenAIResponse($message) {

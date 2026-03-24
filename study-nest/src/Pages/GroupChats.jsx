@@ -200,7 +200,7 @@ export default function GroupChats() {
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-white font-bold">
-                <img src="src/assets/logo.png" alt="Study-Nest-Logo" className="h-7 w-7" />
+                <img src="src/assets/logo.png" alt="Study-Nest-Logo" className="h-7 w-7 rounded-lg" />
               </span>
               <span className="font-semibold tracking-tight text-white">StudyNest</span>
             </Link>
