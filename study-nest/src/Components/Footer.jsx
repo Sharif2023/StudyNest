@@ -48,7 +48,7 @@ export default function Footer({ sidebarWidth = 80 }) {
                   background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.15))",
                   border: "1px solid rgba(124,58,237,0.25)"
                 }}>
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain rounded-lg" />
               </div>
               <div>
                 <span className="text-sm font-display font-black tracking-tight"
@@ -62,7 +62,7 @@ export default function Footer({ sidebarWidth = 80 }) {
                 </span>
                 <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5"
                   style={{ color: "#334155" }}>
-                  UIU · Academic Platform
+                  UIU · Group Study Platform
                 </p>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function Footer({ sidebarWidth = 80 }) {
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
               <span className="text-[11px] font-semibold" style={{ color: "#475569" }}>
-                Built for Scholars
+                Built for Students
               </span>
             </div>
           </div>

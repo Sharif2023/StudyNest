@@ -1,6 +1,6 @@
 # StudyNest: Academic Synergy Platform 🎓
 
-StudyNest is an ultra-premium, collaborative environment designed for modern scholars at United International University (UIU). It synchronizes academic life, professional study habits, and collective success through a high-performance interactive ecosystem.
+StudyNest is an ultra-premium, collaborative environment designed for modern students at United International University (UIU). It synchronizes academic life, professional study habits, and collective success through a high-performance interactive ecosystem.
 
 ---
 

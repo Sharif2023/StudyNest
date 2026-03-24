@@ -43,7 +43,7 @@ switch ($method) {
             exit();
         }
 
-        // Handle file upload
+        // Handle file upload via Cloudinary (Vercel has read-only filesystem)
         $file_url = null;
         if (isset($_FILES['file'])) {
             $file = $_FILES['file'];
@@ -54,19 +54,18 @@ switch ($method) {
                 exit();
             }
 
-            $uploadDir = __DIR__ . '/../../public/uploads/';
-            $fileName = uniqid() . '-' . basename($file['name']);
-            $uploadFile = $uploadDir . $fileName;
-
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0775, true);
-            }
-
-            if (move_uploaded_file($file['tmp_name'], $uploadFile)) {
-                $file_url = "/public/uploads/{$fileName}";
-            } else {
+            try {
+                require_once __DIR__ . '/cloudinary_helper.php';
+                $upload = cloudinary_upload_file($file['tmp_name'], $file['name']);
+                $file_url = $upload['secure_url'];
+            } catch (Throwable $e) {
                 http_response_code(500);
-                echo json_encode(["status" => "error", "message" => "Failed to move uploaded file."]);
+                error_log("Notes upload Error: " . $e->getMessage());
+                echo json_encode([
+                    "status" => "error", 
+                    "message" => "Cloudinary upload failed: " . $e->getMessage(),
+                    "detail" => $e->getTraceAsString()
+                ]);
                 exit();
             }
         }

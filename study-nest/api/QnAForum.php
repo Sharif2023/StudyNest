@@ -134,7 +134,10 @@ if ($method === 'POST') {
 
       $stmt = $pdo->prepare("INSERT INTO questions (title, body, tags, user_id, anonymous, author) VALUES (?, ?, ?, ?, ?, ?)");
 
-      if ($stmt->execute([$title, $body, $tags, $logged_in_user_id, $anonymous, $author])) {
+      // Explicitly handle boolean for PostgreSQL
+      $anon_val = $anonymous ? 'true' : 'false';
+
+      if ($stmt->execute([$title, $body, $tags, $logged_in_user_id, $anon_val, $author])) {
         // Award 15 points for asking a question
         $newId = $pdo->lastInsertId();
         awardPoints($pdo, $logged_in_user_id, 15, 'ask_question', (string)$newId, 'Asked a question');
@@ -194,7 +197,7 @@ if ($method === 'POST') {
 
         $final_delta = 0;
         if ($existing) {
-          if ($existing['vote_type'] == $delta) {
+          if ((int)$existing['vote_type'] === $delta) { // Cast to int for comparison
             // Toggle off
             $pdo->prepare("DELETE FROM question_votes WHERE question_id=? AND user_id=?")->execute([$qid, $logged_in_user_id]);
             $final_delta = -$delta;

@@ -134,7 +134,7 @@ const Signup = () => {
                   <div className="relative flex items-center gap-5 mb-12">
                     <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-3 shadow-2xl relative group">
                        <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-0 group-hover:opacity-30 transition-opacity" />
-                      <img src={logo} alt="StudyNest" className="w-full h-full object-contain relative z-10" />
+                      <img src={logo} alt="StudyNest" className="w-full h-full object-contain relative z-10 rounded-lg" />
                     </div>
                     <div>
                       <h2 className="text-3xl font-black text-white tracking-tight uppercase">Register</h2>
@@ -182,8 +182,8 @@ const Signup = () => {
                             required
                             value={form.studentId}
                             onChange={onChange}
-                            placeholder="011 201..."
-                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white placeholder:text-white/10 outline-none focus:bg-white/[0.05] focus:border-indigo-500/50 transition-all duration-500 ring-0 focus:ring-4 ring-indigo-500/10"
+                            placeholder="011 221 000"
+                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white placeholder:text-white/20 outline-none focus:bg-white/[0.05] focus:border-indigo-500/50 transition-all duration-500 ring-0 focus:ring-4 ring-indigo-500/10 placeholder:font-light"
                           />
                         </div>
                       </div>

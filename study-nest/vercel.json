@@ -6,6 +6,18 @@
   },
   "rewrites": [
     {
+      "source": "/api/meetings.php/(.*)",
+      "destination": "/api/meetings.php"
+    },
+    {
+      "source": "/api/ResourceLibrary.php/(.*)",
+      "destination": "/api/ResourceLibrary.php"
+    },
+    {
+      "source": "/api/profile.php/(.*)",
+      "destination": "/api/profile.php"
+    },
+    {
       "source": "/api/(.*).php",
       "destination": "/api/$1.php"
     },

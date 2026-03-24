@@ -80,7 +80,11 @@ try {
         
         // Configure session with robust settings
         if (session_status() === PHP_SESSION_NONE) {
-            $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443);
+            // Force secure in production (Vercel)
+            $is_secure = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                       || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                       || ($_SERVER['SERVER_NAME'] !== 'localhost' && $_SERVER['SERVER_NAME'] !== '127.0.0.1');
+
             session_set_cookie_params([
                 'lifetime' => 86400,
                 'path' => '/',
@@ -92,9 +96,10 @@ try {
         }
     }
 
-    // Bootstrap Schema (PostgreSQL Syntax)
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS users (
+    // --- Database Schema Bootstrap (PostgreSQL) ---
+    // We split these into an array to be more resilient (one failing table doesn't block others)
+    $tables = [
+        "users" => "CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(100) UNIQUE NOT NULL,
             student_id VARCHAR(50) UNIQUE NOT NULL,
@@ -107,177 +112,75 @@ try {
             status VARCHAR(20) DEFAULT 'Active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS todos (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            type VARCHAR(50) DEFAULT 'default',
-            status VARCHAR(50) DEFAULT 'pending',
-            due_date DATE,
-            due_time TIME,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS academic_terms (
-            id SERIAL PRIMARY KEY,
-            term_name VARCHAR(100) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS courses (
-            id SERIAL PRIMARY KEY,
-            course_code VARCHAR(32) UNIQUE NOT NULL,
-            course_title VARCHAR(255) NOT NULL,
-            department VARCHAR(120),
-            program VARCHAR(120),
-            course_thumbnail TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS course_sections (
-            id SERIAL PRIMARY KEY,
-            course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
-            term_id INTEGER REFERENCES academic_terms(id) ON DELETE CASCADE,
-            section_name VARCHAR(100) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS group_chats (
-            id SERIAL PRIMARY KEY,
-            chat_name VARCHAR(255) NOT NULL,
-            course_section_id INTEGER REFERENCES course_sections(id) ON DELETE CASCADE,
-            description TEXT,
-            is_active BOOLEAN DEFAULT TRUE,
-            created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS group_chat_participants (
-            id SERIAL PRIMARY KEY,
-            group_chat_id INTEGER REFERENCES group_chats(id) ON DELETE CASCADE,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_admin BOOLEAN DEFAULT FALSE,
-            UNIQUE(group_chat_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS group_chat_messages (
-            id BIGSERIAL PRIMARY KEY,
-            group_chat_id INTEGER REFERENCES group_chats(id) ON DELETE CASCADE,
-            sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            message_type VARCHAR(20) DEFAULT 'text',
-            body TEXT,
-            attachment_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS group_chat_message_reads (
-            group_chat_id INTEGER REFERENCES group_chats(id) ON DELETE CASCADE,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            last_read_message_id BIGINT DEFAULT 0,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (group_chat_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS resources (
+        )",
+        "resources" => "CREATE TABLE IF NOT EXISTS resources (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             title VARCHAR(255) NOT NULL,
-            kind VARCHAR(50),
-            course VARCHAR(100),
-            semester VARCHAR(50),
-            tags TEXT,
             description TEXT,
-            author VARCHAR(255),
-            src_type VARCHAR(50),
-            url TEXT,
+            author VARCHAR(100) NOT NULL,
+            course VARCHAR(100) NOT NULL,
+            semester VARCHAR(50),
+            kind VARCHAR(20) DEFAULT 'note',
+            visibility VARCHAR(20) DEFAULT 'public',
+            url TEXT NOT NULL,
+            tags TEXT,
             votes INTEGER DEFAULT 0,
             bookmarks INTEGER DEFAULT 0,
-            flagged BOOLEAN DEFAULT FALSE,
+            flagged INTEGER DEFAULT 0,
+            original_filename VARCHAR(255),
+            mime_type VARCHAR(100),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS recordings (
-            id SERIAL PRIMARY KEY,
-            room_id VARCHAR(64) NOT NULL,
-            video_url TEXT NOT NULL,
-            user_name VARCHAR(255),
-            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-            duration INTEGER DEFAULT 0,
-            recorded_at TIMESTAMP,
-            title VARCHAR(500),
-            description TEXT,
-            course VARCHAR(100),
-            semester VARCHAR(50),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS notes (
-            id SERIAL PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            course VARCHAR(255),
-            semester VARCHAR(255),
-            tags TEXT,
-            description TEXT,
-            file_url TEXT,
-            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS bookmarks (
+        )",
+        "notes" => "CREATE TABLE IF NOT EXISTS notes (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            resource_id INTEGER REFERENCES resources(id) ON DELETE CASCADE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS questions (
+            title VARCHAR(255) NOT NULL,
+            course VARCHAR(100) NOT NULL,
+            semester VARCHAR(50),
+            tags TEXT,
+            description TEXT,
+            file_url TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "questions" => "CREATE TABLE IF NOT EXISTS questions (
             id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             title VARCHAR(255) NOT NULL,
             body TEXT NOT NULL,
             tags TEXT,
-            author VARCHAR(100),
-            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             anonymous BOOLEAN DEFAULT FALSE,
+            author VARCHAR(100),
             votes INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS answers (
+        )",
+        "answers" => "CREATE TABLE IF NOT EXISTS answers (
             id SERIAL PRIMARY KEY,
             question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             body TEXT NOT NULL,
             author VARCHAR(100),
-            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             votes INTEGER DEFAULT 0,
             helpful INTEGER DEFAULT 0,
             is_accepted BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS notifications (
+        )",
+        "notifications" => "CREATE TABLE IF NOT EXISTS notifications (
             id SERIAL PRIMARY KEY,
             student_id VARCHAR(50) REFERENCES users(student_id) ON DELETE CASCADE,
             title VARCHAR(255) NOT NULL,
             message TEXT,
             link TEXT,
             type VARCHAR(50) DEFAULT 'general',
-            reference_id INTEGER,
+            reference_id VARCHAR(255),
             scheduled_at TIMESTAMP,
             sent_at TIMESTAMP,
             read_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS points_history (
+        )",
+        "points_history" => "CREATE TABLE IF NOT EXISTS points_history (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             points INTEGER NOT NULL,
@@ -285,34 +188,15 @@ try {
             description TEXT,
             reference_id VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS conversations (
+        )",
+        "chat_history" => "CREATE TABLE IF NOT EXISTS chat_history (
             id SERIAL PRIMARY KEY,
-            a_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            b_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(a_user_id, b_user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS messages (
-            id BIGSERIAL PRIMARY KEY,
-            conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-            sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            body TEXT,
-            attachment_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS message_reads (
-            conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            last_read_message_id BIGINT DEFAULT 0,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (conversation_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS meetings (
+            user_message TEXT,
+            bot_response TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "meetings" => "CREATE TABLE IF NOT EXISTS meetings (
             id VARCHAR(16) PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
             course VARCHAR(255),
@@ -323,10 +207,10 @@ try {
             status VARCHAR(20) DEFAULT 'live',
             starts_at TIMESTAMP,
             ends_at TIMESTAMP,
-            participants INTEGER DEFAULT 1
-        );
-
-        CREATE TABLE IF NOT EXISTS meeting_participants (
+            participants INTEGER DEFAULT 1,
+            creator_session_id VARCHAR(255)
+        )",
+        "meeting_participants" => "CREATE TABLE IF NOT EXISTS meeting_participants (
             id SERIAL PRIMARY KEY,
             meeting_id VARCHAR(16) REFERENCES meetings(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -334,124 +218,123 @@ try {
             display_name VARCHAR(100),
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             left_at TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS groups(
+        )",
+        "todos" => "CREATE TABLE IF NOT EXISTS todos (
             id SERIAL PRIMARY KEY,
-            section_name VARCHAR(255) UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS group_members (
-            id SERIAL PRIMARY KEY,
-            group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            type VARCHAR(50) DEFAULT 'default',
             status VARCHAR(20) DEFAULT 'pending',
-            proof_url TEXT,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS group_messages (
-            id SERIAL PRIMARY KEY,
-            group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            message TEXT,
-            attachment_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS chat_history (
-            id SERIAL PRIMARY KEY,
-            user_message TEXT,
-            bot_response TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS ai_file_checks (
-            id SERIAL PRIMARY KEY,
-            filename VARCHAR(255),
-            mime VARCHAR(120),
-            size_kb INTEGER,
-            words INTEGER,
-            chars INTEGER,
-            tokens_est INTEGER,
-            options_json JSONB,
-            ip VARCHAR(64),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS tmp_courses (
-            course_code VARCHAR(32) NOT NULL,
-            course_title VARCHAR(255) NOT NULL,
-            department VARCHAR(120) NOT NULL,
-            program VARCHAR(120) NOT NULL,
-            course_thumbnail TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS audit_logs (
-            id SERIAL PRIMARY KEY,
-            admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-            action VARCHAR(255) NOT NULL,
-            target_type VARCHAR(50),
-            target_id VARCHAR(255),
-            details TEXT,
-            ip_address VARCHAR(64),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS platform_settings (
+            due_date DATE,
+            due_time TIME,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "platform_settings" => "CREATE TABLE IF NOT EXISTS platform_settings (
             key VARCHAR(100) PRIMARY KEY,
             value TEXT,
             type VARCHAR(20) DEFAULT 'string',
             description TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS question_votes (
+        )",
+        "question_votes" => "CREATE TABLE IF NOT EXISTS question_votes (
             id SERIAL PRIMARY KEY,
             question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            vote_type INTEGER NOT NULL, -- 1 or -1
+            vote_type INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(question_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS answer_votes (
+        )",
+        "answer_votes" => "CREATE TABLE IF NOT EXISTS answer_votes (
             id SERIAL PRIMARY KEY,
             answer_id INTEGER REFERENCES answers(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            vote_type INTEGER NOT NULL, -- 1 or -1
+            vote_type INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(answer_id, user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS answer_helpful_votes (
+        )",
+        "conversations" => "CREATE TABLE IF NOT EXISTS conversations (
             id SERIAL PRIMARY KEY,
-            answer_id INTEGER REFERENCES answers(id) ON DELETE CASCADE,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            a_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            b_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(answer_id, user_id)
-        );
+            UNIQUE(a_user_id, b_user_id)
+        )",
+        "messages" => "CREATE TABLE IF NOT EXISTS messages (
+            id BIGSERIAL PRIMARY KEY,
+            conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+            sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            body TEXT,
+            attachment_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "message_reads" => "CREATE TABLE IF NOT EXISTS message_reads (
+            conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            last_read_message_id BIGINT DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (conversation_id, user_id)
+        )",
+        "groups" => "CREATE TABLE IF NOT EXISTS groups( id SERIAL PRIMARY KEY, section_name VARCHAR(255) UNIQUE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP )",
+        "group_members" => "CREATE TABLE IF NOT EXISTS group_members (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            status VARCHAR(20) DEFAULT 'pending',
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "group_messages" => "CREATE TABLE IF NOT EXISTS group_messages (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "ai_file_checks" => "CREATE TABLE IF NOT EXISTS ai_file_checks (
+            id SERIAL PRIMARY KEY,
+            filename VARCHAR(255),
+            mime VARCHAR(120),
+            size_kb INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "bookmarks" => "CREATE TABLE IF NOT EXISTS bookmarks (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            resource_id INTEGER REFERENCES resources(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, resource_id)
+        )"
+    ];
 
-        -- Initialize default settings if not exists
-        INSERT INTO platform_settings (key, value, type, description) 
-        VALUES ('maintenance_mode', 'false', 'boolean', 'Disable platform access for regular users')
-        ON CONFLICT (key) DO NOTHING;
+    foreach ($tables as $name => $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (Throwable $e) {
+            error_log("Failed to initialize table $name: " . $e->getMessage());
+        }
+    }
 
-        INSERT INTO platform_settings (key, value, type, description) 
-        VALUES ('allow_signups', 'true', 'boolean', 'Enable or disable new user registrations')
-        ON CONFLICT (key) DO NOTHING;
+    // Initialize default platform settings
+    $settings = [
+        ['maintenance_mode', 'false', 'boolean', 'Disable platform access for regular users'],
+        ['allow_signups', 'true', 'boolean', 'Enable or disable new user registrations'],
+        ['max_upload_size_mb', '50', 'number', 'Maximum file upload size in MB']
+    ];
+    $stmt = $pdo->prepare("INSERT INTO platform_settings (key, value, type, description) VALUES (?, ?, ?, ?) ON CONFLICT (key) DO NOTHING");
+    foreach ($settings as $s) { $stmt->execute($s); }
 
-        INSERT INTO platform_settings (key, value, type, description) 
-        VALUES ('max_upload_size_mb', '50', 'number', 'Maximum file upload size in MB')
-        ON CONFLICT (key) DO NOTHING;
-    ");
-
-    $pdo->exec('ALTER TABLE meetings ADD COLUMN IF NOT EXISTS creator_session_id VARCHAR(255)');
-    $pdo->exec('ALTER TABLE meeting_participants ALTER COLUMN session_id TYPE VARCHAR(255)');
-    $pdo->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0');
-    $pdo->exec('ALTER TABLE meetings ALTER COLUMN course TYPE VARCHAR(255)');
-    $pdo->exec('ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)');
+    // Column updates (Alters) - Idempotent
+    $alters = [
+        "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS creator_session_id VARCHAR(255)",
+        "ALTER TABLE meeting_participants ALTER COLUMN session_id TYPE VARCHAR(255)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0",
+        "ALTER TABLE meetings ALTER COLUMN course TYPE VARCHAR(255)",
+        "ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)"
+    ];
+    foreach ($alters as $sql) {
+        try { $pdo->exec($sql); } catch (Throwable $e) { /* Ignore known possible failures */ }
+    }
 
 } catch (Throwable $e) {
     if (!headers_sent()) {
@@ -461,7 +344,7 @@ try {
         header("Content-Type: application/json; charset=utf-8");
         http_response_code(500);
     }
-    echo json_encode(['ok' => false, 'error' => 'DB connection or setup failed', 'detail' => $e->getMessage()]);
+    echo json_encode(['ok' => false, 'error' => 'DB bootstrap failed', 'detail' => $e->getMessage()]);
     exit;
 }
 

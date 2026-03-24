@@ -7,13 +7,26 @@ try {
     $stmt = $pdo->query("SELECT count(*) FROM users");
     $count = $stmt->fetchColumn();
     
-    $stmt2 = $pdo->query("SELECT id, username, email, role FROM users LIMIT 5");
-    $users = $stmt2->fetchAll();
+    // Get column names specifically from public schema
+    $stmt3 = $pdo->prepare("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users' AND table_schema = 'public' ORDER BY ordinal_position");
+    $stmt3->execute();
+    $columns = $stmt3->fetchAll();
+
+    $stmt2 = $pdo->query("SELECT * FROM users LIMIT 1");
+    $user = $stmt2->fetch();
+
+    // Check sessions table
+    $sessCheck = $pdo->query("SELECT count(*) FROM sessions");
+    $sessCount = $sessCheck->fetchColumn();
 
     echo json_encode([
         'ok' => true,
         'user_count' => $count,
-        'sample_users' => $users
+        'session_count' => $sessCount,
+        'public_columns' => $columns,
+        'sample_user' => $user,
+        'session_id' => session_id(),
+        'session_data' => $_SESSION
     ]);
 } catch (Exception $e) {
     echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

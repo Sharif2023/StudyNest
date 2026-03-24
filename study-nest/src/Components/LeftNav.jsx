@@ -197,7 +197,7 @@ export default function LeftNav({ navOpen, setNavOpen, sidebarWidth = 80 }) {
                 boxShadow: "0 0 20px rgba(124,58,237,0.2)"
               }}
             >
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain rounded-lg" />
             </motion.div>
             <AnimatePresence mode="wait">
               {navOpen && (

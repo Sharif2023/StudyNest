@@ -183,6 +183,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // ------------------------------------------
+// POST profile picture upload
+// ------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_FILES['profile_picture']) || isset($_FILES['file']))) {
+  try {
+    require_once __DIR__ . '/cloudinary_helper.php';
+    $file = $_FILES['profile_picture'] ?? $_FILES['file'];
+    
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        echo json_encode(["ok" => false, "error" => "Upload error code: " . $file['error']]);
+        exit;
+    }
+
+    $upload = cloudinary_upload_file($file['tmp_name'], $file['name'], 'studynest_profiles');
+    $ppurl = $upload['secure_url'];
+
+    // Optional: Update name and bio if provided in the same POST request
+    $name = trim($_POST['name'] ?? '');
+    $bio = trim($_POST['bio'] ?? '');
+    if ($name || $bio) {
+        $upd_stmt = $pdo->prepare("UPDATE users SET username = COALESCE(NULLIF(?, ''), username), bio = COALESCE(NULLIF(?, ''), bio), profile_picture_url = ? WHERE id = ?");
+        $upd_stmt->execute([$name, $bio, $ppurl, $user_id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE users SET profile_picture_url = ? WHERE id = ?");
+        $stmt->execute([$ppurl, $user_id]);
+    }
+
+    echo json_encode([
+        "ok" => true, 
+        "message" => "Profile updated successfully", 
+        "profile_picture_url" => $ppurl,
+        "status" => "success"
+    ]);
+  } catch (Throwable $e) {
+    http_response_code(500);
+    error_log("Profile upload error: " . $e->getMessage());
+    echo json_encode(["ok" => false, "status" => "error", "error" => "Upload failed: " . $e->getMessage()]);
+  }
+  exit;
+}
+
+// ------------------------------------------
 // PUT update profile
 // ------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
@@ -212,8 +254,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
       exit;
     } catch (Throwable $e) {
       http_response_code(500);
-      echo json_encode(["ok" => false, "error" => "Server error", "detail" => $e->getMessage()]);
-      exit;
+      error_log("Password change error: " . $e->getMessage());
+      echo json_encode([
+          "status" => "error", 
+          "message" => "Password change failed: " . $e->getMessage(),
+          "detail" => $e->getTraceAsString()
+      ]);
+      exit();
     }
   }
 

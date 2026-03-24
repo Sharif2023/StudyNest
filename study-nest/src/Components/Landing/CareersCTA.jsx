@@ -16,7 +16,7 @@ export default function CareersCTA() {
                 <span className="text-white/40">Next Session.</span>
               </h2>
               <p className="mt-8 text-xl text-white/50 font-medium leading-relaxed max-w-md">
-                Join the network of elite scholars at United International University. 
+                Join the network of elite students at United International University. 
                 Your academic vault is waiting.
               </p>
             </div>
