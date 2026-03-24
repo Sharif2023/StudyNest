@@ -182,7 +182,7 @@ const Signup = () => {
                             required
                             value={form.studentId}
                             onChange={onChange}
-                            placeholder="011 221 000"
+                            placeholder="e.g. 011 221 000"
                             className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white placeholder:text-white/20 outline-none focus:bg-white/[0.05] focus:border-indigo-500/50 transition-all duration-500 ring-0 focus:ring-4 ring-indigo-500/10 placeholder:font-light"
                           />
                         </div>
