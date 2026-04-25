@@ -292,6 +292,7 @@ export function StudyRoom() {
     recording,
     showSaveOptions,
     uploading,
+    uploadProgress,
     startRecording,
     stopRecording,
     saveToDevice,
@@ -647,6 +648,7 @@ export function StudyRoom() {
         onSaveToCloud={uploadToCloudinary}
         onCancel={cancelSave}
         uploading={uploading}
+        uploadProgress={uploadProgress}
       />
 
       <AnimatePresence>

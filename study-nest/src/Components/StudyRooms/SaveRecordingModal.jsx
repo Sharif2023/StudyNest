@@ -5,7 +5,8 @@ export function SaveRecordingModal({
   onSaveToDevice,
   onSaveToCloud,
   onCancel,
-  uploading
+  uploading,
+  uploadProgress = 0
 }) {
   if (!isOpen) return null;
 
@@ -58,6 +59,19 @@ export function SaveRecordingModal({
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             )}
           </button>
+          {uploading && (
+            <div className="pt-1">
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-cyan-300 transition-[width] duration-300"
+                  style={{ width: `${Math.max(1, Math.min(100, uploadProgress))}%` }}
+                />
+              </div>
+              <div className="mt-2 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {Math.round(uploadProgress)}%
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-4 mt-8">
