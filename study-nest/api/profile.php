@@ -195,6 +195,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_FILES['profile_picture']) 
         echo json_encode(["ok" => false, "error" => "Upload error code: " . $file['error']]);
         exit;
     }
+    if ((int)($file['size'] ?? 0) <= 0 || (int)$file['size'] > 5 * 1024 * 1024) {
+        http_response_code(400);
+        echo json_encode(["ok" => false, "error" => "Profile image must be 5MB or smaller"]);
+        exit;
+    }
+    $mime = mime_content_type($file['tmp_name']);
+    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!in_array($mime, $allowed, true)) {
+        http_response_code(400);
+        echo json_encode(["ok" => false, "error" => "Unsupported profile image type"]);
+        exit;
+    }
 
     $upload = cloudinary_upload_file($file['tmp_name'], $file['name'], 'studynest_profiles');
     $ppurl = $upload['secure_url'];
@@ -219,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_FILES['profile_picture']) 
   } catch (Throwable $e) {
     http_response_code(500);
     error_log("Profile upload error: " . $e->getMessage());
-    echo json_encode(["ok" => false, "status" => "error", "error" => "Upload failed: " . $e->getMessage()]);
+    echo json_encode(["ok" => false, "status" => "error", "error" => "Upload failed"]);
   }
   exit;
 }
@@ -268,6 +280,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
   $name = trim($payload['name'] ?? '');
   $bio = trim($payload['bio'] ?? '');
   $ppurl = trim($payload['profile_picture_url'] ?? '');
+
+  if ($name === '' || strlen($name) > 100) {
+    http_response_code(422);
+    echo json_encode(["ok" => false, "error" => "Display name must be 1-100 characters"]);
+    exit;
+  }
+  if (strlen($bio) > 1000) {
+    http_response_code(422);
+    echo json_encode(["ok" => false, "error" => "Bio must be 1000 characters or less"]);
+    exit;
+  }
+  if ($ppurl !== '' && !filter_var($ppurl, FILTER_VALIDATE_URL) && !preg_match('#^/?api/uploads/[A-Za-z0-9._-]+$#', $ppurl)) {
+    http_response_code(422);
+    echo json_encode(["ok" => false, "error" => "Profile picture must be a valid URL or uploaded image path"]);
+    exit;
+  }
 
   try {
     $stmt = $pdo->prepare("UPDATE users SET username=?, bio=?, profile_picture_url=? WHERE id=?");

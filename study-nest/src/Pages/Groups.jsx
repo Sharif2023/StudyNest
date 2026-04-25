@@ -42,7 +42,7 @@ export default function Groups() {
         apiClient.get("group_api.php", { params: { action: "my_groups" } })
             .then((res) => { if (res.data.ok) setMyGroups(res.data.groups); });
 
-        apiClient.get("admin_api.php", { params: { action: "list_groups", k: "MYKEY123" } })
+        apiClient.get("group_api.php", { params: { action: "list_groups" } })
             .then((res) => { if (res.data.ok) setGroups(res.data.groups); });
     };
 

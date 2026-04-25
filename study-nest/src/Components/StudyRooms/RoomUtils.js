@@ -1,8 +1,8 @@
 
 import apiClient from "../../apiConfig";
 
-export const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
-export const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
+export const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "doyi7vchh";
+export const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "studynest_recordings";
 export const MINIMIZE_KEY = "studynest.minimizeRoom";
 export const HOST_ROOMS_KEY = "studynest.hostRooms";
 

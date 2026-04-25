@@ -1,6 +1,9 @@
 <?php
 // upload.php
 require_once __DIR__ . '/db.php'; // Provides CORS headers and session_start()
+require_once __DIR__ . '/auth.php';
+
+requireAuth();
 
 function respond($ok, $data = []) {
   echo json_encode($ok ? array_merge(['ok' => true], $data)
@@ -50,9 +53,10 @@ if ($mime === false || !in_array($mime, $allowedMime, true)) {
 // --- Storage paths ---
 $uploadDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads';
 if (!is_dir($uploadDir)) {
-  if (!mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
+  if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
     respond(false, ['error' => 'Failed to create uploads directory.']);
   }
+  @chmod($uploadDir, 0755);
 }
 if (!is_writable($uploadDir)) {
   respond(false, ['error' => 'Uploads directory is not writable.']);

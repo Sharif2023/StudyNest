@@ -5,6 +5,7 @@
 // No changes to db/php elsewhere. Creates missing tables if needed.
 
 require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
+require_once __DIR__ . '/auth.php';
 
 // ---------- Helpers ----------
 function json_ok($data = [])
@@ -20,7 +21,7 @@ function json_err($msg, $code = 400, $extra = [])
 }
 function me_or_401(PDO $pdo)
 {
-    $uid = $_SESSION['user_id'] ?? null;  // Assumes you set this at login
+    $uid = current_user_id();
     if (!$uid)
         json_err("unauthorized", 401);
     // Optionally verify user exists
@@ -266,18 +267,17 @@ try {
                     json_err("file too large (max 25MB)", 400);
                 }
 
-                // Very permissive types, but block php-like extensions for safety
                 $origName = $_FILES['attachment']['name'];
                 $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-                $blocked = ['php', 'phtml', 'phar', 'phps', 'cgi', 'pl', 'exe', 'js'];
-                if (in_array($ext, $blocked, true)) {
-                    json_err("blocked file type", 400);
+                $allowed = ['png','jpg','jpeg','gif','webp','pdf','txt','md','doc','docx','ppt','pptx','xls','xlsx','csv','zip','mp3','wav','ogg','m4a','webm','mp4','mov'];
+                if (!$ext || !in_array($ext, $allowed, true)) {
+                    json_err("unsupported file type", 400);
                 }
 
                 // Ensure uploads dir exists
                 $dir = __DIR__ . '/uploads';
                 if (!is_dir($dir)) {
-                    @mkdir($dir, 0777, true);
+                    @mkdir($dir, 0755, true);
                 }
 
                 // Generate safe unique filename

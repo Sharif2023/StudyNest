@@ -238,7 +238,7 @@ const Auth = () => {
                             placeholder="student@uiu.ac.bd"
                             value={loginForm.email}
                             onChange={onLoginChange}
-                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium" 
+                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                           />
                         </div>
                       </div>
@@ -254,7 +254,7 @@ const Auth = () => {
                             placeholder="••••••••"
                             value={loginForm.password}
                             onChange={onLoginChange}
-                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-16 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium" 
+                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-16 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                           />
                           <button 
                             type="button" 
@@ -300,7 +300,7 @@ const Auth = () => {
                               placeholder="Full Name"
                               value={signupForm.username}
                               onChange={onSignupChange}
-                              className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-4 pl-14 pr-4 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all" 
+                              className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-4 pl-14 pr-4 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                             />
                            </div>
                         </div>
@@ -312,10 +312,10 @@ const Auth = () => {
                               type="text" 
                               name="studentId"
                               required
-                              placeholder="011..."
+                              placeholder="e.g. 011 221 000"
                               value={signupForm.studentId}
                               onChange={onSignupChange}
-                              className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-4 pl-14 pr-4 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all" 
+                              className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-4 pl-14 pr-4 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                             />
                            </div>
                         </div>
@@ -332,7 +332,7 @@ const Auth = () => {
                             placeholder="student@uiu.ac.bd"
                             value={signupForm.email}
                             onChange={onSignupChange}
-                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all" 
+                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                           />
                         </div>
                       </div>
@@ -348,7 +348,7 @@ const Auth = () => {
                             placeholder="Min. 6 chars"
                             value={signupForm.password}
                             onChange={onSignupChange}
-                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all" 
+                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 pl-14 pr-8 text-sm outline-none focus:bg-white/10 focus:border-white/20 transition-all font-medium placeholder:text-white/20 placeholder:font-light" 
                           />
                         </div>
                       </div>

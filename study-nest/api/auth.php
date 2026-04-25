@@ -54,7 +54,7 @@ class StudyNestAuth {
     private static $algo = 'HS256';
 
     public static function init($secret = null) {
-        self::$secret = $secret ?: $_ENV['JWT_SECRET'] ?? 'default_secret_change_me';
+        self::$secret = $secret ?: ($_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?: null);
     }
 
     /**
@@ -66,32 +66,33 @@ class StudyNestAuth {
         $user_id = null;
         $decoded = null;
 
-        if ($STUDYNEST_JWT_AVAILABLE) {
-            $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
 
-            if (empty($authHeader) && function_exists('getallheaders')) {
-                $headers = getallheaders();
-                $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-            }
+        if (empty($authHeader) && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        }
 
-            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-                try {
-                    if ($STUDYNEST_JWT_AVAILABLE) {
-                        if (class_exists('\Firebase\JWT\Key')) {
-                            $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key(self::$secret, self::$algo));
-                        } else {
-                            $decoded = \Firebase\JWT\JWT::decode($token, self::$secret, [self::$algo]);
-                        }
+        if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+            try {
+                if (!self::$secret) {
+                    throw new Exception('JWT secret is not configured');
+                }
+                if ($STUDYNEST_JWT_AVAILABLE) {
+                    if (class_exists('\Firebase\JWT\Key')) {
+                        $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key(self::$secret, self::$algo));
                     } else {
-                        $decoded = StudyNestInternalJWT::decode($token, self::$secret);
+                        $decoded = \Firebase\JWT\JWT::decode($token, self::$secret, [self::$algo]);
                     }
-                    $user_id = $decoded->user_id ?? $decoded->sub ?? null;
-                } catch (Exception $e) {
-                    if ($required) {
-                        http_response_code(401);
-                        self::json(['ok' => false, 'error' => 'INVALID_TOKEN', 'message' => $e->getMessage()]);
-                    }
+                } else {
+                    $decoded = StudyNestInternalJWT::decode($token, self::$secret);
+                }
+                $user_id = $decoded->user_id ?? $decoded->sub ?? null;
+            } catch (Exception $e) {
+                if ($required) {
+                    http_response_code(401);
+                    self::json(['ok' => false, 'error' => 'INVALID_TOKEN', 'message' => $e->getMessage()]);
                 }
             }
         }
@@ -134,6 +135,9 @@ class StudyNestAuth {
      */
     public static function generate($user_id, $scopes = ['user'], $expire = 604800) {
         global $STUDYNEST_JWT_AVAILABLE;
+        if (!self::$secret) {
+            throw new RuntimeException('JWT secret is not configured');
+        }
         $payload = [
             'iss' => 'studynest-api',
             'aud' => 'studynest-frontend',

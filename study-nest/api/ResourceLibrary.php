@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 // POST — Mutations     //
 //////////////////////////
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireAuth();
     $action = $_POST['action'] ?? '';
 
     // Toggle bookmark
@@ -203,6 +204,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $r->execute([$rec_id]);
             $rec = $r->fetch();
+            if (!$rec) {
+                $rr = $pdo->prepare("
+                  SELECT shared_from_recording_id AS id, user_id, title, url, course, semester,
+                         '' AS tags, description, author, created_at
+                  FROM resources
+                  WHERE id = ? AND kind = 'recording'
+                  LIMIT 1
+                ");
+                $rr->execute([$rec_id]);
+                $rec = $rr->fetch();
+                if ($rec && empty($rec['id'])) $rec['id'] = $rec_id;
+            }
             if (!$rec) { echo json_encode(["status"=>"error","message"=>"Recording not found"]); exit; }
             if ((int)$rec['user_id'] !== $uid) { echo json_encode(["status"=>"error","message"=>"You can only share your own recording"]); exit; }
 
@@ -360,6 +373,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_FILES['file']) || ($_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
                 echo json_encode(["status"=>"error","message"=>"File upload error"]); exit;
             }
+            if ((int)($_FILES['file']['size'] ?? 0) <= 0 || (int)$_FILES['file']['size'] > 50 * 1024 * 1024) {
+                echo json_encode(["status"=>"error","message"=>"File too large (max 50MB)"]); exit;
+            }
+            $ext = strtolower(pathinfo($_FILES['file']['name'] ?? '', PATHINFO_EXTENSION));
+            $allowedExt = ['pdf','txt','md','doc','docx','ppt','pptx','xls','xlsx','csv','png','jpg','jpeg','webp','gif','zip','mp3','wav','m4a','webm','mp4','mov'];
+            if (!$ext || !in_array($ext, $allowedExt, true)) {
+                echo json_encode(["status"=>"error","message"=>"Unsupported file type"]); exit;
+            }
             // Validate Cloudinary config
             $c_config = get_cloudinary_config();
             if (!$c_config['cloud_name'] || !$c_config['upload_preset']) {
@@ -443,6 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // PUT — Update row  //
 ///////////////////////
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+    requireAuth();
     try {
         $data = json_decode(file_get_contents("php://input"), true);
         $id   = $data['id'] ?? null;

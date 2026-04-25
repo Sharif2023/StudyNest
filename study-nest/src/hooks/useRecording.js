@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import apiClient from "../apiConfig";
 
 // Cloudinary configuration
-const CLOUDINARY_CLOUD_NAME = "doyi7vchh";
-const CLOUDINARY_UPLOAD_PRESET = "studynest_recordings";
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "doyi7vchh";
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "studynest_recordings";
 
 export function useRecording(roomId, displayName, room, state) {
   const [recording, setRecording] = useState(false);
@@ -177,6 +177,10 @@ export function useRecording(roomId, displayName, room, state) {
 
   const uploadToCloudinary = async () => {
     if (!recordedBlob) return;
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      alert('Cloud recording is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.');
+      return;
+    }
 
     setUploading(true);
     try {
@@ -231,7 +235,7 @@ export function useRecording(roomId, displayName, room, state) {
         kind: "recording",
       });
 
-      if (!response.data || !response.data.ok) {
+      if (!response.data || !(response.data.ok || response.data.status === "success")) {
         throw new Error('Failed to save recording metadata');
       }
 

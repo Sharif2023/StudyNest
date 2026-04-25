@@ -78,7 +78,9 @@ export default function NewMeetingForm() {
             const au = JSON.parse(localStorage.getItem("studynest.auth") || "null");
             if (au?.name || au?.username) setName(au.name || au.username);
           }
-        } catch { }
+        } catch {
+          // Keep the display name blank if cached profile data is malformed.
+        }
       }
     })();
   }, []);
@@ -181,37 +183,6 @@ export default function NewMeetingForm() {
       setLoading(false);
     }
   }
-  // In LeftNav.jsx, enhance the points update listener
-useEffect(() => {
-    const handlePointsUpdate = (event) => {
-        if (event.detail?.points !== undefined) {
-            setPoints(event.detail.points);
-        }
-    };
-
-    window.addEventListener('studynest:points-updated', handlePointsUpdate);
-
-    return () => {
-        window.removeEventListener('studynest:points-updated', handlePointsUpdate);
-    };
-}, []);
-
-// Also add this to sync with localStorage changes
-useEffect(() => {
-    const onStorage = (e) => {
-        if (e.key === 'studynest.auth') {
-            try {
-                const authData = JSON.parse(e.newValue);
-                if (authData?.points !== undefined) {
-                    setPoints(authData.points);
-                }
-            } catch { }
-        }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-}, []);
-
   const steps = [
     { id: 1, label: "Program" },
     { id: 2, label: "Department" },
