@@ -1,18 +1,21 @@
 import { useState, useRef } from "react";
 import apiClient from "../apiConfig";
 
-// Cloudinary configuration
-const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "doyi7vchh";
-const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "studynest_recordings";
+const MB = 1024 * 1024;
+const CHUNK_SIZE = Math.max(6, Number(import.meta.env.VITE_CLOUDINARY_CHUNK_SIZE_MB || 20)) * MB;
+const CHUNKED_UPLOAD_THRESHOLD = 20 * MB;
 
 export function useRecording(roomId, displayName, room, state) {
   const [recording, setRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState(null);
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const streamRef = useRef(null);
+  const recordingStartedAtRef = useRef(null);
+  const recordingDurationRef = useRef(0);
 
   const startRecording = async () => {
     try {
@@ -66,6 +69,8 @@ export function useRecording(roomId, displayName, room, state) {
 
       streamRef.current = combinedStream;
       recordedChunksRef.current = [];
+      recordingStartedAtRef.current = Date.now();
+      recordingDurationRef.current = 0;
 
       // Try different mime types for compatibility
       const options = {
@@ -93,6 +98,9 @@ export function useRecording(roomId, displayName, room, state) {
       };
 
       mediaRecorderRef.current.onstop = () => {
+        recordingDurationRef.current = recordingStartedAtRef.current
+          ? Math.max(0, Math.round((Date.now() - recordingStartedAtRef.current) / 1000))
+          : 0;
         const blob = new Blob(recordedChunksRef.current, {
           type: mediaRecorderRef.current.mimeType || 'video/webm'
         });
@@ -177,32 +185,16 @@ export function useRecording(roomId, displayName, room, state) {
 
   const uploadToCloudinary = async () => {
     if (!recordedBlob) return;
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      alert('Cloud recording is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.');
-      return;
-    }
 
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append('file', recordedBlob);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
-      formData.append('folder', 'studynest-recordings');
-      formData.append('context', `room=${roomId}|user=${displayName}`);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
+      const signature = await getCloudinarySignature();
+      const data = recordedBlob.size >= CHUNKED_UPLOAD_THRESHOLD
+        ? await uploadRecordingInChunks(recordedBlob, signature)
+        : await uploadRecordingInSingleRequest(recordedBlob, signature);
 
       if (data.secure_url) {
-        // Save recording info to your backend
         await saveRecordingMetadata(data.secure_url, roomId, displayName);
         alert('Recording saved to StudyNest Cloud successfully!');
         window.dispatchEvent(new CustomEvent('studynest:recording-added'));
@@ -211,12 +203,121 @@ export function useRecording(roomId, displayName, room, state) {
       }
     } catch (error) {
       console.error('Error uploading to Cloudinary:', error);
-      alert('Failed to upload recording. Please try again.');
+      alert(error.message || 'Failed to upload recording. Please try again.');
     } finally {
       setUploading(false);
       resetRecording();
     }
   };
+
+  const getCloudinarySignature = async () => {
+    const response = await apiClient.post("cloudinary_signature.php", {
+      resource_type: "video",
+      folder: "studynest-recordings",
+      context: buildCloudinaryContext(),
+    });
+    const data = response.data;
+    if (!data?.ok || !data.upload_url || !data.api_key || !data.signature || !data.params?.timestamp) {
+      throw new Error(data?.error || "Cloud recording is not configured.");
+    }
+    return data;
+  };
+
+  const buildCloudinaryContext = () => {
+    const safeRoom = String(roomId || "room").replace(/[^a-zA-Z0-9_.:@-]/g, "_").slice(0, 120);
+    const safeUser = String(displayName || "Student").replace(/[^a-zA-Z0-9_.:@ -]/g, "_").slice(0, 120);
+    return `room=${safeRoom}|user=${safeUser}`;
+  };
+
+  const appendCloudinaryParams = (formData, signature) => {
+    formData.append("api_key", signature.api_key);
+    formData.append("signature", signature.signature);
+    Object.entries(signature.params || {}).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+  };
+
+  const uploadRecordingInSingleRequest = async (blob, signature) => {
+    setUploadProgress(5);
+    const formData = new FormData();
+    formData.append("file", blob, createRecordingFilename());
+    appendCloudinaryParams(formData, signature);
+
+    const response = await fetch(signature.upload_url, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.secure_url) {
+      throw new Error(data?.error?.message || `Cloudinary upload failed (${response.status})`);
+    }
+    setUploadProgress(100);
+    return data;
+  };
+
+  const uploadRecordingInChunks = async (blob, signature) => {
+    const uploadId =
+      (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
+      `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const total = blob.size;
+    const filename = createRecordingFilename();
+    let lastResponse = null;
+
+    for (let start = 0; start < total; start += CHUNK_SIZE) {
+      const end = Math.min(start + CHUNK_SIZE, total) - 1;
+      const chunk = blob.slice(start, end + 1, blob.type || "video/webm");
+      lastResponse = await uploadChunkWithRetry({
+        chunk,
+        filename,
+        signature,
+        uploadId,
+        contentRange: `bytes ${start}-${end}/${total}`,
+      });
+      setUploadProgress(Math.max(1, Math.round(((end + 1) / total) * 100)));
+    }
+
+    if (!lastResponse?.secure_url) {
+      throw new Error(lastResponse?.error?.message || "Cloudinary chunked upload did not return a final video URL.");
+    }
+    return lastResponse;
+  };
+
+  const uploadChunkWithRetry = async ({ chunk, filename, signature, uploadId, contentRange }) => {
+    const maxAttempts = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const formData = new FormData();
+        formData.append("file", chunk, filename);
+        appendCloudinaryParams(formData, signature);
+
+        const response = await fetch(signature.upload_url, {
+          method: "POST",
+          headers: {
+            "X-Unique-Upload-Id": uploadId,
+            "Content-Range": contentRange,
+          },
+          body: formData,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error?.message || `Cloudinary chunk upload failed (${response.status})`);
+        }
+        return data;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 750 * attempt));
+        }
+      }
+    }
+
+    throw lastError || new Error("Cloudinary chunk upload failed.");
+  };
+
+  const createRecordingFilename = () =>
+    `studynest-${roomId}-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
 
   const saveRecordingMetadata = async (videoUrl, roomId, userName) => {
     try {
@@ -226,7 +327,7 @@ export function useRecording(roomId, displayName, room, state) {
         room_id: roomId,
         video_url: videoUrl,
         user_name: userName,
-        duration: Math.floor(recordedChunksRef.current.length),
+        duration: recordingDurationRef.current,
         recorded_at: new Date().toISOString(),
         title: `Recording of ${roomTitle}`,
         description: `Study session recording from room: ${roomTitle}`,
@@ -249,6 +350,9 @@ export function useRecording(roomId, displayName, room, state) {
   const resetRecording = () => {
     setRecordedBlob(null);
     setShowSaveOptions(false);
+    setUploadProgress(0);
+    recordingStartedAtRef.current = null;
+    recordingDurationRef.current = 0;
     recordedChunksRef.current = [];
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -265,6 +369,7 @@ export function useRecording(roomId, displayName, room, state) {
     recordedBlob,
     showSaveOptions,
     uploading,
+    uploadProgress,
     startRecording,
     stopRecording,
     saveToDevice,
