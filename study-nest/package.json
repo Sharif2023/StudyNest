@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "realtime": "node src/realtime/server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

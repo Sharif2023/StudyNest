@@ -13,10 +13,10 @@ function get_cloudinary_config() {
     
     // Fallback to environment variables or hardcoded values
     return [
-        'cloud_name' => $_ENV['CLOUDINARY_CLOUD_NAME'] ?? $_SERVER['CLOUDINARY_CLOUD_NAME'] ?? getenv('CLOUDINARY_CLOUD_NAME') ?: 'doyi7vchh',
+        'cloud_name' => $_ENV['CLOUDINARY_CLOUD_NAME'] ?? $_SERVER['CLOUDINARY_CLOUD_NAME'] ?? getenv('CLOUDINARY_CLOUD_NAME') ?: '',
         'api_key' => $_ENV['CLOUDINARY_API_KEY'] ?? $_SERVER['CLOUDINARY_API_KEY'] ?? getenv('CLOUDINARY_API_KEY') ?: '',
         'api_secret' => $_ENV['CLOUDINARY_API_SECRET'] ?? $_SERVER['CLOUDINARY_API_SECRET'] ?? getenv('CLOUDINARY_API_SECRET') ?: '',
-        'upload_preset' => $_ENV['CLOUDINARY_UPLOAD_PRESET'] ?? $_SERVER['CLOUDINARY_UPLOAD_PRESET'] ?? getenv('CLOUDINARY_UPLOAD_PRESET') ?: 'studynest_recordings'
+        'upload_preset' => $_ENV['CLOUDINARY_UPLOAD_PRESET'] ?? $_SERVER['CLOUDINARY_UPLOAD_PRESET'] ?? getenv('CLOUDINARY_UPLOAD_PRESET') ?: ''
     ];
 }
 
@@ -27,6 +27,9 @@ function cloudinary_upload_file($tmpPath, $filename = null, $custom_preset = nul
     $config = get_cloudinary_config();
     $cloud_name = $config['cloud_name'];
     $unsigned_preset = $custom_preset ?: $config['upload_preset'];
+    if (!$cloud_name || !$unsigned_preset) {
+        throw new RuntimeException("Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.");
+    }
     $endpoint = "https://api.cloudinary.com/v1_1/{$cloud_name}/auto/upload";
 
     $ch = curl_init();
@@ -43,7 +46,7 @@ function cloudinary_upload_file($tmpPath, $filename = null, $custom_preset = nul
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POSTFIELDS     => $payload,
         CURLOPT_TIMEOUT        => 60,
-        CURLOPT_SSL_VERIFYPEER => false, // Often needed on local dev environments
+        CURLOPT_SSL_VERIFYPEER => (getenv('CLOUDINARY_DISABLE_SSL_VERIFY') === 'true') ? false : true,
     ]);
     
     $resp = curl_exec($ch);

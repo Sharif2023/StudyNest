@@ -125,7 +125,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
         const uid = incoming?.id || auth?.id;
         if (!uid) return;
         const nRes = await apiClient.get("notifications.php", {
-           params: { action: "list", student_id: uid }
+           params: { action: "list" }
         });
         const nData = nRes.data;
         if (nData.ok) {
@@ -198,7 +198,6 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
     if (!uid) return;
     try {
       await apiClient.post("notifications.php?action=mark_read", {
-        student_id: uid,
         mark_all: true
       });
       setUnreadCount(0);

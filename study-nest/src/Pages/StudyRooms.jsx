@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
-import { useWebRTC } from "../realtime/useWebRTC";
+import { createWebRTCClient } from "../realtime/useWebRTC";
 import Header from "../Components/Header";
 import LeftNav from "../Components/LeftNav";
 import Footer from "../Components/Footer";
@@ -300,7 +300,7 @@ export function StudyRoom() {
   } = useRecording(roomId, displayName, room, state);
 
   const rtc = useMemo(
-    () => useWebRTC(roomId, displayName, meetingStableId),
+    () => createWebRTCClient(roomId, displayName, meetingStableId),
     [roomId, displayName, meetingStableId]
   );
 

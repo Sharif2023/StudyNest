@@ -4,7 +4,7 @@ const isLocalhost = window.location.hostname === "localhost" || window.location.
 
 // Auto-detect the correct path
 const getApiBase = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
   if (envUrl) return envUrl;
 
   if (isLocalhost) {
@@ -24,7 +24,9 @@ export function getBackendOrigin() {
   try {
     const m = String(API_BASE).match(/^https?:\/\/[^/]+/i);
     if (m && m[0]) return m[0];
-  } catch { }
+  } catch {
+    // Fall back to the current browser origin when API_BASE is malformed.
+  }
   return (typeof window !== "undefined" && window.location.origin) || "http://localhost:8000";
 }
 
@@ -32,10 +34,17 @@ export function toBackendUrl(url) {
   if (!url || typeof url !== "string") return url;
   if (/^https?:\/\//i.test(url) || url.startsWith("blob:")) return url;
   
-  // Strip /src/api from API_BASE to get project root
-  const root = API_BASE.replace(/\/src\/api\/?$/, "");
-  const cleanUrl = url.startsWith("/") ? url : "/" + url;
-  return root + cleanUrl;
+  const apiRoot = API_BASE.replace(/\/+$/, "");
+  const backendOrigin = getBackendOrigin().replace(/\/+$/, "");
+  let cleanUrl = url.startsWith("/") ? url : "/" + url;
+
+  if (cleanUrl.startsWith("/src/api/")) {
+    cleanUrl = cleanUrl.replace(/^\/src\/api\//, "/api/");
+  }
+  if (cleanUrl.startsWith("/api/")) {
+    return backendOrigin + cleanUrl;
+  }
+  return apiRoot + cleanUrl;
 }
 
 /** 

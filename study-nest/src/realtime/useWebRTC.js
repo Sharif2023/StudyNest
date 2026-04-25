@@ -1,5 +1,5 @@
 // FILE: src/realtime/useWebRTC.js
-import { API_BASE } from "../apiConfig";
+import apiClient from "../apiConfig";
 
 /*
 Key upgrades
@@ -18,16 +18,26 @@ Mic/connection robustness:
 - **NEW:** Force an initial offer after binding tracks (some browsers miss negotiationneeded)
 */
 
-const STUN = [
+const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
   { urls: "stun:stun2.l.google.com:19302" },
-  {
-    urls: "turn:relay1.expressturn.com:3478",
-    username: "efree",
-    credential: "turnpassword",
-  },
 ];
+
+const TURN_URLS = (import.meta.env.VITE_TURN_URLS || import.meta.env.VITE_TURN_URL || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME;
+const TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL;
+
+if (TURN_URLS.length && TURN_USERNAME && TURN_CREDENTIAL) {
+  ICE_SERVERS.push({
+    urls: TURN_URLS.length === 1 ? TURN_URLS[0] : TURN_URLS,
+    username: TURN_USERNAME,
+    credential: TURN_CREDENTIAL,
+  });
+}
 
 // WebSocket signaling configuration
 const getWSUrl = () => {
@@ -36,15 +46,15 @@ const getWSUrl = () => {
 
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  if (isLocal) return "ws://localhost:5173";
+  if (isLocal) return "ws://localhost:5001";
   
-  return `${proto}://${window.location.hostname}:5173`;
+  return `${proto}://${window.location.host}`;
 };
 
 const WS_URL = getWSUrl();
 console.log("WS signaling on:", WS_URL);
 
-export function useWebRTC(roomId, displayName, stableId) {
+export function createWebRTCClient(roomId, displayName, stableId) {
   const state = {
     ws: null,
     wsTimer: null,
@@ -383,7 +393,7 @@ export function useWebRTC(roomId, displayName, stableId) {
     if (!p) { p = newPeerShell("Student"); state.peers.set(pid, p); }
     if (p.pc) return p;
 
-    const pc = new RTCPeerConnection({ iceServers: STUN });
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     // polite = my id lexicographically larger than peer id
     p.polite = state.me && pid && (state.me < pid ? false : true);

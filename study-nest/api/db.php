@@ -1,10 +1,31 @@
 <?php
 // Centralized CORS, Session and DB configuration
 
-// Security: In production, you SHOULD restrict $origin to your specific domain.
-// e.g. $allowed_origins = ["http://localhost:5173", "https://your-production-domain.com"];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*'; 
-header("Access-Control-Allow-Origin: $origin");
+// Load .env variables before any config reads.
+if (file_exists(__DIR__ . '/.env')) {
+    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $_ENV[trim($parts[0])] = trim($parts[1]);
+        }
+    }
+}
+
+// Security: allow credentials only for known origins. Add production domains with CORS_ALLOWED_ORIGINS.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$configuredOrigins = getenv('CORS_ALLOWED_ORIGINS') ?: ($_ENV['CORS_ALLOWED_ORIGINS'] ?? '');
+$allowed_origins = array_values(array_filter(array_map('trim', explode(',', $configuredOrigins))));
+$allowed_origins = array_merge($allowed_origins, [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+]);
+$allowOrigin = in_array($origin, $allowed_origins, true) ? $origin : ($origin === '' ? '*' : 'null');
+header("Access-Control-Allow-Origin: $allowOrigin");
+header("Vary: Origin");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin");
@@ -39,18 +60,6 @@ class StudyNestSessionHandler implements SessionHandlerInterface {
     public function gc($max_lifetime): int|false {
         $stmt = $this->pdo->prepare("DELETE FROM sessions WHERE expiry < ?");
         return $stmt->execute([time()]) ? 1 : false;
-    }
-}
-
-// Load .env variables (simplified manual loader)
-if (file_exists(__DIR__ . '/.env')) {
-    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) === 2) {
-            $_ENV[trim($parts[0])] = trim($parts[1]);
-        }
     }
 }
 
@@ -123,15 +132,36 @@ try {
             semester VARCHAR(50),
             kind VARCHAR(20) DEFAULT 'note',
             visibility VARCHAR(20) DEFAULT 'public',
+            src_type VARCHAR(20),
             url TEXT NOT NULL,
             tags TEXT,
             votes INTEGER DEFAULT 0,
             bookmarks INTEGER DEFAULT 0,
-            flagged INTEGER DEFAULT 0,
+            flagged BOOLEAN DEFAULT FALSE,
+            shared_from_recording_id INTEGER,
+            shared_at TIMESTAMP,
+            cloudinary_public_id VARCHAR(255),
+            cloudinary_resource_type VARCHAR(20),
+            cloudinary_version BIGINT,
+            cloudinary_bytes BIGINT,
             original_filename VARCHAR(255),
             mime_type VARCHAR(100),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "recordings" => "CREATE TABLE IF NOT EXISTS recordings (
+            id SERIAL PRIMARY KEY,
+            room_id VARCHAR(64) NOT NULL,
+            video_url TEXT NOT NULL,
+            user_name VARCHAR(100),
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            duration INTEGER DEFAULT 0,
+            recorded_at TIMESTAMP,
+            title VARCHAR(255),
+            description TEXT,
+            course VARCHAR(100),
+            semester VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "notes" => "CREATE TABLE IF NOT EXISTS notes (
             id SERIAL PRIMARY KEY,
@@ -210,6 +240,23 @@ try {
             participants INTEGER DEFAULT 1,
             creator_session_id VARCHAR(255)
         )",
+        "courses" => "CREATE TABLE IF NOT EXISTS courses (
+            id SERIAL PRIMARY KEY,
+            course_code VARCHAR(50) NOT NULL,
+            course_title VARCHAR(255) NOT NULL,
+            department VARCHAR(100),
+            program VARCHAR(100),
+            course_thumbnail TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "tmp_courses" => "CREATE TABLE IF NOT EXISTS tmp_courses (
+            course_code VARCHAR(50),
+            course_title VARCHAR(255),
+            department VARCHAR(100),
+            program VARCHAR(100),
+            course_thumbnail TEXT
+        )",
         "meeting_participants" => "CREATE TABLE IF NOT EXISTS meeting_participants (
             id SERIAL PRIMARY KEY,
             meeting_id VARCHAR(16) REFERENCES meetings(id) ON DELETE CASCADE,
@@ -237,6 +284,16 @@ try {
             type VARCHAR(20) DEFAULT 'string',
             description TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "audit_logs" => "CREATE TABLE IF NOT EXISTS audit_logs (
+            id SERIAL PRIMARY KEY,
+            admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            action VARCHAR(100) NOT NULL,
+            target_type VARCHAR(100),
+            target_id VARCHAR(100),
+            details TEXT,
+            ip_address VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "question_votes" => "CREATE TABLE IF NOT EXISTS question_votes (
             id SERIAL PRIMARY KEY,
@@ -282,6 +339,7 @@ try {
             group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             status VARCHAR(20) DEFAULT 'pending',
+            proof_url TEXT,
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "group_messages" => "CREATE TABLE IF NOT EXISTS group_messages (
@@ -289,6 +347,7 @@ try {
             group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             message TEXT,
+            attachment_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "ai_file_checks" => "CREATE TABLE IF NOT EXISTS ai_file_checks (
@@ -330,16 +389,41 @@ try {
         "ALTER TABLE meeting_participants ALTER COLUMN session_id TYPE VARCHAR(255)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0",
         "ALTER TABLE meetings ALTER COLUMN course TYPE VARCHAR(255)",
-        "ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)"
+        "ALTER TABLE points_history ALTER COLUMN reference_id TYPE VARCHAR(255)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS src_type VARCHAR(20)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS shared_from_recording_id INTEGER",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS shared_at TIMESTAMP",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(255)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS cloudinary_resource_type VARCHAR(20)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS cloudinary_version BIGINT",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS cloudinary_bytes BIGINT",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255)",
+        "ALTER TABLE resources ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100)",
+        "ALTER TABLE group_members ADD COLUMN IF NOT EXISTS proof_url TEXT",
+        "ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS attachment_url TEXT",
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT",
+        "ALTER TABLE recordings ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
     ];
     foreach ($alters as $sql) {
         try { $pdo->exec($sql); } catch (Throwable $e) { /* Ignore known possible failures */ }
     }
+    try {
+        $pdo->exec("ALTER TABLE resources ALTER COLUMN flagged DROP DEFAULT");
+        $pdo->exec("ALTER TABLE resources ALTER COLUMN flagged TYPE BOOLEAN USING CASE WHEN flagged::text IN ('1','t','true','yes') THEN TRUE ELSE FALSE END");
+        $pdo->exec("ALTER TABLE resources ALTER COLUMN flagged SET DEFAULT FALSE");
+    } catch (Throwable $e) { /* Already boolean or unavailable. */ }
+    try {
+        $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS uniq_group_members_group_user ON group_members(group_id, user_id)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_group_messages_group_created ON group_messages(group_id, created_at)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_resources_user_kind_created ON resources(user_id, kind, created_at)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_recordings_user_id ON recordings(user_id)");
+    } catch (Throwable $e) { /* Index creation should not block startup. */ }
 
 } catch (Throwable $e) {
     if (!headers_sent()) {
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-        header("Access-Control-Allow-Origin: $origin");
+        global $allowOrigin;
+        header("Access-Control-Allow-Origin: " . ($allowOrigin ?? '*'));
+        header("Vary: Origin");
         header("Access-Control-Allow-Credentials: true");
         header("Content-Type: application/json; charset=utf-8");
         http_response_code(500);

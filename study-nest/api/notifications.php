@@ -1,104 +1,102 @@
 <?php
-require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
+$user_id = requireAuth();
 $action = $_GET['action'] ?? '';
 
+function notification_json(array $data, int $code = 200): void
+{
+    http_response_code($code);
+    echo json_encode($data, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function current_student_id(PDO $pdo, int $user_id): string
+{
+    $stmt = $pdo->prepare("SELECT student_id FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$user_id]);
+    $sid = (string)($stmt->fetchColumn() ?: '');
+    if ($sid === '') notification_json(["ok" => false, "error" => "user_not_found"], 404);
+    return $sid;
+}
+
+$student_id = current_student_id($pdo, (int)$user_id);
+
 if ($action === 'list') {
-    $sid = $_GET['student_id'] ?? '';
-    $limit = intval($_GET['limit'] ?? 30);
+    $limit = max(1, min(100, (int)($_GET['limit'] ?? 30)));
 
     try {
         $stmt = $pdo->prepare("
-            SELECT 
-                id, 
-                student_id, 
-                title, 
-                message, 
-                link, 
-                type, 
-                reference_id,
-                scheduled_at,
-                sent_at,
-                read_at,
-                created_at
-            FROM notifications 
-            WHERE student_id = ? 
-            ORDER BY created_at DESC 
+            SELECT id, student_id, title, message, link, type, reference_id,
+                   scheduled_at, sent_at, read_at, created_at
+            FROM notifications
+            WHERE student_id = ?
+            ORDER BY created_at DESC
             LIMIT ?
         ");
-        $stmt->execute([$sid, $limit]);
+        $stmt->execute([$student_id, $limit]);
         $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Count unread
         $unreadStmt = $pdo->prepare("
-            SELECT COUNT(*) as unread_count 
-            FROM notifications 
+            SELECT COUNT(*) as unread_count
+            FROM notifications
             WHERE student_id = ? AND read_at IS NULL
         ");
-        $unreadStmt->execute([$sid]);
-        $unread = $unreadStmt->fetch(PDO::FETCH_ASSOC)['unread_count'] ?? 0;
+        $unreadStmt->execute([$student_id]);
+        $unread = (int)($unreadStmt->fetch(PDO::FETCH_ASSOC)['unread_count'] ?? 0);
 
-        echo json_encode([
+        notification_json([
             "ok" => true,
             "notifications" => $notifications,
             "unread" => $unread
         ]);
-    } catch (Exception $e) {
-        echo json_encode(["ok" => false, "error" => $e->getMessage()]);
+    } catch (Throwable $e) {
+        error_log("notifications list error: " . $e->getMessage());
+        notification_json(["ok" => false, "error" => "server_error"], 500);
     }
-    exit;
 }
 
 if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
-    $sid = $data['student_id'] ?? '';
+    $data = json_decode(file_get_contents('php://input'), true) ?: [];
 
     try {
         if (!empty($data['mark_all'])) {
             $stmt = $pdo->prepare("
-                UPDATE notifications 
-                SET read_at = CURRENT_TIMESTAMP 
+                UPDATE notifications
+                SET read_at = CURRENT_TIMESTAMP
                 WHERE student_id = ? AND read_at IS NULL
             ");
-            $stmt->execute([$sid]);
-            echo json_encode(["ok" => true, "message" => "All notifications marked as read"]);
-        } else if (!empty($data['notification_id'])) {
+            $stmt->execute([$student_id]);
+            notification_json(["ok" => true, "message" => "All notifications marked as read"]);
+        }
+
+        if (!empty($data['notification_id'])) {
             $stmt = $pdo->prepare("
-                UPDATE notifications 
-                SET read_at = CURRENT_TIMESTAMP 
+                UPDATE notifications
+                SET read_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND student_id = ?
             ");
-            $stmt->execute([$data['notification_id'], $sid]);
-            echo json_encode(["ok" => true, "message" => "Notification marked as read"]);
-        } else {
-            echo json_encode(["ok" => false, "error" => "No valid action specified"]);
+            $stmt->execute([(int)$data['notification_id'], $student_id]);
+            notification_json(["ok" => true, "message" => "Notification marked as read"]);
         }
-    } catch (Exception $e) {
-        echo json_encode(["ok" => false, "error" => $e->getMessage()]);
+
+        notification_json(["ok" => false, "error" => "No valid action specified"], 400);
+    } catch (Throwable $e) {
+        error_log("notifications mark_read error: " . $e->getMessage());
+        notification_json(["ok" => false, "error" => "server_error"], 500);
     }
-    exit;
 }
 
-/* --- Real-time Server Sent Events stream --- */
 if ($action === 'stream') {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
     header('X-Accel-Buffering: no');
 
-    $sid = $_GET['student_id'] ?? '';
-    if (!$sid) {
-        echo "data: " . json_encode(["error" => "Missing student_id"]) . "\n\n";
-        ob_flush();
-        flush();
-        exit;
-    }
-
-    $lastId = intval($_GET['last_id'] ?? 0);
-
-    // Send initial connection message
+    $lastId = (int)($_GET['last_id'] ?? 0);
     echo "data: " . json_encode(["type" => "connected", "last_id" => $lastId]) . "\n\n";
-    ob_flush();
+    @ob_flush();
     flush();
 
     try {
@@ -106,33 +104,35 @@ if ($action === 'stream') {
             if (connection_aborted()) break;
 
             $stmt = $pdo->prepare("
-                SELECT * FROM notifications 
-                WHERE student_id = ? AND id > ? 
+                SELECT *
+                FROM notifications
+                WHERE student_id = ? AND id > ?
                 ORDER BY id ASC
             ");
-            $stmt->execute([$sid, $lastId]);
+            $stmt->execute([$student_id, $lastId]);
             $newNotifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($newNotifications as $notification) {
-                $lastId = $notification['id'];
+                $lastId = (int)$notification['id'];
                 echo "event: message\n";
                 echo "data: " . json_encode([
                     "type" => "new_notification",
                     "notification" => $notification
                 ]) . "\n\n";
-                ob_flush();
+                @ob_flush();
                 flush();
             }
 
             sleep(5);
         }
-    } catch (Exception $e) {
-        echo "data: " . json_encode(["error" => $e->getMessage()]) . "\n\n";
-        ob_flush();
+    } catch (Throwable $e) {
+        error_log("notifications stream error: " . $e->getMessage());
+        echo "data: " . json_encode(["error" => "server_error"]) . "\n\n";
+        @ob_flush();
         flush();
     }
     exit;
 }
 
-echo json_encode(["ok" => false, "error" => "Invalid action"]);
+notification_json(["ok" => false, "error" => "Invalid action"], 404);
 ?>

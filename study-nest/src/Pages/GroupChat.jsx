@@ -162,14 +162,11 @@ export default function GroupChat() {
 
     const loadGroupMeta = async () => {
         try {
-            const res = await apiClient.get("admin_api.php", {
-                params: { action: "list_groups", k: "MYKEY123" }
+            const res = await apiClient.get("group_api.php", {
+                params: { action: "group_meta", group_id: id }
             });
             const j = res.data;
-            if (j.ok) {
-                const g = j.groups.find((x) => String(x.id) === String(id));
-                setGroup(g);
-            }
+            if (j.ok) setGroup(j.group);
         } catch (e) { console.warn(e); }
     };
 

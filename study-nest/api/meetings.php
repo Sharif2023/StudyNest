@@ -358,7 +358,7 @@ try {
   // POST import courses
   if ($method === 'POST' && path_ends_with($path, '/meetings.php/import-courses')) {
     try {
-      $csvFile = __DIR__ . "/Datasets/UIU_Course_List.csv";
+      $csvFile = dirname(__DIR__) . "/src/Datasets/UIU_Course_List.csv";
       import_courses_from_csv($pdo, $csvFile);
       json_out(['ok' => true, 'message' => 'Courses imported successfully']);
     } catch (Throwable $e) {

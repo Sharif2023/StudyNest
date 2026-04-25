@@ -1,263 +1,166 @@
 <?php
-// recordings.php
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
-require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
+$user_id = requireAuth();
 
-// POST - Save recording metadata
+function rec_json(array $data, int $code = 200): void
+{
+    http_response_code($code);
+    echo json_encode($data, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function current_username(PDO $pdo, int $user_id): string
+{
+    $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$user_id]);
+    return (string)($stmt->fetchColumn() ?: 'Unknown');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $data = json_decode(file_get_contents("php://input"), true);
-        
+        $data = json_decode(file_get_contents("php://input"), true) ?: [];
+
         if (empty($data['video_url']) || empty($data['room_id'])) {
-            echo json_encode(["status" => "error", "message" => "Missing required fields"]);
-            exit;
+            rec_json(["ok" => false, "status" => "error", "message" => "Missing required fields"], 400);
         }
 
-        $user_id = $_SESSION['user_id'] ?? null;
-        
-        // Get the actual username from the database to ensure consistency
-        $username = null;
-        if ($user_id) {
-            $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-            $user_stmt->execute([$user_id]);
-            $user_row = $user_stmt->fetch();
-            $username = $user_row['username'] ?? $data["user_name"] ?? "Unknown";
-        } else {
-            $username = $data["user_name"] ?? "Unknown";
+        $videoUrl = trim((string)$data['video_url']);
+        if (!preg_match('/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\//', $videoUrl)) {
+            rec_json(["ok" => false, "status" => "error", "message" => "Unsupported recording URL"], 422);
         }
-        
-        // Also save to resources table for ResourceLibrary visibility
-        $resource_stmt = $pdo->prepare("
-            INSERT INTO resources 
-                (title, kind, course, semester, description, author, src_type, url, votes, bookmarks, flagged, created_at)
-            VALUES 
-                (:title, 'recording', :course, :semester, :description, :author, 'link', :url, 0, 0, false, NOW())
-        ");
-        
-        $resource_stmt->execute([
-            ":title" => $data["title"] ?? "Study Session Recording",
-            ":course" => $data["course"] ?? "General",
-            ":semester" => $data["semester"] ?? "Current",
-            ":description" => $data["description"] ?? "Study session recording",
-            ":author" => $username,
-            ":url" => $data["video_url"]
-        ]);
-        
-        $resource_id = $pdo->lastInsertId();
 
-        // Save to recordings table
+        $username = current_username($pdo, (int)$user_id);
+        $title = trim((string)($data["title"] ?? "Study Session Recording"));
+        $course = trim((string)($data["course"] ?? "General"));
+        $semester = trim((string)($data["semester"] ?? "Current"));
+        $description = trim((string)($data["description"] ?? "Study session recording"));
+
+        $pdo->beginTransaction();
+
         $recording_stmt = $pdo->prepare("
-            INSERT INTO recordings 
+            INSERT INTO recordings
                 (room_id, video_url, user_name, user_id, duration, recorded_at, title, description, course, semester)
-            VALUES 
+            VALUES
                 (:room_id, :video_url, :user_name, :user_id, :duration, :recorded_at, :title, :description, :course, :semester)
+            RETURNING id
         ");
-        
         $recording_stmt->execute([
-            ":room_id" => $data["room_id"],
-            ":video_url" => $data["video_url"],
+            ":room_id" => (string)$data["room_id"],
+            ":video_url" => $videoUrl,
             ":user_name" => $username,
             ":user_id" => $user_id,
-            ":duration" => $data["duration"] ?? 0,
+            ":duration" => (int)($data["duration"] ?? 0),
             ":recorded_at" => $data["recorded_at"] ?? date('Y-m-d H:i:s'),
-            ":title" => $data["title"] ?? "Study Session Recording",
-            ":description" => $data["description"] ?? "Study session recording",
-            ":course" => $data["course"] ?? "General",
-            ":semester" => $data["semester"] ?? "Current"
+            ":title" => $title,
+            ":description" => $description,
+            ":course" => $course,
+            ":semester" => $semester
         ]);
+        $recording_id = (int)$recording_stmt->fetchColumn();
 
-        echo json_encode([
-            "status" => "success", 
+        $resource_stmt = $pdo->prepare("
+            INSERT INTO resources
+                (user_id, title, kind, course, semester, description, author, src_type, url,
+                 votes, bookmarks, flagged, visibility, shared_from_recording_id, created_at, updated_at)
+            VALUES
+                (:user_id, :title, 'recording', :course, :semester, :description, :author, 'link', :url,
+                 0, 0, false, 'private', :recording_id, NOW(), NOW())
+            RETURNING id
+        ");
+        $resource_stmt->execute([
+            ":user_id" => $user_id,
+            ":title" => $title,
+            ":course" => $course,
+            ":semester" => $semester,
+            ":description" => $description,
+            ":author" => $username,
+            ":url" => $videoUrl,
+            ":recording_id" => $recording_id,
+        ]);
+        $resource_id = (int)$resource_stmt->fetchColumn();
+
+        $pdo->commit();
+
+        rec_json([
+            "ok" => true,
+            "status" => "success",
             "message" => "Recording saved successfully",
+            "recording_id" => $recording_id,
             "resource_id" => $resource_id
         ]);
-        
     } catch (Throwable $e) {
-        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("recordings save error: " . $e->getMessage());
+        rec_json(["ok" => false, "status" => "error", "message" => "Failed to save recording"], 500);
     }
-    exit;
 }
 
-// GET - Fetch user's recordings
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
-        $user_id = $_SESSION['user_id'] ?? null;
-        
-        if (!$user_id) {
-            echo json_encode(["status" => "error", "message" => "Not authenticated"]);
-            exit;
-        }
-
-        // Get recordings from resources table (for ResourceLibrary)
         $stmt = $pdo->prepare("
-            SELECT r.* 
-            FROM resources r
-            WHERE r.author = (SELECT username FROM users WHERE id = ?) 
-            AND r.kind = 'recording'
-            ORDER BY r.created_at DESC
+            SELECT *
+            FROM resources
+            WHERE user_id = ? AND kind = 'recording'
+            ORDER BY created_at DESC
         ");
         $stmt->execute([$user_id]);
-        $recordings = $stmt->fetchAll();
-
-        echo json_encode([
-            "status" => "success", 
-            "recordings" => $recordings
+        rec_json([
+            "ok" => true,
+            "status" => "success",
+            "recordings" => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
-        
     } catch (Throwable $e) {
-        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        error_log("recordings list error: " . $e->getMessage());
+        rec_json(["ok" => false, "status" => "error", "message" => "Failed to load recordings"], 500);
     }
-    exit;
 }
 
-// DELETE - Delete a recording
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     try {
-        $user_id = $_SESSION['user_id'] ?? null;
-        
-        if (!$user_id) {
-            echo json_encode(["status" => "error", "message" => "Not authenticated"]);
-            exit;
-        }
-
-        // Get the recording ID from URL or request body
-        $recording_id = null;
-        
-        // Try to get from URL path (e.g., /recordings.php/123)
-        $path_info = $_SERVER['PATH_INFO'] ?? '';
-        if ($path_info) {
-            $recording_id = trim($path_info, '/');
-        }
-        
-        // Try to get from request body
+        $recording_id = $_GET['id'] ?? null;
         if (!$recording_id) {
-            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
             $recording_id = $input['id'] ?? null;
         }
-        
-        // Try to get from query parameter
-        if (!$recording_id) {
-            $recording_id = $_GET['id'] ?? null;
-        }
-        
-        if (!$recording_id) {
-            echo json_encode(["status" => "error", "message" => "Recording ID is required"]);
-            exit;
+        $resource_id = (int)$recording_id;
+        if ($resource_id <= 0) {
+            rec_json(["ok" => false, "status" => "error", "message" => "Recording ID is required"], 400);
         }
 
-        // Get the username for this user to verify ownership
-        $user_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-        $user_stmt->execute([$user_id]);
-        $user_row = $user_stmt->fetch();
-        $username = $user_row['username'] ?? null;
-        
-        if (!$username) {
-            echo json_encode(["status" => "error", "message" => "User not found"]);
-            exit;
-        }
-
-        // Verify the recording belongs to this user
-        $check_stmt = $pdo->prepare("
-            SELECT id FROM resources 
-            WHERE id = ? AND kind = 'recording' AND author = ?
+        $stmt = $pdo->prepare("
+            SELECT id, url, shared_from_recording_id
+            FROM resources
+            WHERE id = ? AND user_id = ? AND kind = 'recording'
+            LIMIT 1
         ");
-        $check_stmt->execute([$recording_id, $username]);
-        $recording = $check_stmt->fetch();
-        
-        if (!$recording) {
-            echo json_encode(["status" => "error", "message" => "Recording not found or you don't have permission to delete it"]);
-            exit;
+        $stmt->execute([$resource_id, $user_id]);
+        $resource = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$resource) {
+            rec_json(["ok" => false, "status" => "error", "message" => "Recording not found"], 404);
         }
 
-        // Get the video URL before deleting from database
-        $url_stmt = $pdo->prepare("SELECT url FROM resources WHERE id = ? AND kind = 'recording'");
-        $url_stmt->execute([$recording_id]);
-        $video_data = $url_stmt->fetch();
-        
-        if ($video_data && $video_data['url']) {
-            $video_url = $video_data['url'];
-            
-            // Extract public_id from Cloudinary URL for deletion
-            if (strpos($video_url, 'cloudinary.com') !== false) {
-                // Parse Cloudinary URL to get public_id
-                // Format: https://res.cloudinary.com/{cloud_name}/video/upload/{public_id}.{format}
-                $parsed_url = parse_url($video_url);
-                $path_parts = explode('/', trim($parsed_url['path'], '/'));
-                
-                // Find the video/upload part and get the public_id
-                $upload_index = array_search('upload', $path_parts);
-                if ($upload_index !== false && isset($path_parts[$upload_index + 1])) {
-                    $public_id = $path_parts[$upload_index + 1];
-                    // Remove file extension if present
-                    $public_id = preg_replace('/\.[^.]*$/', '', $public_id);
-                    
-                    // Load Cloudinary configuration
-                    require_once __DIR__ . '/cloudinary_helper.php';
-                    $cloudinary_config = get_cloudinary_config();
-                    $cloud_name = $cloudinary_config['cloud_name'];
-                    $api_key = $cloudinary_config['api_key'];
-                    $api_secret = $cloudinary_config['api_secret'];
-                    
-                    // Check if API credentials are configured
-                    if ($api_key === 'your_api_key_here' || $api_secret === 'your_api_secret_here') {
-                        error_log("Cloudinary API credentials not configured. Please update cloudinary_config.php");
-                        // Continue with database deletion even if Cloudinary credentials are not configured
-                    } else {
-                        // Generate signature for authentication
-                        $timestamp = time();
-                        $string_to_sign = "public_id={$public_id}&timestamp={$timestamp}{$api_secret}";
-                        $signature = sha1($string_to_sign);
-                    
-                    // Make API call to delete from Cloudinary
-                    $delete_url = "https://api.cloudinary.com/v1_1/{$cloud_name}/resources/video/upload/{$public_id}";
-                    $delete_data = [
-                        'public_id' => $public_id,
-                        'timestamp' => $timestamp,
-                        'api_key' => $api_key,
-                        'signature' => $signature
-                    ];
-                    
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, $delete_url);
-                    curl_setopt($ch, CURLOPT_POST, true);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($delete_data));
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    
-                    $cloudinary_response = curl_exec($ch);
-                    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-                    
-                    // Log the response for debugging
-                    error_log("Cloudinary delete response: " . $cloudinary_response);
-                    
-                    if ($http_code !== 200) {
-                        error_log("Failed to delete from Cloudinary. HTTP Code: " . $http_code);
-                        // Continue with database deletion even if Cloudinary deletion fails
-                    }
-                    }
-                }
-            }
+        $pdo->beginTransaction();
+        $pdo->prepare("DELETE FROM resources WHERE id = ? AND user_id = ? AND kind = 'recording'")
+            ->execute([$resource_id, $user_id]);
+        if (!empty($resource['shared_from_recording_id'])) {
+            $pdo->prepare("DELETE FROM recordings WHERE id = ? AND user_id = ?")
+                ->execute([(int)$resource['shared_from_recording_id'], $user_id]);
         }
+        $pdo->commit();
 
-        // Delete from resources table (this will cascade to other tables if needed)
-        $delete_stmt = $pdo->prepare("DELETE FROM resources WHERE id = ?");
-        $delete_stmt->execute([$recording_id]);
-        
-        // Also delete from recordings table if it exists
-        $delete_recording_stmt = $pdo->prepare("DELETE FROM recordings WHERE id = ?");
-        $delete_recording_stmt->execute([$recording_id]);
-
-        echo json_encode([
-            "status" => "success", 
-            "message" => "Recording deleted successfully from database and cloud storage"
+        rec_json([
+            "ok" => true,
+            "status" => "success",
+            "message" => "Recording deleted successfully"
         ]);
-        
     } catch (Throwable $e) {
-        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log("recordings delete error: " . $e->getMessage());
+        rec_json(["ok" => false, "status" => "error", "message" => "Failed to delete recording"], 500);
     }
-    exit;
 }
 
-echo json_encode(["status" => "error", "message" => "Invalid request method"]);
+rec_json(["ok" => false, "status" => "error", "message" => "Invalid request method"], 405);
 ?>

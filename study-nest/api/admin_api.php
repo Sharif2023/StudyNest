@@ -2,8 +2,8 @@
 require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, session_start(), and error handlers
 require_once __DIR__ . '/auth.php';
 
-$AUTH_MODE = 'link_key';    // or 'none' for dev
-$ADMIN_LINK_KEY = 'MYKEY123';   // must match frontend
+$AUTH_MODE = 'role';
+$ADMIN_LINK_KEY = $_ENV['ADMIN_LINK_KEY'] ?? getenv('ADMIN_LINK_KEY') ?: '';
 $ALLOW_LOCAL_ONLY = true;
 
 /*************** Helpers ***************/
