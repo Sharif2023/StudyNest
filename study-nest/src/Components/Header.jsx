@@ -57,6 +57,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
   const [isSearching, setIsSearching] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const profileRef = useRef(null);
   const searchRef = useRef(null);
   const notificationsRef = useRef(null);
@@ -191,7 +192,11 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
   };
 
   const rawPic = profile?.profile_picture_url || auth?.profile_picture_url;
-  const profile_pic = rawPic ? toBackendUrl(rawPic) + `?v=${profile?.updated_at || '1'}` : null;
+  const profile_pic = rawPic && !avatarBroken ? toBackendUrl(rawPic) + `?v=${profile?.updated_at || '1'}` : null;
+
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [rawPic]);
 
   const markAllAsRead = async () => {
     const uid = profile?.id || auth?.id;
@@ -526,7 +531,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                   boxShadow: "0 0 15px rgba(139,92,246,0.2)"
                 }}>
                 {profile_pic ? (
-                  <img src={profile_pic} alt="Me" className="w-full h-full object-cover" />
+                  <img src={profile_pic} alt="Me" className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"
                     style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>
@@ -574,7 +579,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                       <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0"
                         style={{ border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}>
                         {profile_pic ? (
-                          <img src={profile_pic} alt="Me" className="w-full h-full object-cover" />
+                          <img src={profile_pic} alt="Me" className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"
                             style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>

@@ -1,0 +1,6 @@
+.env
+.env.*
+uploads/
+proofs/
+group_uploads/
+*.log

@@ -1,8 +1,18 @@
-const WebSocket = require('ws');
+const http = require('node:http');
+const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 const PORT = process.env.PORT || 5001;
-const wss = new WebSocket.Server({ port: PORT });
+const server = http.createServer((req, res) => {
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, service: 'studynest-realtime' }));
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('StudyNest realtime server');
+});
+const wss = new WebSocketServer({ server });
 
 /**
  * State: { roomId: { clients: Map<clientId, ws>, meta: {title}, users: Map<clientId, {name, hand, joinedAt}> } }
@@ -55,7 +65,9 @@ wss.on('connection', (ws) => {
         broadcast(roomId, clientId, 'peer-left', { id: cid });
         try {
           oldWs.close(4000, 'replaced');
-        } catch { }
+        } catch {
+          // Socket may already be gone during reconnect races.
+        }
       }
 
       room.clients.set(clientId, ws);
@@ -83,7 +95,9 @@ wss.on('connection', (ws) => {
       roomId = null;
       try {
         ws.close(1000, 'leave');
-      } catch { }
+      } catch {
+        // Socket close is best-effort on explicit leave.
+      }
       return;
     }
 
@@ -162,4 +176,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log('StudyNest signaling server on ws://localhost:' + PORT);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log('StudyNest signaling server on port ' + PORT);
+});

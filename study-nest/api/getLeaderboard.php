@@ -1,7 +1,28 @@
 <?php
 // getLeaderboard.php
 
+define('STUDYNEST_ALLOW_DB_FAILURE', true);
 require_once __DIR__ . '/db.php'; // Provides $pdo, CORS headers, and session_start()
+
+function leaderboard_json(array $data, int $code = 200): void {
+    http_response_code($code);
+    echo json_encode($data, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function empty_leaderboard(string $message = 'Leaderboard temporarily unavailable'): array {
+    return [
+        'success' => true,
+        'ok' => true,
+        'leaderboard' => [],
+        'message' => $message,
+    ];
+}
+
+if (!isset($pdo) || !$pdo instanceof PDO) {
+    error_log('getLeaderboard DB unavailable: ' . ($GLOBALS['STUDYNEST_DB_ERROR'] ?? 'unknown'));
+    leaderboard_json(empty_leaderboard());
+}
 
 try {
     // Get top 50 users by points with ranking using PostgreSQL window function
@@ -18,42 +39,25 @@ try {
     ");
     
     $stmt->execute();
-    $leaderboard = $stmt->fetchAll();
+    $leaderboard = array_map(static function ($row) {
+        return [
+            'id' => (int)$row['id'],
+            'name' => $row['name'] ?: 'Student',
+            'student_id' => $row['student_id'] ?? '',
+            'points' => (int)($row['points'] ?? 0),
+            'rank' => (int)($row['rank'] ?? 0),
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
-    // If no users exist, return empty array (or fallback if you prefer)
-    if (empty($leaderboard)) {
-        // You could optionally insert sample data here using PostgreSQL 'ON CONFLICT' syntax
-        // but for now we'll just return what's in the DB.
-    }
-
-    echo json_encode([
+    leaderboard_json([
+        'ok' => true,
         'success' => true,
         'leaderboard' => $leaderboard,
         'message' => count($leaderboard) . ' users found'
     ]);
     
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Database error: ' . $e->getMessage(),
-        'leaderboard' => getFallbackLeaderboard()
-    ]);
-}
-
-// Fallback data if everything fails
-function getFallbackLeaderboard() {
-    return [
-        ['id' => 1, 'name' => 'John Doe', 'student_id' => 'STU001', 'points' => 1250, 'rank' => 1],
-        ['id' => 2, 'name' => 'Jane Smith', 'student_id' => 'STU002', 'points' => 980, 'rank' => 2],
-        ['id' => 3, 'name' => 'Mike Johnson', 'student_id' => 'STU003', 'points' => 875, 'rank' => 3],
-        ['id' => 4, 'name' => 'Sarah Wilson', 'student_id' => 'STU004', 'points' => 760, 'rank' => 4],
-        ['id' => 5, 'name' => 'Alex Chen', 'student_id' => 'STU005', 'points' => 650, 'rank' => 5],
-        ['id' => 6, 'name' => 'Emily Davis', 'student_id' => 'STU006', 'points' => 540, 'rank' => 6],
-        ['id' => 7, 'name' => 'David Brown', 'student_id' => 'STU007', 'points' => 430, 'rank' => 7],
-        ['id' => 8, 'name' => 'Lisa Garcia', 'student_id' => 'STU008', 'points' => 320, 'rank' => 8],
-        ['id' => 9, 'name' => 'Kevin Lee', 'student_id' => 'STU009', 'points' => 210, 'rank' => 9],
-        ['id' => 10, 'name' => 'Amy Martinez', 'student_id' => 'STU010', 'points' => 150, 'rank' => 10],
-    ];
+    error_log('getLeaderboard error: ' . $e->getMessage());
+    leaderboard_json(empty_leaderboard());
 }
 ?>

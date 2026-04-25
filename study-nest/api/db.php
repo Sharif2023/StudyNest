@@ -420,6 +420,11 @@ try {
     } catch (Throwable $e) { /* Index creation should not block startup. */ }
 
 } catch (Throwable $e) {
+    if (defined('STUDYNEST_ALLOW_DB_FAILURE') && STUDYNEST_ALLOW_DB_FAILURE) {
+        $GLOBALS['STUDYNEST_DB_ERROR'] = $e->getMessage();
+        $pdo = null;
+        return;
+    }
     if (!headers_sent()) {
         global $allowOrigin;
         header("Access-Control-Allow-Origin: " . ($allowOrigin ?? '*'));
@@ -428,7 +433,12 @@ try {
         header("Content-Type: application/json; charset=utf-8");
         http_response_code(500);
     }
-    echo json_encode(['ok' => false, 'error' => 'DB bootstrap failed', 'detail' => $e->getMessage()]);
+    $debug = (($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG')) === 'true');
+    echo json_encode([
+        'ok' => false,
+        'error' => 'DB bootstrap failed',
+        'detail' => $debug ? $e->getMessage() : null,
+    ]);
     exit;
 }
 
