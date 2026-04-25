@@ -30,20 +30,24 @@ export default function Home() {
     setPoints(storedProfile.points || 0);
 
     (async () => {
-      try {
-        const [roomsRes, qaRes, todoRes, leaderRes] = await Promise.all([
-          apiClient.get("meetings.php"),
-          apiClient.get("QnAForum.php"),
-          storedProfile.id ? apiClient.get(`todo.php?user_id=${storedProfile.id}`) : Promise.resolve({ data: { todos: [] } }),
-          apiClient.get("getLeaderboard.php"),
-        ]);
+      const results = await Promise.allSettled([
+        apiClient.get("meetings.php"),
+        apiClient.get("QnAForum.php"),
+        storedProfile.id ? apiClient.get(`todo.php?user_id=${storedProfile.id}`) : Promise.resolve({ data: { todos: [] } }),
+        apiClient.get("getLeaderboard.php"),
+      ]);
+      const [roomsRes, qaRes, todoRes, leaderRes] = results.map((result) =>
+        result.status === "fulfilled" ? result.value : { data: {} }
+      );
+      results.forEach((result, index) => {
+        if (result.status === "rejected") console.error("Dashboard widget load failed:", index, result.reason);
+      });
         setData({
           rooms: roomsRes.data?.rooms?.slice(0, 3) || [],
           qa: qaRes.data?.data?.slice(0, 3) || (Array.isArray(qaRes.data) ? qaRes.data.slice(0, 3) : []),
           todos: todoRes.data?.todos?.slice(0, 5) || [],
           leaderboard: leaderRes.data?.leaderboard?.slice(0, 5) || [],
         });
-      } catch (err) { console.error("Dashboard load:", err); }
     })();
   }, []);
  
@@ -52,7 +56,9 @@ export default function Home() {
       try {
         const res = await apiClient.get("meetings.php");
         setData((d) => ({ ...d, rooms: res.data?.rooms?.slice(0, 3) || [] }));
-      } catch { }
+      } catch {
+        // Keep the current dashboard data if the refresh pulse fails.
+      }
     };
     window.addEventListener("studynest:rooms-refresh", refresh);
     return () => window.removeEventListener("studynest:rooms-refresh", refresh);

@@ -206,17 +206,38 @@ export function EditProfile({ user, onChange }) {
   async function handleProfilePicture(e) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const form = new FormData();
-    form.append("file", f);
+    if (!f.type?.startsWith("image/")) {
+      alert("Please choose an image file.");
+      return;
+    }
     try {
-      const response = await apiClient.post("upload.php", form, {
-        headers: { "Content-Type": "multipart/form-data" }
+      const signatureRes = await apiClient.post("cloudinary_signature.php", {
+        resource_type: "image",
+        folder: "studynest_profiles",
+        context: `user=${id || "profile"}`
       });
-      const j = response.data;
-      if (j?.ok && j.url) setProfilePictureUrl(j.url);
-      else alert("Upload failed: " + (j?.error || "unknown error"));
+      const signature = signatureRes.data;
+      if (!signature?.ok) throw new Error(signature?.error || "Cloud upload is not configured.");
+
+      const form = new FormData();
+      form.append("file", f, f.name);
+      form.append("api_key", signature.api_key);
+      form.append("signature", signature.signature);
+      Object.entries(signature.params || {}).forEach(([key, value]) => {
+        form.append(key, value);
+      });
+
+      const uploadRes = await fetch(signature.upload_url, {
+        method: "POST",
+        body: form,
+      });
+      const upload = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok || !upload.secure_url) {
+        throw new Error(upload?.error?.message || "Upload failed");
+      }
+      setProfilePictureUrl(upload.secure_url);
     } catch (err) {
-      alert("Upload error: " + err.message);
+      alert("Upload error: " + (err.message || "unknown error"));
     }
   }
 

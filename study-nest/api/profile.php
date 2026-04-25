@@ -8,6 +8,14 @@ require_once __DIR__ . '/auth.php'; // Provides JWT/Session validation
 // --- Authentication Check ---
 $user_id = requireAuth(); // Automatically handles 401 if missing
 
+function normalize_profile_picture_url($url) {
+    $url = trim((string)$url);
+    if ($url === '') return null;
+    if (preg_match('/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\//', $url)) return $url;
+    if (preg_match('#^/api/uploads/[a-zA-Z0-9._/-]+$#', $url)) return $url;
+    if (preg_match('#^uploads/[a-zA-Z0-9._/-]+$#', $url)) return '/api/' . $url;
+    return null;
+}
 
 // Verify the user exists
 try {
@@ -103,7 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['content'])) {
     ]);
   } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(["ok" => false, "error" => $e->getMessage(), "trace" => $e->getTraceAsString()]);
+    error_log("profile content error: " . $e->getMessage());
+    $debug = (($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG')) === 'true');
+    echo json_encode(["ok" => false, "error" => "Failed to load profile content", "detail" => $debug ? $e->getMessage() : null]);
   }
   exit;
 }
@@ -131,6 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (!$row) {
       echo json_encode(["ok" => false, "error" => "User not found"]);
       exit;
+    }
+    $storedPictureUrl = $row['profile_picture_url'] ?? null;
+    $row['profile_picture_url'] = normalize_profile_picture_url($storedPictureUrl);
+    if ($storedPictureUrl && !$row['profile_picture_url']) {
+      $pdo->prepare("UPDATE users SET profile_picture_url = NULL WHERE id = ?")->execute([$user_id]);
     }
 
     // Get counts for profile overview

@@ -3,6 +3,15 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
 StudyNestAuth::init();
 
+function login_profile_picture_url($url) {
+    $url = trim((string)$url);
+    if ($url === '') return null;
+    if (preg_match('/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\//', $url)) return $url;
+    if (preg_match('#^/api/uploads/[a-zA-Z0-9._/-]+$#', $url)) return $url;
+    if (preg_match('#^uploads/[a-zA-Z0-9._/-]+$#', $url)) return '/api/' . $url;
+    return null;
+}
+
 try {
     $data = json_decode(file_get_contents('php://input'), true) ?: [];
     $email = strtolower(trim($data['email'] ?? ''));
@@ -70,7 +79,7 @@ try {
         'email' => $user['email'],
         'name' => $user['username'],
         'username' => $user['username'],
-        'profile_picture_url' => $user['profile_picture_url'],
+        'profile_picture_url' => login_profile_picture_url($user['profile_picture_url']),
         'bio' => $user['bio'],
         'points' => $newPoints,
         'points_earned' => $pointsEarned,

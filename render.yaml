@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: studynest-api
+    env: docker
+    rootDir: study-nest/api
+    healthCheckPath: /api/health.php
+
+  - type: web
+    name: studynest-realtime
+    env: node
+    rootDir: study-nest
+    buildCommand: npm install
+    startCommand: npm run realtime
+    healthCheckPath: /healthz
