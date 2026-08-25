@@ -53,7 +53,7 @@ export default function LandingFooter() {
                 </li>
               ))}
               <li>
-                <a href="https://engineer-sharif.infinityfreeapp.com/#contact" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-cyan-600 hover:text-cyan-700 transition-colors">
+                <a href="https://si-sharif.vercel.app/?i=1#contact" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-cyan-600 hover:text-cyan-700 transition-colors">
                   Support Protocol
                 </a>
               </li>

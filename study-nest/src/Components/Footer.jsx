@@ -104,7 +104,7 @@ export default function Footer({ sidebarWidth = 80 }) {
             <div className="flex items-center gap-6">
               {links.map((item) => (
                 <a key={item}
-                  href={item === "Privacy" ? "#" : item === "Terms" ? "#" : item === "Support" ? "https://engineer-sharif.infinityfreeapp.com/#contact" : "#"}
+                  href={item === "Privacy" ? "#" : item === "Terms" ? "#" : item === "Support" ? "https://si-sharif.vercel.app/?i=1#contact" : "https://si-sharif.vercel.app/"}
                   className="text-xs font-semibold uppercase tracking-widest transition-colors duration-200"
                   style={{ color: "#475569" }}
                   onMouseEnter={e => e.currentTarget.style.color = "#a78bfa"}

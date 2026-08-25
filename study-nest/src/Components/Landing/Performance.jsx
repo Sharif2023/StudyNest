@@ -3,39 +3,42 @@ import { motion } from "framer-motion";
 import { useCountUp, QuoteIcon } from "./LandingShared";
 
 export default function Performance() {
-  const { ref, value } = useCountUp({ target: 15420, duration: 2500 });
+
   const testimonials = [
     {
-      quote: "StudyNest synchronized our entire CSE220 squad. We hit milestones faster than ever.",
-      author: "Rafi Ahmed",
-      role: "Engineering, UIU",
+      quote: "One day, all your hard work will pay off.",
+      author: "Liam Porritt",
+      role: "Internet personality",
+      img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToZlbQuHe8npFtz0FJLhx5Ey0TyUp260wltaODXDkE3gaVwPxdzi7eYXzfKvjU_VkjdY96Tc-bfjmb7lOe1iHlZ549HIEke0gxZiz8aO9cyQ&s=10",
+
     },
     {
-      quote: "The resource management is pure gold. No more hunting for lecture notes in lost group chats.",
-      author: "Nusrat Jahan",
-      role: "Business, UIU",
+      quote: "Education is the most powerful weapon which you can use to change the world.",
+      author: "Nelson Mandela",
+      role: "Revolutionary and former President of South Africa",
+      img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT3nlZVpiS0TxJg9MvnmPyqrjeNaeYhpDPJEs4t53tzuLSfR_IhXQQMF3PN48VbydwlsEGbwn4tzu1z64FhdTPY6A2z_zcKpiVWJIuoJ_UZ&s=10",
     },
   ];
 
   return (
-    <section className="bg-white py-32 overflow-hidden">
+    <section className="bg-white py-10 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-24 lg:grid-cols-2 items-center">
+        <div className="mb-16 lg:mb-24">
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-600 mb-4 block">Real Impact</span>
+          <h2 className="text-5xl md:text-6xl font-black text-zinc-900 tracking-tighter leading-[0.9]">
+            Exponential<br />
+            <span className="text-zinc-400 italic font-light">Growth.</span>
+          </h2>
+        </div>
+        
+        <div className="grid gap-16 lg:gap-24 lg:grid-cols-2 items-center">
           <div>
-            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-600 mb-6 block">Real Impact</span>
-            <h2 className="text-5xl md:text-6xl font-black text-zinc-900 tracking-tighter leading-[0.9]">
-              Exponential<br />
-              <span className="text-zinc-400 italic font-light">Growth.</span>
-            </h2>
-            
-            <div ref={ref} className="mt-12 group bg-zinc-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden transition-transform hover:-rotate-1">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-                <span className="block text-sm font-black uppercase tracking-widest text-white/50 mb-2">Sessions Synchronized</span>
-                <span className="text-5xl sm:text-7xl font-black tracking-tight">{value.toLocaleString()}</span>
-                <div className="mt-8 flex items-center gap-2">
-                    <div className="w-8 h-1 bg-cyan-500 rounded-full" />
-                    <span className="text-xs font-bold text-white/60">Rising Daily</span>
-                </div>
+            <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-zinc-200 aspect-[4/3] bg-zinc-50 transition-transform hover:-rotate-1">
+                <img
+                  src="https://media.tenor.com/TYOAmtDprC8AAAAM/chat-bot.gif"
+                  alt="AI Chat Bot Assistant"
+                  className="w-full h-full object-cover"
+                />
             </div>
           </div>
 
@@ -56,7 +59,13 @@ export default function Performance() {
                   “{t.quote}”
                 </blockquote>
                 <figcaption className="mt-6 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-zinc-200" />
+                  <div className="w-10 h-10 rounded-full overflow-hidden">
+                      <img
+                        src={t.img}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                  </div>
                   <div>
                     <span className="block font-black text-zinc-900 text-sm">{t.author}</span>
                     <span className="block text-xs text-zinc-400 font-bold uppercase tracking-wider">{t.role}</span>
