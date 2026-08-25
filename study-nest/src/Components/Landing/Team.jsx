@@ -42,7 +42,7 @@ export default function Team() {
               <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 opacity-0 blur-2xl transition-opacity duration-700 group-hover:opacity-100" />
               
               <a 
-                href={p.name === "Shariful Islam" ? "https://engineer-sharif.infinityfreeapp.com/" : "#"} 
+                href={p.name === "Shariful Islam" ? "https://si-sharif.vercel.app/" : "https://github.com/Sharif2023"} 
                 target={p.name === "Shariful Islam" ? "_blank" : "_self"}
                 rel="noopener noreferrer"
                 className="relative rounded-[2rem] bg-white p-5 text-center shadow-xl shadow-black/5 ring-1 ring-zinc-200 transition-all duration-500 hover:-translate-y-4 hover:shadow-2xl block"
