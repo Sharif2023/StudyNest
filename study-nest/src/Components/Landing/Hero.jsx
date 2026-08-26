@@ -103,17 +103,6 @@ export default function Hero() {
 
                 {/* Glass overlay on main image */}
                 <div className="absolute bottom-0 left-0 w-full p-6 z-20">
-                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex -space-x-3">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-zinc-200 overflow-hidden">
-                            <img src={`https://i.pravatar.cc/100?img=${i + 15}`} alt="avatar" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
                   <div className="h-1 w-full bg-white/30 rounded-full overflow-hidden">
                     <motion.div
                       className="h-full bg-cyan-400"

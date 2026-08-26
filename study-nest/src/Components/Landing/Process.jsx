@@ -8,7 +8,7 @@ export default function Process() {
       n: "01",
       title: "Session Formation",
       body: "Establish your perimeter. Create open or encrypted study groups tailored to your academic trajectory.",
-      img: "https://www.uiu.ac.bd/wp-content/uploads/2023/12/IMG_1752-Edited.jpg",
+      img: "https://images.stockcake.com/public/b/2/3/b23d669d-d751-45e7-af44-94cc97af960c_large/students-studying-together-stockcake.jpg",
     },
     {
       n: "02",
