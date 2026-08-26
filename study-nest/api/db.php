@@ -23,7 +23,15 @@ $allowed_origins = array_merge($allowed_origins, [
     'http://localhost:5174',
     'http://127.0.0.1:5174',
 ]);
-$allowOrigin = in_array($origin, $allowed_origins, true) ? $origin : ($origin === '' ? '*' : 'null');
+
+if (!empty($configuredOrigins)) {
+    // If explicitly configured, enforce strict checking
+    $allowOrigin = in_array($origin, $allowed_origins, true) ? $origin : ($origin === '' ? '*' : 'null');
+} else {
+    // If not configured, default to allowing the requester's origin
+    $allowOrigin = $origin !== '' ? $origin : '*';
+}
+
 header("Access-Control-Allow-Origin: $allowOrigin");
 header("Vary: Origin");
 header("Access-Control-Allow-Credentials: true");
