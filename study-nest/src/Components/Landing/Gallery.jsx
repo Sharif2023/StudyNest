@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 
 export default function Gallery() {
   const imgs = [
-    "https://images.unsplash.com/photo-1556761175-b413da4baf72?q=85&w=3840&auto=format&fit=crop",
-    "https://images.pexels.com/photos/15244082/pexels-photo-15244082/free-photo-of-hands-of-a-group-of-students-studying-together-around-a-table.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-    "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=85&w=3840&auto=format&fit=crop",
-    "https://images.stockcake.com/public/b/2/3/b23d669d-d751-45e7-af44-94cc97af960c_large/students-studying-together-stockcake.jpg",
+    "https://nsrit.com/wp-content/uploads/2025/11/Is-This-You-Frustrated-by-IT-Animated-GIF.gif",
+    "https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUyMW95eWdobDRzcG82dmpjcGUzOGgwcnZtODRqd3NyaXM1bXh6dHp6cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/fXo1IT0aoGCWXw4lzd/giphy.gif",
+    "https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUyNzVxc3k0dDFicmwzbTByNjhpZ2lleTJmdnUweXB5azV2YXN4eHhkdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/SVZDSEPldhypJpmhPv/giphy.gif",
+    "https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUyY2R1OG55ZXAwam51anZlZWl4YndueXl5cmF0bnU4YzY3eGozZmEwOSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/fSYjlNlW2eDJCSgGvt/giphy.gif",
   ];
 
   return (
