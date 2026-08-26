@@ -86,7 +86,7 @@ const Auth = () => {
         setError(data.error || data.message || "Login failed.");
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message === "Failed to fetch" ? "Network error. Check connection." : err.message);
+      setError(err.response?.data?.error || (err.message === "Network Error" || err.message === "Failed to fetch" ? "Network error. Check connection." : err.message));
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ const Auth = () => {
         setError(data.error || data.message || "Signup failed.");
       }
     } catch (err) {
-      setError(err.message === "Failed to fetch" ? "Network error. Check connection." : err.message);
+      setError(err.response?.data?.error || (err.message === "Network Error" || err.message === "Failed to fetch" ? "Network error. Check connection." : err.message));
     } finally {
       setLoading(false);
     }
