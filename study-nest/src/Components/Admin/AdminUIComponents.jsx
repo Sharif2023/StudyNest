@@ -36,7 +36,7 @@ export function DataTable({ columns, data }) {
                         {data.map((row, i) => (
                             <tr key={i} className="hover:bg-white/[0.02] transition-all">
                                 {columns.map(c => (
-                                    <td key={c} className="px-8 py-6 text-sm text-slate-400">{row[c]}</td>
+                                    <td key={c} className="px-8 py-6 text-sm text-[#66625C]">{row[c]}</td>
                                 ))}
                             </tr>
                         ))}
@@ -52,7 +52,7 @@ export function ActionButton({ icon: Icon, color, onClick }) {
     const colors = {
         rose: "text-rose-500 hover:bg-rose-500 hover:text-white border-rose-500/20",
         emerald: "text-emerald-500 hover:bg-emerald-500 hover:text-white border-emerald-500/20",
-        slate: "text-slate-500 hover:bg-white/10 border-white/10",
+        slate: "text-[#66625C] hover:bg-white/10 border-white/10",
         cyan: "text-cyan-500 hover:bg-cyan-500 hover:text-white border-cyan-500/20"
     };
     return (

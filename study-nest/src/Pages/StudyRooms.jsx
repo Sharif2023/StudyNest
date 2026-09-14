@@ -106,12 +106,12 @@ export function RoomsLobby() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#08090e] flex flex-col selection:bg-cyan-500/30 selection:text-white relative">
+    <div className="min-h-screen bg-[#F0F4F8] flex flex-col selection:bg-cyan-500/30 selection:text-white relative">
       <Header sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} navOpen={navOpen} />
       <div className="flex flex-1 overflow-hidden relative">
         <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={sidebarWidth} />
         <main 
-          style={{ paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth }}
+          style={{ marginLeft: window.innerWidth < 1024 ? 0 : sidebarWidth }}
           className="flex-1 overflow-y-auto p-6 lg:p-12 custom-scrollbar relative z-10 transition-all duration-300"
         >
           <div className="mx-auto max-w-7xl">
@@ -121,24 +121,24 @@ export function RoomsLobby() {
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-[#001D36]/10 shadow-sm"
                 >
-                  <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Study Lobbies</span>
+                  <div className="w-2 h-2 rounded-full bg-[#8AB100] animate-pulse" />
+                  <span className="text-[10px] font-black text-[#001D36] uppercase tracking-[0.2em]">Study Lobbies</span>
                 </motion.div>
                 <motion.h1 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tighter leading-none"
+                  className="text-4xl sm:text-6xl md:text-7xl font-black text-[#001D36] tracking-tighter leading-none"
                 >
                   LIVE STUDY<br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600">SESSIONS.</span>
+                  <span className="text-white bg-[#001D36] px-2 py-1 mt-2 inline-block">SESSIONS.</span>
                 </motion.h1>
                 <motion.p 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-slate-400 text-lg font-medium max-w-xl leading-relaxed"
+                  className="text-[#66625C] text-lg font-medium max-w-xl leading-relaxed"
                 >
                   Join real-time synchronization rooms to study together, share resources, and help each other succeed.
                 </motion.p>
@@ -150,12 +150,12 @@ export function RoomsLobby() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate("/rooms/newform")}
-                className="group relative px-8 py-5 bg-white text-black rounded-[2rem] font-black uppercase tracking-widest text-xs overflow-hidden shadow-2xl shadow-white/10"
+                className="group relative px-8 py-5 bg-[#F18900] text-white rounded-[2rem] font-black uppercase tracking-widest text-xs overflow-hidden shadow-lg shadow-[#F18900]/30 border border-[#F18900]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <span className="relative z-10 flex items-center gap-3 group-hover:text-white transition-colors">
+                <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
+                <span className="relative z-10 flex items-center gap-3">
                   <Plus className="w-4 h-4" />
-                  Initialize Room
+                  Create Room
                 </span>
               </motion.button>
             </div>
@@ -179,8 +179,8 @@ export function RoomsLobby() {
         
         {/* Background Decorations */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/5 blur-[150px] rounded-full animate-pulse" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/5 blur-[150px] rounded-full animate-pulse-slow" />
+          <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#00808C]/5 blur-[150px] rounded-full animate-pulse" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#8AB100]/5 blur-[150px] rounded-full animate-pulse-slow" />
         </div>
       </div>
       <Footer />
@@ -530,10 +530,10 @@ export function StudyRoom() {
   }
 
   return (
-    <main className="min-h-screen bg-[#08090e] flex flex-col selection:bg-black/50 selection:text-white">
+    <main className="min-h-screen bg-[#F0F4F8] flex flex-col selection:bg-black/50 selection:text-white">
       {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-white/10 bg-white/5 backdrop-blur-xl shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-white">
+      <div className="sticky top-0 z-20 border-b border-[#001D36]/10 bg-white backdrop-blur-xl shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-[#001D36]">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -544,15 +544,15 @@ export function StudyRoom() {
                 localStorage.setItem(MINIMIZE_KEY, roomId);
                 navigate(`/home?room=${roomId}`);
               }}
-              className="rounded-xl p-2 hover:bg-white/5 transition-colors"
+              className="rounded-xl p-2 hover:bg-[#001D36]/5 transition-colors border border-transparent hover:border-[#001D36]/10"
               aria-label="Back"
             >
-              <ArrowLeftIcon className="h-5 w-5" />
+              <ArrowLeftIcon className="h-5 w-5 text-[#001D36]" />
             </button>
             <h1 className="text-sm font-black uppercase tracking-tighter truncate max-w-[60vw]">{roomTitle}</h1>
             {recording && (
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full shadow-lg">
-                <div className="h-2 w-2 bg-white/5 rounded-full animate-pulse shadow-[0_0_8px_white]" />
+              <div className="flex items-center gap-2 bg-[#A7481E] px-3 py-1.5 rounded-full shadow-sm">
+                <div className="h-2 w-2 bg-white rounded-full animate-pulse shadow-[0_0_8px_white]" />
                 <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
               </div>
             )}
@@ -563,7 +563,7 @@ export function StudyRoom() {
                 <button
                   type="button"
                   onClick={copyInvite}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-colors shadow-sm"
+                  className="rounded-xl border border-[#001D36]/20 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#001D36] hover:bg-[#001D36]/5 transition-colors shadow-sm"
                 >
                   Invite link
                 </button>
@@ -572,7 +572,7 @@ export function StudyRoom() {
                     type="button"
                     onClick={() => setFinishModalOpen(true)}
                     disabled={ending}
-                    className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-fuchsia-900/30 transition hover:brightness-110 disabled:opacity-50"
+                    className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-[#A7481E] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"
                   >
                     <span className="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-100" />
                     <Sparkles className="relative h-3.5 w-3.5" />
@@ -586,9 +586,9 @@ export function StudyRoom() {
               type="button"
               onClick={handleLeaveRoom}
               disabled={leaving}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/90 backdrop-blur-sm transition hover:border-white/25 hover:bg-white/[0.08] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#001D36]/20 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#A7481E] backdrop-blur-sm transition hover:border-[#A7481E] hover:bg-[#A7481E]/5 disabled:opacity-50 shadow-sm"
             >
-              <LogOut className="h-3.5 w-3.5 opacity-80" />
+              <LogOut className="h-3.5 w-3.5" />
               {leaving ? "Leaving…" : "Leave"}
             </button>
           </div>
@@ -657,7 +657,7 @@ export function StudyRoom() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 backdrop-blur-md"
             role="dialog"
             aria-modal="true"
             aria-labelledby="finish-session-title"
@@ -668,30 +668,28 @@ export function StudyRoom() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.94, opacity: 0, y: 12 }}
               transition={{ type: "spring", damping: 26, stiffness: 320 }}
-              className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-900/98 to-[#06070c] p-8 shadow-2xl shadow-black/60 ring-1 ring-white/5"
+              className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-[#001D36]/10 bg-white p-8 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-fuchsia-600/20 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-violet-600/15 blur-3xl" />
 
               <button
                 type="button"
                 aria-label="Close"
                 disabled={ending}
                 onClick={() => setFinishModalOpen(false)}
-                className="absolute right-5 top-5 rounded-full p-2 text-white/50 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                className="absolute right-5 top-5 rounded-full p-2 text-[#66625C] transition hover:bg-[#001D36]/5 hover:text-[#001D36] disabled:opacity-40"
               >
                 <X className="h-4 w-4" />
               </button>
 
-              <div className="relative mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-fuchsia-900/40">
-                <Sparkles className="h-7 w-7 text-white" />
+              <div className="relative mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#001D36]/5 border border-[#001D36]/10 shadow-sm">
+                <Sparkles className="h-7 w-7 text-[#001D36]" />
               </div>
 
-              <h2 id="finish-session-title" className="relative text-xl font-black uppercase tracking-tight text-white">
+              <h2 id="finish-session-title" className="relative text-xl font-black uppercase tracking-tight text-[#001D36]">
                 Finish for everyone?
               </h2>
-              <p className="relative mt-3 text-sm leading-relaxed text-slate-400">
+              <p className="relative mt-3 text-sm leading-relaxed text-[#66625C]">
                 This ends the session in the lobby, closes all participant seats, and sends everyone back home. You can start a new room anytime.
               </p>
 
@@ -700,7 +698,7 @@ export function StudyRoom() {
                   type="button"
                   disabled={ending}
                   onClick={() => setFinishModalOpen(false)}
-                  className="rounded-2xl border border-white/10 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 transition hover:border-white/20 hover:bg-white/5 disabled:opacity-50"
+                  className="rounded-2xl border border-[#001D36]/20 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-[#001D36] transition hover:border-[#001D36]/40 hover:bg-[#001D36]/5 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -708,7 +706,7 @@ export function StudyRoom() {
                   type="button"
                   disabled={ending}
                   onClick={confirmFinishMeeting}
-                  className="rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-fuchsia-900/30 transition hover:brightness-110 disabled:opacity-50"
+                  className="rounded-2xl bg-[#A7481E] px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#A7481E]/30 transition hover:brightness-110 disabled:opacity-50"
                 >
                   {ending ? "Finishing…" : "Finish session"}
                 </button>
@@ -750,7 +748,7 @@ export function NewRoomRedirect() {
     })();
   }, [navigate]);
   return (
-    <div className="min-h-screen bg-[#08090e] grid place-items-center text-slate-500 text-xs font-bold uppercase tracking-widest">
+    <div className="min-h-screen bg-[#F0F4F8] grid place-items-center text-[#66625C] text-xs font-bold uppercase tracking-widest">
       Starting room…
     </div>
   );

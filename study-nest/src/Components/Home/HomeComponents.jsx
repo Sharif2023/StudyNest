@@ -32,22 +32,20 @@ export const BentoCard = ({ children, className = "", delay = 0, accentColor }) 
     initial={{ opacity: 0, y: 20, scale: 0.97 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
-    className={`relative overflow-hidden rounded-3xl transition-all duration-500 group ${className}`}
+    className={`relative overflow-hidden rounded-[2rem] bg-white transition-all duration-500 group ${className}`}
     style={{
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.07)",
-      boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+      border: "1px solid rgba(0,29,54,0.08)",
+      boxShadow: "0 4px 12px rgba(0,29,54,0.03)",
     }}
     whileHover={{
       y: -4,
-      boxShadow: accentColor
-        ? `0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px ${accentColor}30`
-        : "0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(139,92,246,0.15)",
+      borderColor: accentColor || "rgba(0,29,54,0.2)",
+      boxShadow: "0 12px 32px rgba(0,29,54,0.08)",
     }}
   >
     {accentColor && (
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-3xl"
-        style={{ background: `radial-gradient(ellipse at top left, ${accentColor}12, transparent 60%)` }} />
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-[2rem]"
+        style={{ background: "transparent" }} />
     )}
     <div className="relative z-10 h-full">{children}</div>
   </motion.div>
@@ -55,14 +53,13 @@ export const BentoCard = ({ children, className = "", delay = 0, accentColor }) 
 
 // ─── Section Label ────────────────────────────────────────────────────────────
 export const SectionLabel = ({ label, icon: Icon }) => (
-  <div className="flex items-center gap-3 mb-6">
-    <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-      style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}>
-      <Icon className="w-4 h-4" style={{ color: "#a78bfa" }} />
+  <div className="flex items-center gap-4 mb-8">
+    <div className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-[#001D36]/5 border border-[#001D36]/10">
+      <Icon className="w-5 h-5 text-[#001D36]" />
     </div>
-    <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: "#64748b" }}>
+    <h2 className="text-sm font-bold uppercase tracking-widest text-[#001D36]">
       {label}
     </h2>
-    <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+    <div className="flex-1 h-px bg-[#001D36]/10" />
   </div>
 );

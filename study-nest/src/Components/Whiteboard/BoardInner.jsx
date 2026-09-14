@@ -133,7 +133,7 @@ export default function BoardInner({ rtc, roomId, me, participants, className = 
       ctx.restore();
 
       ctx.save();
-      ctx.strokeStyle = bg === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+      ctx.strokeStyle = bg === "dark" ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.06)";
       ctx.lineWidth = 1;
       const step = 32 * zoom;
       for (let x = stageRef.current.ox % step; x < width; x += step) {

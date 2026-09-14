@@ -86,13 +86,13 @@ export default function Groups() {
     };
 
     return (
-        <div className="min-h-screen bg-[#08090e] text-slate-200 selection:bg-cyan-500/30">
+        <div className="min-h-screen bg-[#F0F4F8] text-[#001D36] selection:bg-cyan-500/30">
             <LeftNav sidebarWidth={72} />
             <Header sidebarWidth={72} />
 
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(100px)" }} />
-                <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(100px)" }} />
+                <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: "transparent", filter: "none" }} />
+                <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full opacity-[0.03]" style={{ background: "transparent", filter: "none" }} />
             </div>
 
             <main className="relative z-10 pt-32 pb-20 px-6 max-w-6xl mx-auto" style={{ paddingLeft: "calc(72px + 1.5rem)" }}>
@@ -103,9 +103,9 @@ export default function Groups() {
                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">Collaborative Ecosystem</span>
                         </div>
                         <h1 className="text-5xl md:text-6xl font-display font-black text-white leading-tight tracking-tighter mb-4 italic">
-                            STUDY <span className="text-gradient-brand underline decoration-zinc-800 decoration-4 underline-offset-8">GROUPS.</span>
+                            STUDY <span className="text-[#001D36] underline decoration-zinc-800 decoration-4 underline-offset-8">GROUPS.</span>
                         </h1>
-                        <p className="max-w-xl text-slate-500 text-sm font-medium leading-relaxed">
+                        <p className="max-w-xl text-[#66625C] text-sm font-medium leading-relaxed">
                             Connect with peers from your specific sections. Access exclusive resources, routine-synced chats, and synchronized learning environments.
                         </p>
                     </motion.div>
@@ -116,7 +116,7 @@ export default function Groups() {
                     <div className="lg:col-span-3">
                         <div className="glass-card p-2 rounded-[2rem] border border-white/10 bg-white/[0.02] flex items-center group transition-all hover:bg-white/[0.04]">
                             <div className="relative flex-1">
-                                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#66625C] group-hover:text-cyan-400 transition-colors" />
                                 <input
                                     type="text"
                                     value={search}
@@ -129,7 +129,7 @@ export default function Groups() {
                     </div>
                     <div className="lg:col-span-1 glass-card p-6 rounded-[2rem] border border-white/10 bg-white/[0.02] flex items-center justify-between">
                         <div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">My Nodes</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-[#66625C]">My Nodes</div>
                             <div className="text-3xl font-black text-white">{myGroups.length}</div>
                         </div>
                         <Users className="w-8 h-8 text-cyan-500/50" />
@@ -167,7 +167,7 @@ export default function Groups() {
                                             {status === "accepted" ? (
                                                 <Link
                                                     to={`/group/${g.id}`}
-                                                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition-all"
+                                                    className="w-full py-4 rounded-2xl bg-white text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:scale-[1.02] transition-all"
                                                 >
                                                     Enter Neural Link <ArrowRight size={14} />
                                                 </Link>
@@ -216,7 +216,7 @@ export default function Groups() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setJoinModal({ open: false, groupId: null, sectionName: "" })} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
                         <motion.div initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-lg glass-card p-10 rounded-[3rem] border border-white/10 bg-[#0c0d12] shadow-2xl">
                             <h2 className="text-2xl font-black text-white uppercase italic tracking-tight mb-2">Initialize Join</h2>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8 italic">{joinModal.sectionName}</p>
+                            <p className="text-[10px] font-black text-[#66625C] uppercase tracking-widest mb-8 italic">{joinModal.sectionName}</p>
 
                             <div className="space-y-6">
                                 <div className="relative border-2 border-dashed border-white/10 hover:border-cyan-500/50 rounded-[2rem] p-12 text-center transition-all bg-white/[0.01]">
@@ -236,17 +236,17 @@ export default function Groups() {
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
-                                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-slate-400">
+                                            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-[#66625C]">
                                                 <Upload size={32} />
                                             </div>
-                                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Upload Class Routine Proof</div>
+                                            <div className="text-[10px] font-black text-[#66625C] uppercase tracking-widest italic">Upload Class Routine Proof</div>
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="flex gap-4">
                                     <button onClick={() => setJoinModal({ open: false, groupId: null, sectionName: "" })} className="flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all">Abort</button>
-                                    <button onClick={handleJoinSubmit} disabled={!proofFile || loading} className="flex-1 py-5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-cyan-500/20 disabled:opacity-40 transition-all">
+                                    <button onClick={handleJoinSubmit} disabled={!proofFile || loading} className="flex-1 py-5 rounded-2xl bg-white text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-cyan-500/20 disabled:opacity-40 transition-all">
                                         {loading ? "Transmitting..." : "Submit Join Request"}
                                     </button>
                                 </div>

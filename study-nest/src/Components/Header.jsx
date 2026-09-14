@@ -19,6 +19,7 @@ import {
 import apiClient, { hasToken, toBackendUrl } from "../apiConfig";
 
 
+
 const PAGE_MAP = {
   "/home":            ["Dashboard",      "Study Hub"],
   "/notes":           ["Notes",          "Academic Library"],
@@ -227,48 +228,38 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
 
   return (
     <header
-      className="sticky top-0 z-40 transition-all duration-500"
+      className="sticky top-0 z-50 transition-all duration-500"
       style={{
-        paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth,
         background: scrolled
-          ? "rgba(8,9,14,0.92)"
-          : "rgba(8,9,14,0.75)",
+          ? "rgba(24, 24, 27, 0.98)" // #18181B
+          : "rgba(24, 24, 27, 0.95)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderBottom: scrolled
-          ? "1px solid rgba(139,92,246,0.12)"
-          : "1px solid rgba(255,255,255,0.05)",
-        boxShadow: scrolled ? "0 4px 32px rgba(0,0,0,0.4)" : "none",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        boxShadow: scrolled ? "0 4px 12px rgba(0,0,0,0.3)" : "none",
       }}
     >
       <div className="flex items-center justify-between h-20 px-6 lg:px-12">
         {/* Mobile Menu Toggle */}
         <button
           onClick={() => setNavOpen(!navOpen)}
-          className="lg:hidden p-2 rounded-xl text-slate-400 hover:bg-white/5 transition-colors mr-2"
+          className="lg:hidden p-2 rounded-xl text-white/70 hover:bg-white/10 transition-colors mr-4"
         >
           {navOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-
+          
         {/* Left: Page Title */}
         <motion.div
-          initial={{ opacity: 0, x: -20, filter: "blur(10px)" }}
-          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, x: -20, filter: "none" }}
+          animate={{ opacity: 1, x: 0, filter: "none" }}
           key={location.pathname}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col"
         >
-          <h1 className="text-lg font-bold tracking-tight leading-none"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text"
-            }}>
+          <h1 className="text-lg font-bold tracking-tight leading-none text-white">
             {pageTitle}
           </h1>
-          <p className="text-[10px] font-bold uppercase tracking-widest mt-1"
-            style={{ color: "#475569" }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-white/50">
             {pageSubtitle}
           </p>
         </motion.div>
@@ -278,11 +269,11 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
           <div
             className="relative w-full transition-all duration-500"
             ref={searchRef}
-            style={{ filter: searchFocused ? "drop-shadow(0 0 20px rgba(139,92,246,0.2))" : "none" }}
+            style={{ filter: searchFocused ? "drop-shadow(0 4px 12px rgba(0,29,54,0.05))" : "none" }}
           >
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all duration-300"
-              style={{ color: searchFocused ? "#a78bfa" : "#475569" }}
+              style={{ color: searchFocused ? "#FFFFFF" : "rgba(255,255,255,0.4)" }}
             />
             <input
               type="text"
@@ -290,13 +281,13 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
-              className="w-full rounded-xl py-3 pl-11 pr-16 text-sm font-medium outline-none transition-all duration-300"
+              className="w-full rounded-xl py-3 pl-11 pr-16 text-sm font-bold outline-none transition-all duration-300 placeholder:text-white/30"
               style={{
-                background: searchFocused ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.04)",
+                background: "rgba(255,255,255,0.05)",
                 border: searchFocused
-                  ? "1px solid rgba(139,92,246,0.4)"
-                  : "1px solid rgba(255,255,255,0.07)",
-                color: "#e2e8f0",
+                  ? "1px solid rgba(255,255,255,0.2)"
+                  : "1px solid rgba(255,255,255,0.05)",
+                color: "#FFFFFF",
               }}
             />
             {isSearching && (
@@ -305,8 +296,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
               </div>
             )}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-              <kbd className="px-2 py-0.5 text-[10px] font-semibold rounded"
-                style={{ background: "rgba(255,255,255,0.06)", color: "#475569", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <kbd className="px-2 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-white/50 border border-white/10">
                 /
               </kbd>
             </div>
@@ -318,12 +308,10 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute left-0 right-0 mt-2 max-h-[400px] overflow-y-auto rounded-2xl p-2 z-50"
+                  className="absolute left-0 right-0 mt-2 max-h-[400px] overflow-y-auto rounded-2xl p-2 z-50 bg-white"
                   style={{
-                    background: "rgba(13,15,26,0.98)",
-                    border: "1px solid rgba(139,92,246,0.2)",
-                    backdropFilter: "blur(20px)",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.5)"
+                    border: "1px solid rgba(0,29,54,0.1)",
+                    boxShadow: "0 12px 32px rgba(0,29,54,0.1)"
                   }}
                 >
                   {searchResults.length > 0 ? (
@@ -339,20 +327,17 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                             else if (item.type === 'forum') navigate(`/forum?id=${item.id}`);
                             else if (item.type === 'room') navigate(`/rooms?id=${item.id}`);
                           }}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left"
-                          onMouseEnter={e => e.currentTarget.style.background = "rgba(139,92,246,0.08)"}
-                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left hover:bg-[#001D36]/5"
                         >
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                            {item.type === 'note' && <LayoutGrid className="w-4 h-4 text-emerald-400" />}
-                            {item.type === 'resource' && <Sparkles className="w-4 h-4 text-violet-400" />}
-                            {item.type === 'forum' && <MessageSquare className="w-4 h-4 text-amber-400" />}
-                            {item.type === 'room' && <Video className="w-4 h-4 text-sky-400" />}
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#001D36]/5 border border-[#001D36]/10">
+                            {item.type === 'note' && <LayoutGrid className="w-4 h-4 text-[#F18900]" />}
+                            {item.type === 'resource' && <Sparkles className="w-4 h-4 text-[#00808C]" />}
+                            {item.type === 'forum' && <MessageSquare className="w-4 h-4 text-[#8AB100]" />}
+                            {item.type === 'room' && <Video className="w-4 h-4 text-[#001D36]" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-gray-200 truncate">{item.title}</h4>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-wider">{item.course || item.type}</p>
+                            <h4 className="text-sm font-bold text-[#001D36] truncate">{item.title}</h4>
+                            <p className="text-[10px] text-[#66625C] uppercase font-bold tracking-wider">{item.course || item.type}</p>
                           </div>
                         </button>
                       ))}
@@ -389,19 +374,15 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                    }
                 }}
                 className={`relative w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 group ${
-                   (action.label === "Alerts" && notificationsOpen) ? "text-violet-400 bg-violet-400/10" : "text-slate-400"
+                   (action.label === "Alerts" && notificationsOpen) ? "text-emerald-400 bg-emerald-400/10" : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
                 ref={action.label === "Alerts" ? notificationsRef : null}
               >
-                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: "rgba(255,255,255,0.05)" }} />
                 {action.icon}
                 {(action.badge && unreadCount > 0) && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                    style={{ background: "#a78bfa", boxShadow: "0 0 8px rgba(139,92,246,0.8)" }}>
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-[#F18900]">
                     {unreadCount > 9 ? '9+' : unreadCount}
-                    <span className="absolute inset-0 rounded-full animate-ping"
-                      style={{ background: "#a78bfa", opacity: 0.5 }} />
+                    <span className="absolute inset-0 rounded-full animate-ping bg-[#F18900] opacity-50" />
                   </span>
                 )}
 
@@ -415,19 +396,19 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                       transition={{ type: "spring", damping: 25, stiffness: 350 }}
                       className="absolute right-0 top-full mt-3 w-80 rounded-2xl overflow-hidden cursor-default"
                       style={{
-                        background: "rgba(13,15,26,0.98)",
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "rgba(255,255,255,0.98)",
+                        border: "1px solid rgba(0,29,54,0.15)",
                         backdropFilter: "blur(24px)",
                         boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.1)",
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                        <h3 className="text-sm font-bold text-slate-200">Notifications</h3>
+                      <div className="p-4 border-b border-[#001D36]/10 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-[#001D36]">Notifications</h3>
                         {unreadCount > 0 && (
                           <button 
                             onClick={markAllAsRead}
-                            className="text-[10px] font-bold text-violet-400 hover:text-violet-300 transition-colors uppercase tracking-wider"
+                            className="text-[10px] font-bold text-[#00808C] hover:text-[#00808C]/80 transition-colors uppercase tracking-wider"
                           >
                             Mark all read
                           </button>
@@ -436,68 +417,67 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
 
                       <div className="max-h-80 overflow-y-auto custom-scrollbar">
                         {notifications.length > 0 ? (
-                          <div className="divide-y divide-white/5">
+                          <div className="divide-y divide-[#001D36]/5">
                             {notifications.map((n, idx) => (
                               <div 
                                 key={idx} 
-                                className={`p-4 transition-colors hover:bg-white/5 cursor-pointer ${!n.read_at ? 'bg-violet-500/5' : ''}`}
+                                className={`p-4 transition-colors hover:bg-[#001D36]/5 cursor-pointer ${!n.read_at ? 'bg-[#001D36]/5' : ''}`}
                                 onClick={() => {
                                   if (n.link) navigate(n.link);
                                   setNotificationsOpen(false);
                                 }}
                               >
                                 <div className="flex gap-3">
-                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                                       style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)" }}>
-                                    <Bell className="w-4 h-4 text-violet-400" />
+                                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-[#001D36]/10">
+                                    <Bell className="w-4 h-4 text-[#001D36]" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-slate-200 truncate">{n.title}</p>
-                                    <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">{n.message}</p>
-                                    <p className="text-[9px] text-slate-500 mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</p>
+                                    <p className="text-xs font-bold text-[#001D36] truncate">{n.title}</p>
+                                    <p className="text-[11px] text-[#66625C] line-clamp-2 mt-0.5">{n.message}</p>
+                                    <p className="text-[9px] text-[#66625C] mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</p>
                                   </div>
-                                  {!n.read_at && <div className="w-2 h-2 rounded-full bg-violet-400 mt-1 self-start" />}
+                                  {!n.read_at && <div className="w-2 h-2 rounded-full bg-[#00808C] mt-1 self-start" />}
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : (
                           <div className="p-8 text-center">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                              <Bell className="w-6 h-6 text-slate-600" />
+                            <div className="w-12 h-12 rounded-full bg-[#001D36]/5 flex items-center justify-center mx-auto mb-3">
+                              <Bell className="w-6 h-6 text-[#66625C]" />
                             </div>
-                            <p className="text-sm text-slate-500">No new alerts</p>
+                            <p className="text-sm text-[#66625C]">No new alerts</p>
                           </div>
                         )}
                       </div>
 
                       {/* Recommended Actions / Feature Highlights */}
                       {auth?.role?.toLowerCase() !== 'admin' && (
-                        <div className="p-4 bg-violet-500/5 border-t border-white/5">
-                          <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-3">Student Highlights</p>
+                        <div className="p-4 bg-[#001D36]/5 border-t border-[#001D36]/5">
+                          <p className="text-[10px] font-bold text-[#001D36] uppercase tracking-widest mb-3">Student Highlights</p>
                           <div className="grid grid-cols-2 gap-2">
                              <button 
                                onClick={() => { navigate("/rooms"); setNotificationsOpen(false); }}
-                               className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+                               className="flex flex-col gap-2 p-3 rounded-xl bg-white border border-[#001D36]/10 hover:border-[#00808C]/50 transition-all text-left group"
                              >
-                               <Video className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-                               <span className="text-[10px] font-bold text-slate-300">Join a Room</span>
+                               <Video className="w-4 h-4 text-[#00808C] group-hover:scale-110 transition-transform" />
+                               <span className="text-[10px] font-bold text-[#001D36]">Join a Room</span>
                              </button>
                              <button 
                                onClick={() => { navigate("/points-leaderboard"); setNotificationsOpen(false); }}
-                               className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+                               className="flex flex-col gap-2 p-3 rounded-xl bg-white border border-[#001D36]/10 hover:border-[#F18900]/50 transition-all text-left group"
                              >
-                               <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                               <span className="text-[10px] font-bold text-slate-300">Leaderboard</span>
+                               <Sparkles className="w-4 h-4 text-[#F18900] group-hover:scale-110 transition-transform" />
+                               <span className="text-[10px] font-bold text-[#001D36]">Leaderboard</span>
                              </button>
                           </div>
                         </div>
                       )}
 
-                      <div className="p-3 text-center border-t border-white/5">
+                      <div className="p-3 text-center border-t border-[#001D36]/5">
                          <button 
                            onClick={() => { navigate("/profile"); setNotificationsOpen(false); }}
-                           className="text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                           className="text-[10px] font-bold text-[#66625C] hover:text-[#001D36] transition-colors"
                          >
                            View all history
                          </button>
@@ -510,7 +490,7 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.07)" }} />
+          <div className="w-px h-6 bg-white/10" />
 
           {/* Profile Button */}
           <div className="relative ml-2" ref={profileRef}>
@@ -518,42 +498,31 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 group"
-              style={{
-                background: profileOpen ? "rgba(139,92,246,0.1)" : "transparent",
-                border: profileOpen ? "1px solid rgba(139,92,246,0.3)" : "1px solid transparent",
-              }}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 group ${profileOpen ? 'bg-white/10' : 'hover:bg-white/5'}`}
             >
               {/* Avatar */}
-              <div className="relative w-8 h-8 rounded-lg overflow-hidden flex-shrink-0"
-                style={{
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  boxShadow: "0 0 15px rgba(139,92,246,0.2)"
-                }}>
+              <div className="relative w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-white/10 bg-white/5">
                 {profile_pic ? (
                   <img src={profile_pic} alt="Me" className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>
-                    <UserIcon className="w-4 h-4 text-white" />
+                  <div className="w-full h-full flex items-center justify-center">
+                    <UserIcon className="w-4 h-4 text-white/70" />
                   </div>
                 )}
-                <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full"
-                  style={{ background: "#34d399", border: "1px solid #08090e", boxShadow: "0 0 6px rgba(52,211,153,0.6)" }} />
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0F172A]" />
               </div>
 
               <div className="hidden xl:block text-left">
-                <p className="text-xs font-bold leading-none" style={{ color: "#e2e8f0" }}>
+                <p className="text-xs font-bold leading-none text-white">
                   {profile?.username || profile?.name || "Student"}
                 </p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>
+                <p className="text-[10px] mt-0.5 text-white/50">
                   Online
                 </p>
               </div>
 
               <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform duration-300 ${profileOpen ? "rotate-180" : ""}`}
-                style={{ color: "#475569" }}
+                className={`w-3.5 h-3.5 transition-transform duration-300 text-white/50 group-hover:text-white ${profileOpen ? "rotate-180" : ""}`}
               />
             </motion.button>
 
@@ -565,39 +534,34 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
                   transition={{ type: "spring", damping: 30, stiffness: 400 }}
-                  className="absolute right-0 mt-3 w-72 rounded-2xl overflow-hidden"
+                  className="absolute right-0 mt-3 w-72 rounded-2xl overflow-hidden bg-white"
                   style={{
-                    background: "rgba(13,15,26,0.95)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    backdropFilter: "blur(24px)",
-                    boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.1)",
+                    border: "1px solid rgba(0,29,54,0.1)",
+                    boxShadow: "0 20px 40px rgba(0,29,54,0.1)"
                   }}
                 >
                   {/* Profile Summary */}
-                  <div className="p-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <div className="p-5 border-b border-[#001D36]/10">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0"
-                        style={{ border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 0 20px rgba(139,92,246,0.2)" }}>
+                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-[#001D36]/20 bg-[#F0F4F8]">
                         {profile_pic ? (
                           <img src={profile_pic} alt="Me" className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center"
-                            style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)" }}>
-                            <UserIcon className="w-6 h-6 text-white" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <UserIcon className="w-6 h-6 text-[#001D36]" />
                           </div>
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-bold" style={{ color: "#f1f5f9" }}>
+                        <p className="text-sm font-bold text-[#001D36]">
                           {profile?.username || "Guest"}
                         </p>
-                        <p className="text-xs mt-0.5" style={{ color: "#475569" }}>
+                        <p className="text-xs mt-0.5 text-[#66625C]">
                           {profile?.email || "student@uiu.ac.bd"}
                         </p>
                         <div className="flex items-center gap-1.5 mt-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: "#34d399", boxShadow: "0 0 5px rgba(52,211,153,0.7)" }} />
-                          <span className="text-[10px] font-semibold" style={{ color: "#34d399" }}>Active</span>
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#8AB100]" />
+                          <span className="text-[10px] font-bold text-[#8AB100]">Active</span>
                         </div>
                       </div>
                     </div>
@@ -615,19 +579,9 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                         key={i}
                         whileHover={{ x: 4 }}
                         onClick={() => { navigate(item.path); setProfileOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-                        style={{ color: "#94a3b8" }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = "rgba(139,92,246,0.08)";
-                          e.currentTarget.style.color = "#e2e8f0";
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "#94a3b8";
-                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-[#66625C] transition-all hover:bg-[#001D36]/5 hover:text-[#001D36]"
                       >
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-[#001D36]/10">
                           {item.icon}
                         </div>
                         {item.label}
@@ -636,24 +590,14 @@ export default function Header({ sidebarWidth = 80, setNavOpen, navOpen }) {
                   </div>
 
                   {/* Logout */}
-                  <div className="p-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <div className="p-2 border-t border-[#001D36]/10">
                     <motion.button
                       whileHover={{ x: 4 }}
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-                      style={{ color: "#94a3b8" }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = "rgba(244,63,94,0.08)";
-                        e.currentTarget.style.color = "#fb7185";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "#94a3b8";
-                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-[#A7481E] transition-all hover:bg-[#A7481E]/10"
                     >
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.1)" }}>
-                        <LogOut className="w-4 h-4" style={{ color: "#fb7185" }} />
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-[#001D36]/10">
+                        <LogOut className="w-4 h-4" />
                       </div>
                       Sign Out
                     </motion.button>

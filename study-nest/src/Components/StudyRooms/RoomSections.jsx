@@ -29,43 +29,46 @@ export function ChatPanel({
   displayName 
 }) {
   return (
-    <div className="rounded-3xl bg-white/5 p-6 border border-white/10 shadow-xl">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[10px] font-black text-white uppercase tracking-widest ">Chat Feed</h3>
-        <label className="inline-flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase cursor-pointer">
+    <div className="rounded-[2rem] bg-white p-6 border border-[#001D36]/10 shadow-sm hover:shadow-lg transition-shadow duration-500">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-[#00808C] animate-pulse" />
+           <h3 className="text-[10px] font-black text-[#001D36] uppercase tracking-widest">Chat Feed</h3>
+        </div>
+        <label className="inline-flex items-center gap-2 text-[9px] text-[#66625C] font-bold uppercase cursor-pointer group">
           <input
             type="checkbox"
             checked={anon}
             onChange={(e) => setAnon(e.target.checked)}
-            className="h-3 w-3 rounded-full border-white/10 text-white bg-white/5 focus:ring-0"
+            className="h-3.5 w-3.5 rounded-full border-[#001D36]/20 text-[#00808C] bg-white group-hover:border-[#00808C] transition-colors focus:ring-0"
           />
-          Anon Mode
+          <span className="group-hover:text-[#00808C] transition-colors">Anon Mode</span>
         </label>
       </div>
-      <ul className="mt-3 max-h-64 overflow-y-auto space-y-2 pr-1">
+      <ul className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
         {chat.map((m) => (
           <li
             key={m.id}
             className={
-              "rounded-2xl px-4 py-3 text-sm shadow-sm " +
-              (m.self ? "bg-white/10 text-white ml-8" : "bg-white/5 text-white border border-white/5 mr-8")
+              "rounded-2xl px-4 py-3 text-sm shadow-sm transition-transform duration-300 hover:-translate-y-0.5 " +
+              (m.self ? "bg-[#00808C]/5 text-[#001D36] ml-8 border border-[#00808C]/10 rounded-tr-sm" : "bg-white text-[#001D36] border border-[#001D36]/10 mr-8 rounded-tl-sm")
             }
           >
-            <div className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-1">
-              {m.author} • {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <div className="text-[9px] font-black uppercase tracking-widest text-[#66625C] mb-1.5 flex items-center gap-2">
+              {m.author} <span className="opacity-50">•</span> {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </div>
-            <div className="break-words">{m.text}</div>
+            <div className="break-words font-medium leading-relaxed">{m.text}</div>
           </li>
         ))}
       </ul>
-      <div className="mt-6 flex items-center gap-2">
+      <div className="mt-6 flex items-center gap-3">
         <input
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
           placeholder="Sync a message..."
-          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 "
+          className="w-full rounded-2xl border border-[#001D36]/10 bg-white px-5 py-3.5 text-xs font-semibold text-[#001D36] placeholder:text-[#66625C] focus:outline-none focus:ring-2 focus:ring-[#00808C]/20 shadow-sm transition-all"
         />
-        <button onClick={send} className="rounded-2xl bg-white/10 p-3 text-white hover:bg-zinc-800 shadow-lg group">
+        <button onClick={send} className="rounded-2xl bg-[#00808C] p-3.5 text-white hover:bg-[#00606B] shadow-md hover:shadow-[#00808C]/30 transition-all group flex-shrink-0">
           <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -75,19 +78,22 @@ export function ChatPanel({
 
 export function ParticipantsPanel({ participants, hand }) {
   return (
-    <div className="rounded-3xl bg-white/5 p-6 border border-white/10 shadow-xl">
-      <h3 className="text-[10px] font-black text-white uppercase tracking-widest ">Synchronized ({participants.length})</h3>
-      <ul className="mt-3 space-y-2 text-sm text-slate-400">
+    <div className="rounded-[2rem] bg-white p-6 border border-[#001D36]/10 shadow-sm hover:shadow-lg transition-shadow duration-500">
+      <div className="flex items-center gap-2 mb-6">
+         <div className="w-2 h-2 rounded-full bg-[#8AB100]" />
+         <h3 className="text-[10px] font-black text-[#001D36] uppercase tracking-widest">Synchronized ({participants.length})</h3>
+      </div>
+      <ul className="space-y-3 text-sm text-[#66625C]">
         {participants.map((p) => (
-          <li key={p.id} className="flex items-center gap-3 py-1">
-            <span className={`inline-block h-2 w-2 rounded-full shadow-sm ${p.state === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
+          <li key={p.id} className="group flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-[#001D36]/5 transition-colors">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full shadow-sm ring-2 ring-white ${p.state === 'connected' ? 'bg-[#8AB100]' : 'bg-[#F18900]'
               }`} />
-            <span className="text-[11px] font-bold text-slate-400 ">{p.self ? "You" : p.name || "Student"}</span>
+            <span className="text-[11px] font-bold text-[#001D36] group-hover:text-[#00808C] transition-colors">{p.self ? "You" : p.name || "Student"}</span>
             {p.state === 'joining' && !p.self && (
-              <span className="text-[8px] font-black uppercase text-amber-500 tracking-tighter">(syncing...)</span>
+              <span className="text-[9px] font-black uppercase text-[#F18900] tracking-widest ml-1 animate-pulse">(syncing)</span>
             )}
-            {p.self && hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
-            {!p.self && p.hand && <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">✋</span>}
+            {p.self && hand && <span className="ml-auto rounded-full bg-[#F18900] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">✋</span>}
+            {!p.self && p.hand && <span className="ml-auto rounded-full bg-[#F18900] px-2.5 py-1 text-[10px] font-bold text-white shadow-sm animate-bounce">✋</span>}
           </li>
         ))}
       </ul>
@@ -110,9 +116,9 @@ export function RoomControls({
   setBoardOpen
 }) {
   return (
-    <div className="sticky bottom-0 z-10 border-t border-white/10 bg-white/5 backdrop-blur-xl py-6 shadow-2xl">
+    <div className="sticky bottom-0 z-10 border-t border-[#001D36]/10 bg-white backdrop-blur-xl py-6 shadow-2xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4">
           <ToggleButton on={mic} onClick={() => setMic((s) => !s)} label={mic ? "Mute" : "Unmute"}>
             {mic ? <MicIcon /> : <MicOffIcon />}
           </ToggleButton>
@@ -126,21 +132,21 @@ export function RoomControls({
           <button
             onClick={toggleRecord}
             className={
-              "rounded-[1.5rem] px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all hover:-translate-y-1 " +
+              "rounded-[1.5rem] px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] shadow-sm border transition-all hover:-translate-y-1 " +
               (recording
-                ? "bg-white/10 text-white"
-                : "bg-white/5 border border-white/10 text-white hover:bg-white/5")
+                ? "bg-[#A7481E] border-[#A7481E] text-white"
+                : "bg-white border-[#001D36]/10 text-[#001D36] hover:bg-[#001D36]/5")
             }
           >
             <div className="flex items-center gap-2">
               {recording ? (
                 <>
-                  <div className="h-2 w-2 rounded-sm bg-white/5 animate-pulse"></div>
+                  <div className="h-2 w-2 rounded-sm bg-white animate-pulse"></div>
                   <span>End REC</span>
                 </>
               ) : (
                 <>
-                  <div className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                  <div className="h-2 w-2 rounded-full bg-[#A7481E]"></div>
                   <span>Record</span>
                 </>
               )}
@@ -155,17 +161,17 @@ export function RoomControls({
               });
             }}
             className={
-              "rounded-[1.5rem] px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all hover:-translate-y-1 " +
+              "rounded-[1.5rem] px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] shadow-sm border transition-all hover:-translate-y-1 " +
               (hand
-                ? "bg-white/5 border-2 border-zinc-900 text-white"
-                : "bg-white/5 border border-white/10 text-white hover:bg-white/5")
+                ? "bg-[#F18900] border-[#F18900] text-white"
+                : "bg-white border-[#001D36]/10 text-[#001D36] hover:bg-[#001D36]/5")
             }
           >
             ✋ {hand ? "Lower" : "Hand Up"}
           </button>
           <button
             onClick={() => setBoardOpen(true)}
-            className="rounded-[1.5rem] px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] bg-white/10 text-white hover:bg-zinc-800 shadow-xl hover:-translate-y-1 transition-all"
+            className="rounded-[1.5rem] px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] bg-white border border-[#001D36]/10 text-[#001D36] hover:bg-[#001D36]/5 shadow-sm hover:-translate-y-1 transition-all"
           >
             Whiteboard
           </button>

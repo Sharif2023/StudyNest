@@ -116,13 +116,16 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08090e] selection:bg-[rgba(255,255,255,0.1)]/10 selection:text-white relative">
+    <div className="min-h-screen bg-[#F0F4F8] selection:bg-[#00808C]/20 selection:text-[#001D36] relative">
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={sidebarWidth} />
       <Header sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} navOpen={navOpen} />
 
       <main
-        style={{ paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth }}
-        className="transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-screen relative pb-32"
+        style={{ 
+          paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth,
+          transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)"
+        }}
+        className="min-h-screen relative pb-32"
       >
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-20 lg:py-32 relative z-10">
           <header className="mb-16 relative">
@@ -130,42 +133,42 @@ export default function Profile() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-              className="relative overflow-hidden rounded-[3rem] border border-white/5 bg-[rgba(10,11,18,0.4)] backdrop-blur-2xl shadow-2xl p-10 lg:p-16"
+              className="relative overflow-hidden rounded-[3rem] border border-[#001D36]/10 bg-white shadow-sm p-10 lg:p-16"
             >
-              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent blur-[120px] pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-violet-500/10 via-transparent to-transparent blur-[100px] pointer-events-none" />
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00808C]/5 blur-[120px] pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#8AB100]/5 blur-[100px] pointer-events-none" />
               
               <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-end gap-10 lg:gap-16">
                 <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-1000" />
-                  <div className="relative bg-[#08090e] p-1.5 rounded-full overflow-hidden">
+                  <div className="absolute -inset-1 bg-[#00808C]/20 rounded-full blur opacity-50 group-hover:opacity-80 transition duration-1000" />
+                  <div className="relative bg-[#F0F4F8] p-1.5 rounded-full overflow-hidden shadow-inner">
                     <ProfilePicture url={profile_pic} name={displayName} size={160} className="rounded-full object-cover" />
                   </div>
-                  <div className="absolute bottom-4 right-4 w-6 h-6 bg-emerald-500 border-4 border-[#08090e] rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                  <div className="absolute bottom-4 right-4 w-6 h-6 bg-[#8AB100] border-4 border-white rounded-full shadow-sm" />
                 </div>
 
                 <div className="flex-1 text-center lg:text-left">
                   <div className="flex flex-wrap justify-center lg:justify-start items-center gap-4 mb-6">
-                    <span className="px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-300 uppercase tracking-widest leading-none">
+                    <span className="px-4 py-1.5 rounded-full bg-[#00808C]/10 border border-[#00808C]/20 text-[10px] font-black text-[#00808C] uppercase tracking-[0.2em] leading-none">
                       {profile?.role || "Active Scholar"}
                     </span>
-                    <span className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                    <span className="px-4 py-1.5 rounded-full bg-[#001D36]/5 border border-[#001D36]/10 text-[10px] font-black text-[#66625C] uppercase tracking-[0.2em] leading-none">
                       Level 12
                     </span>
                   </div>
-                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-black text-white tracking-tight mb-4 drop-shadow-sm">
+                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-black text-[#001D36] tracking-tight mb-4 drop-shadow-sm">
                     {displayName}
                   </h1>
-                  <p className="text-xl text-slate-300 font-medium max-w-2xl leading-relaxed mb-8">
+                  <p className="text-xl text-[#66625C] font-medium max-w-2xl leading-relaxed mb-8">
                     {profile?.bio || "Crafting an academic legacy at StudyNest..."}
                   </p>
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setTab('edit')} className="flex items-center gap-3 px-8 py-4 bg-white text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-200 transition-all shadow-xl shadow-white/5 hover:scale-[1.02] active:scale-95">
+                  <button onClick={() => setTab('edit')} className="flex items-center gap-3 px-8 py-4 bg-[#001D36] text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-[#002b50] transition-all shadow-md hover:scale-[1.02] active:scale-95">
                     Edit Profile
                   </button>
-                  <button onClick={() => setTab('prefs')} className="flex items-center justify-center p-4 bg-white/5 border border-white/10 text-white rounded-2xl hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-95">
+                  <button onClick={() => setTab('prefs')} className="flex items-center justify-center p-4 bg-white border border-[#001D36]/10 text-[#66625C] rounded-2xl hover:bg-[#F0F4F8] hover:text-[#001D36] transition-all shadow-sm hover:scale-[1.02] active:scale-95">
                     <Settings className="w-5 h-5" />
                   </button>
                 </div>
@@ -184,17 +187,17 @@ export default function Profile() {
                 <button
                   key={val}
                   onClick={() => setTab(val)}
-                  className={`w-full group relative flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-700 ${
+                  className={`w-full group relative flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-500 ${
                     tab === val 
-                    ? "bg-[rgba(255,255,255,0.1)] border-white/20 text-white shadow-xl" 
-                    : "bg-[rgba(255,255,255,0.02)] border-white/10 text-slate-400 hover:bg-[rgba(255,255,255,0.03)] hover:border-white/10 hover:text-slate-200"
+                    ? "bg-[#00808C] border-[#00808C] text-white shadow-md" 
+                    : "bg-white border-[#001D36]/10 text-[#66625C] shadow-sm hover:bg-[#001D36]/5 hover:text-[#001D36]"
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <span className={`transition-all duration-700 ${tab === val ? 'text-white scale-110' : 'group-hover:text-white'}`}>{icon}</span>
+                    <span className={`transition-transform duration-500 ${tab === val ? 'text-white scale-110' : 'group-hover:scale-110'}`}>{icon}</span>
                     <span className="text-[11px] font-black uppercase tracking-[0.2em] ">{label}</span>
                   </div>
-                  <ChevronRight className={`w-4 h-4 transition-all duration-700 ${tab === val ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 group-hover:opacity-40 group-hover:translate-x-0'}`} />
+                  <ChevronRight className={`w-4 h-4 transition-all duration-500 ${tab === val ? 'opacity-100 translate-x-0 text-white' : 'opacity-0 -translate-x-4 group-hover:opacity-40 group-hover:translate-x-0'}`} />
                 </button>
               ))}
             </motion.aside>

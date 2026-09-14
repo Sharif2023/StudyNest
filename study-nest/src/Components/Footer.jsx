@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Github, Twitter, Instagram, Facebook, Youtube, Sparkles, Linkedin } from "lucide-react";
-import logoUrl from "../assets/logo.png";
+
 
 export default function Footer({ sidebarWidth = 80 }) {
   const socials = [
@@ -33,7 +33,7 @@ export default function Footer({ sidebarWidth = 80 }) {
           className="relative rounded-3xl p-10 overflow-hidden"
           style={{
             background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            border: "1px solid rgba(0,0,0,0.04)",
           }}
         >
           {/* Ambient glow */}
@@ -48,20 +48,18 @@ export default function Footer({ sidebarWidth = 80 }) {
                   background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.15))",
                   border: "1px solid rgba(124,58,237,0.25)"
                 }}>
-                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain rounded-lg" />
+                <img src="/logo.ico" alt="Logo" className="w-full h-full object-contain rounded-lg" />
               </div>
               <div>
                 <span className="text-sm font-display font-black tracking-tight"
                   style={{
-                    background: "linear-gradient(135deg, #f1f5f9, #a78bfa)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text"
+                    background: "transparent",
+                    color: "#001D36"
                   }}>
                   StudyNest
                 </span>
                 <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5"
-                  style={{ color: "#334155" }}>
+                  style={{ color: "#66625C" }}>
                   UIU · Group Study Platform
                 </p>
               </div>
@@ -77,9 +75,9 @@ export default function Footer({ sidebarWidth = 80 }) {
                   whileTap={{ scale: 0.92 }}
                   className="w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
+                    background: "rgba(0,0,0,0.02)",
                     border: "1px solid rgba(255,255,255,0.07)",
-                    color: "#475569"
+                    color: "#66625C"
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.background = "rgba(124,58,237,0.1)";
@@ -88,9 +86,9 @@ export default function Footer({ sidebarWidth = 80 }) {
                     e.currentTarget.style.boxShadow = "0 0 15px rgba(124,58,237,0.2)";
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                    e.currentTarget.style.background = "rgba(0,0,0,0.02)";
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-                    e.currentTarget.style.color = "#475569";
+                    e.currentTarget.style.color = "#66625C";
                     e.currentTarget.style.boxShadow = "none";
                   }}
                   title={social.name}
@@ -106,9 +104,9 @@ export default function Footer({ sidebarWidth = 80 }) {
                 <a key={item}
                   href={item === "Privacy" ? "#" : item === "Terms" ? "#" : item === "Support" ? "https://si-sharif.vercel.app/?i=1#contact" : "https://si-sharif.vercel.app/"}
                   className="text-xs font-semibold uppercase tracking-widest transition-colors duration-200"
-                  style={{ color: "#475569" }}
+                  style={{ color: "#66625C" }}
                   onMouseEnter={e => e.currentTarget.style.color = "#a78bfa"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#475569"}>
+                  onMouseLeave={e => e.currentTarget.style.color = "#66625C"}>
                   {item}
                 </a>
               ))}
@@ -117,13 +115,13 @@ export default function Footer({ sidebarWidth = 80 }) {
 
           {/* Bottom copyright */}
           <div className="relative z-10 mt-8 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4"
-            style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-            <p className="text-[11px] font-medium" style={{ color: "#334155" }}>
+            style={{ borderColor: "rgba(0,29,54,0.1)" }}>
+            <p className="text-[11px] font-medium" style={{ color: "#66625C" }}>
               © {new Date().getFullYear()} UIU StudyNest — All rights reserved.
             </p>
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
-              <span className="text-[11px] font-semibold" style={{ color: "#475569" }}>
+              <span className="text-[11px] font-semibold" style={{ color: "#66625C" }}>
                 Built for Students
               </span>
             </div>

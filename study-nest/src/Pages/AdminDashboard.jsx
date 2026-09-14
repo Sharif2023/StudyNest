@@ -103,8 +103,8 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab(id)}
             className={`flex items-center gap-3 px-6 py-4 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all ${
                 activeTab === id 
-                ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/20 active-glow" 
-                : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                ? "bg-white text-white shadow-lg shadow-cyan-500/20 active-glow" 
+                : "text-[#66625C] hover:text-[#001D36] hover:bg-white/5"
             }`}
         >
             <Icon size={16} />
@@ -113,10 +113,10 @@ export default function AdminDashboard() {
     );
 
     return (
-        <div className="min-h-screen relative" style={{ background: "#08090e", color: "#e2e8f0" }}>
+        <div className="min-h-screen relative" style={{ background: "#F0F4F8", color: "#001D36" }}>
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(100px)" }} />
-                <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(100px)" }} />
+                <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
+                <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
             </div>
 
             <Header sidebarWidth={0} navOpen={false} />
@@ -131,12 +131,12 @@ export default function AdminDashboard() {
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">System Control</span>
                             </div>
                             <h1 className="text-4xl font-bold text-white tracking-tight">
-                                Admin <span className="text-gradient-brand">Dashboard</span>
+                                Admin <span className="text-[#001D36]">Dashboard</span>
                             </h1>
                         </div>
 
                         <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-2 rounded-2xl w-full md:w-auto">
-                            <Search className="ml-3 text-slate-500" size={18} />
+                            <Search className="ml-3 text-[#66625C]" size={18} />
                             <input 
                                 type="text"
                                 placeholder="Search records..."

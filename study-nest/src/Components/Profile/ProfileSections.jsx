@@ -55,11 +55,11 @@ export function Overview({ user, displayName }) {
   if (loading) {
     return (
       <div className="py-20 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-[2rem] bg-[rgba(255,255,255,0.05)] border border-white/10 flex items-center justify-center mb-6 relative shadow-xl">
-          <div className="absolute inset-0 border-2 border-white/20 border-t-transparent rounded-full animate-spin p-2" />
-          <Database className="w-6 h-6 text-white animate-pulse" />
+        <div className="w-16 h-16 rounded-[2rem] bg-white border border-[#001D36]/10 flex items-center justify-center mb-6 relative shadow-sm">
+          <div className="absolute inset-0 border-2 border-[#00808C]/20 border-t-transparent rounded-full animate-spin p-2" />
+          <Database className="w-6 h-6 text-[#00808C] animate-pulse" />
         </div>
-        <p className="text-slate-400 font-black uppercase tracking-[0.5em] text-[9px] animate-pulse">Loading Overview...</p>
+        <p className="text-[#66625C] font-black uppercase tracking-[0.5em] text-[9px] animate-pulse">Loading Overview...</p>
       </div>
     );
   }
@@ -67,16 +67,16 @@ export function Overview({ user, displayName }) {
   if (isAdmin) {
     return (
       <div className="space-y-10">
-        <div className="rounded-[2.5rem] border border-white/5 bg-[rgba(10,11,18,0.4)] backdrop-blur-2xl p-10 lg:p-14 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
-            <ShieldCheck size={240} className="text-white" />
-          </div>
-          <div className="relative z-10">
-            <h3 className="text-3xl font-black text-white tracking-tight mb-4 text-gradient-brand">Admin Privileges Active</h3>
-            <p className="text-lg text-slate-300 font-medium max-w-2xl leading-relaxed mb-10">
-              You are currently logged in with full system administrative access. You can manage users, monitor platform health, and control global settings via the Admin Command Center.
+        <div className="rounded-[2.5rem] border border-[#001D36]/10 bg-white p-10 lg:p-14 shadow-sm">
+          <div className="max-w-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-[#001D36]/5 text-[#001D36] flex items-center justify-center mb-6">
+              <ShieldCheck size={32} />
+            </div>
+            <h3 className="text-3xl font-black text-[#001D36] tracking-tight mb-4">Admin Privileges Active</h3>
+            <p className="text-sm font-medium text-[#66625C] leading-relaxed mb-10">
+              You are currently logged in with full system administrative access. Manage users, monitor platform health, and control global settings via the Admin Console.
             </p>
-            <Link to="/admin" className="inline-flex items-center gap-4 px-10 py-5 bg-white text-black font-black text-xs uppercase tracking-[0.3em] rounded-2xl hover:bg-slate-200 transition-all shadow-xl shadow-white/5 hover:scale-[1.02] active:scale-95">
+            <Link to="/admin" className="inline-flex items-center gap-4 px-8 py-4 bg-[#001D36] text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-[#002b50] transition-all shadow-md hover:scale-[1.02] active:scale-95">
               Enter Admin Panel <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -97,32 +97,26 @@ export function Overview({ user, displayName }) {
       </div>
 
       <div className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-violet-500/20 blur-2xl opacity-50 transition-opacity duration-1000 group-hover:opacity-100" />
-        <div className="relative rounded-[2.5rem] border border-white/5 bg-[rgba(10,11,18,0.6)] backdrop-blur-3xl p-10 lg:p-14 shadow-2xl overflow-hidden">
-          <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-1000">
-            <Target size={300} className="text-indigo-500" />
-          </div>
-          
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 relative z-10 gap-6">
+        <div className="rounded-[2.5rem] border border-[#001D36]/10 bg-white p-10 lg:p-14 shadow-sm">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 gap-6">
             <div className="flex-1">
-              <h3 className="text-3xl font-black text-white tracking-tight mb-3">Academic Roadmap</h3>
-              <p className="text-xs font-medium text-slate-400 max-w-lg leading-relaxed">
-                Centralized intelligence from your recent scholarly activities across the StudyNest ecosystem. 
-                Resume your journey exactly where you left off.
+              <h3 className="text-3xl font-black text-[#001D36] tracking-tight mb-3">Activity Overview</h3>
+              <p className="text-xs font-bold text-[#66625C] uppercase tracking-widest max-w-lg leading-relaxed">
+                A quick summary of your recent activities across StudyNest. Jump right back into where you left off.
               </p>
             </div>
-            <Link to="/home" className="flex items-center gap-4 px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all group/btn shadow-xl shadow-white/5 active:scale-95 flex-shrink-0">
+            <Link to="/home" className="flex items-center gap-4 px-8 py-4 rounded-2xl bg-[#00808C] text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#00606B] transition-all group/btn shadow-sm active:scale-95 flex-shrink-0">
               Live Feed <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
-            <PreviewList title="Library" items={data.resources || []} icon={<Database className="w-4 h-4" />} to="/resources" accent="cyan" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <PreviewList title="Resources" items={data.resources || []} icon={<Database className="w-4 h-4" />} to="/resources" accent="cyan" />
             <PreviewList title="Recordings" items={data.recordings || []} icon={<Video className="w-4 h-4" />} to="/resources" accent="violet" />
-            <PreviewList title="Studios" items={data.rooms || []} icon={<Play className="w-4 h-4" />} to="/rooms" accent="emerald" />
-            <PreviewList title="Artifacts" items={data.notes || []} icon={<FileText className="w-4 h-4" />} to="/notes" accent="amber" />
+            <PreviewList title="Study Rooms" items={data.rooms || []} icon={<Play className="w-4 h-4" />} to="/rooms" accent="emerald" />
+            <PreviewList title="My Notes" items={data.notes || []} icon={<FileText className="w-4 h-4" />} to="/notes" accent="amber" />
             <div className="lg:col-span-2">
-              <PreviewList title="Inquiries" items={data.questions || []} icon={<MessageSquare className="w-4 h-4" />} to="/forum" accent="rose" />
+              <PreviewList title="Q&A Forum" items={data.questions || []} icon={<MessageSquare className="w-4 h-4" />} to="/forum" accent="rose" />
             </div>
           </div>
         </div>
@@ -142,40 +136,40 @@ function PreviewList({ title, items, icon, to, accent = "indigo" }) {
   };
 
   return (
-    <div className="flex flex-col h-full group/list rounded-3xl border border-white/5 bg-white/[0.02] p-8 hover:bg-white/[0.04] transition-all duration-500">
+    <div className="flex flex-col h-full group/list rounded-3xl border border-[#001D36]/10 bg-white p-8 hover:border-[#00808C]/30 hover:shadow-lg transition-all duration-500">
       <div className="flex items-center gap-5 mb-10">
-        <div className={`w-14 h-14 rounded-2xl border transition-all duration-500 ${accents[accent]} group-hover/list:scale-110 group-hover/list:shadow-[0_0_20px_rgba(0,0,0,0.3)] flex items-center justify-center flex-shrink-0`}>
+        <div className={`w-14 h-14 rounded-2xl border transition-all duration-500 ${accents[accent]} group-hover/list:scale-110 flex items-center justify-center flex-shrink-0`}>
           {icon}
         </div>
         <div>
-          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] leading-tight mb-1">{title}</h4>
-          <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Recent Activity</p>
+          <h4 className="text-[11px] font-black text-[#001D36] uppercase tracking-[0.3em] leading-tight mb-1">{title}</h4>
+          <p className="text-[9px] font-bold text-[#66625C] uppercase tracking-widest">Recent Activity</p>
         </div>
       </div>
       
       <div className="flex-1 space-y-4 min-h-[140px]">
         {items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.01]">
-            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Station Empty</p>
+          <div className="h-full flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-[#001D36]/10 bg-[#F0F4F8]">
+            <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">No recent activity</p>
           </div>
         ) : (
           <div className="space-y-2">
             {items.slice(0, 4).map((it, i) => (
               <Link key={it.id || i} to={to} className="block group/item">
                 <motion.div 
-                  whileHover={{ x: 8 }}
-                  className="flex items-center justify-between gap-6 p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-transparent hover:border-white/5 transition-all text-sm text-slate-400 font-medium group-hover/item:text-white"
+                  whileHover={{ x: 4 }}
+                  className="flex items-center justify-between gap-6 p-4 rounded-2xl bg-[#F0F4F8] hover:bg-[#00808C]/5 border border-transparent hover:border-[#00808C]/20 transition-all text-sm font-bold text-[#001D36]"
                 >
                   <p className="truncate flex-1 py-1">
                     {it.title || it.name || "(Untitled Node)"}
                   </p>
-                  <ChevronRight className="w-4 h-4 text-slate-700 group-hover/item:text-white transition-all opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0" />
+                  <ChevronRight className="w-4 h-4 text-[#00808C] transition-all opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0" />
                 </motion.div>
               </Link>
             ))}
             {items.length > 4 && (
-              <Link to={to} className="block mt-4 px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] hover:text-indigo-400 transition-colors">
-                View All {title} Archive →
+              <Link to={to} className="block mt-4 px-4 py-2 text-[10px] font-black text-[#00808C] uppercase tracking-[0.2em] hover:underline transition-colors">
+                View All {title} →
               </Link>
             )}
           </div>
@@ -269,14 +263,13 @@ export function EditProfile({ user, onChange }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-      <div className="lg:col-span-4 rounded-3xl border border-white/5 bg-white/[0.03] p-10 flex flex-col items-center text-center shadow-2xl">
+      <div className="lg:col-span-4 rounded-3xl border border-[#001D36]/10 bg-white p-10 flex flex-col items-center text-center shadow-sm">
         <div className="relative group mb-10">
-          <div className="absolute -inset-4 bg-indigo-500/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           <div className="relative">
-            <ProfilePicture url={profile_picture_url} name={name} size={180} className="rounded-full ring-8 ring-[#08090e] shadow-2xl" />
+            <ProfilePicture url={profile_picture_url} name={name} size={180} className="rounded-full ring-8 ring-[#F0F4F8] shadow-sm" />
             <button 
               onClick={() => fileRef.current?.click()}
-              className="absolute bottom-2 right-2 p-4 rounded-2xl bg-white text-black shadow-2xl hover:scale-110 active:scale-95 transition-all z-20 border-4 border-[#08090e]"
+              className="absolute bottom-2 right-2 p-4 rounded-2xl bg-[#001D36] text-white shadow-md hover:scale-110 active:scale-95 transition-all z-20 border-4 border-[#F0F4F8]"
             >
               <Edit3 className="w-5 h-5" />
             </button>
@@ -284,45 +277,45 @@ export function EditProfile({ user, onChange }) {
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleProfilePicture} />
         <div className="space-y-2 mb-8">
-          <h4 className="text-2xl font-black text-white tracking-tight">{name}</h4>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Scholar Account</p>
+          <h4 className="text-2xl font-black text-[#001D36] tracking-tight">{name}</h4>
+          <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">Student Profile</p>
         </div>
-        <div className="w-full h-px bg-white/5 mb-8" />
-        <p className="text-sm text-slate-400 leading-relaxed px-4">
-          Maintain your academic presence by keeping your biographical information up to date.
+        <div className="w-full h-px bg-[#001D36]/10 mb-8" />
+        <p className="text-sm font-bold text-[#66625C] leading-relaxed px-4">
+          Keep your personal details up to date to connect with other students.
         </p>
       </div>
 
-      <div className="lg:col-span-8 rounded-3xl border border-white/5 bg-white/[0.03] p-12 shadow-2xl">
+      <div className="lg:col-span-8 rounded-3xl border border-[#001D36]/10 bg-white p-12 shadow-sm">
         <div className="flex items-center gap-4 mb-12">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <div className="p-3 rounded-2xl bg-[#00808C]/10 text-[#00808C]">
             <User className="w-6 h-6" />
           </div>
-          <h3 className="text-2xl font-black text-white tracking-tight">Personal Details</h3>
+          <h3 className="text-2xl font-black text-[#001D36] tracking-tight">Personal Details</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           <InputGroup label="Display Name" value={name} onChange={setName} icon={<User className="w-4 h-4"/>} placeholder="Enter your full name" />
-          <InputGroup label="Academic Email" value={email} disabled icon={<Mail className="w-4 h-4"/>} />
+          <InputGroup label="Email Address" value={email} disabled icon={<Mail className="w-4 h-4"/>} />
           <InputGroup label="Student ID" value={student_id} disabled icon={<Target className="w-4 h-4"/>} />
-          <InputGroup label="Avatar Source" value={profile_picture_url} onChange={setProfilePictureUrl} icon={<Bookmark className="w-4 h-4"/>} placeholder="Paste image URL or upload" />
+          <InputGroup label="Profile Picture URL" value={profile_picture_url} onChange={setProfilePictureUrl} icon={<Bookmark className="w-4 h-4"/>} placeholder="Paste image URL or upload" />
           <div className="md:col-span-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">Academic Biography</label>
+            <label className="block text-[11px] font-bold text-[#66625C] uppercase tracking-widest mb-3 ml-2">Bio / About Me</label>
             <textarea
               rows={4}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full bg-white/[0.02] border border-white/10 text-white px-6 py-5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 shadow-inner"
-              placeholder="Share your academic mission and research interests..."
+              className="w-full bg-[#F0F4F8] border border-[#001D36]/10 text-[#001D36] px-6 py-5 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#00808C]/50 transition-all placeholder:text-[#66625C] shadow-inner"
+              placeholder="Tell us a bit about yourself, your major, or your interests..."
             />
           </div>
         </div>
-        <div className="flex justify-end pt-6 border-t border-white/5">
+        <div className="flex justify-end pt-6 border-t border-[#001D36]/10">
           <button
             onClick={save}
             disabled={saving}
-            className="px-12 py-5 bg-white text-black font-black text-xs uppercase tracking-[0.3em] rounded-2xl hover:bg-slate-200 transition-all shadow-xl shadow-white/5 active:scale-95 disabled:opacity-50"
+            className="px-10 py-4 bg-[#00808C] text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-[#00606B] transition-all shadow-sm active:scale-95 disabled:opacity-50"
           >
-            {saving ? "Updating..." : "Persist Changes"}
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -337,12 +330,12 @@ export function Preferences({ user, onChange }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-10 shadow-2xl">
+      <div className="rounded-3xl border border-[#001D36]/10 bg-white p-10 shadow-sm">
         <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <div className="p-3 rounded-2xl bg-[#00808C]/10 text-[#00808C]">
             <Settings className="w-6 h-6" />
           </div>
-          <h3 className="text-2xl font-black text-white tracking-tight">System</h3>
+          <h3 className="text-2xl font-black text-[#001D36] tracking-tight">System</h3>
         </div>
         <div className="space-y-4 mb-10">
           <OptionToggle 
@@ -359,30 +352,27 @@ export function Preferences({ user, onChange }) {
           />
         </div>
         <InputGroup 
-          label="Core Course Focus" 
+          label="Primary Major / Course Focus" 
           value={courseFocus} 
           onChange={(v) => { setCourseFocus(v); onChange({ ...user, prefs: { ...user.prefs, courseFocus: v } }); }} 
           icon={<Settings className="w-4 h-4" />} 
-          placeholder="e.g. CSE220"
+          placeholder="e.g. Computer Science"
         />
       </div>
 
-      <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-10 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
-          <ShieldCheck size={180} className="text-white" />
-        </div>
+      <div className="rounded-3xl border border-[#001D36]/10 bg-white p-10 shadow-sm">
         <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <div className="p-3 rounded-2xl bg-[#00808C]/10 text-[#00808C]">
             <Settings className="w-6 h-6" />
           </div>
-          <h3 className="text-2xl font-black text-white tracking-tight">Alerts</h3>
+          <h3 className="text-2xl font-black text-[#001D36] tracking-tight">Alerts</h3>
         </div>
         <div className="space-y-4 mb-10">
            <OptionToggle label="Push Notifications" desc="Real-time session updates" checked={true} disabled />
            <OptionToggle label="Email Digest" desc="Weekly academic progress" checked={false} disabled />
         </div>
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 text-[10px] font-bold text-slate-500 text-center uppercase tracking-widest leading-relaxed">
-           Notification configuration is globally managed by administrators for this term.
+        <div className="p-6 rounded-2xl bg-[#F0F4F8] border border-[#001D36]/5 text-[10px] font-bold text-[#66625C] text-center uppercase tracking-widest leading-relaxed">
+           Push and email notifications are currently managed by system administrators.
         </div>
       </div>
     </div>
@@ -411,23 +401,23 @@ export function Bookmarks() {
   if (loading) return (
     <div className="py-20 flex flex-col items-center justify-center space-y-4">
       <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">Loading Bookmarks...</p>
+      <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest animate-pulse">Loading Bookmarks...</p>
     </div>
   );
 
   return (
-    <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-10 shadow-2xl">
+    <div className="rounded-3xl border border-[#001D36]/10 bg-white p-10 shadow-sm">
       <div className="flex items-center justify-between mb-10">
-        <h3 className="text-2xl font-black text-white tracking-tight">My Bookmarks</h3>
-        <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        <h3 className="text-2xl font-black text-[#001D36] tracking-tight">My Bookmarks</h3>
+        <div className="px-4 py-1.5 rounded-full bg-[#001D36]/5 border border-[#001D36]/10 text-[10px] font-black text-[#66625C] uppercase tracking-widest">
           {items.length} Saved
         </div>
       </div>
       
       {items.length === 0 ? (
-        <div className="py-24 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01]">
-          <Bookmark className="w-10 h-10 text-slate-700 mb-4" />
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">No Bookmarks Found</p>
+        <div className="py-24 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#001D36]/10 bg-[#F0F4F8]">
+          <Bookmark className="w-10 h-10 text-[#66625C] mb-4" />
+          <p className="text-[11px] font-bold text-[#66625C] uppercase tracking-[0.2em]">No Bookmarks Found</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -438,13 +428,13 @@ export function Bookmarks() {
               target="_blank"
               whileHover={{ scale: 1.02 }}
               whileActive={{ scale: 0.98 }}
-              className="flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all group"
+              className="flex items-center justify-between p-6 rounded-2xl bg-[#F0F4F8] border border-transparent hover:border-[#00808C]/20 hover:bg-[#00808C]/5 transition-all group"
             >
               <div>
-                <p className="text-sm font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors tracking-tight">{it.title}</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{it.course} • {it.kind}</p>
+                <p className="text-sm font-black text-[#001D36] mb-1 group-hover:text-[#00808C] transition-colors tracking-tight">{it.title}</p>
+                <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">{it.course} • {it.kind}</p>
               </div>
-              <ExternalLink className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
+              <ExternalLink className="w-4 h-4 text-[#66625C] group-hover:text-[#00808C] transition-colors" />
             </motion.a>
           ))}
         </div>
@@ -476,7 +466,7 @@ export function MyContent() {
   if (loading) return (
     <div className="py-20 flex flex-col items-center justify-center space-y-4">
       <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">Loading Your Content...</p>
+      <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest animate-pulse">Loading Your Content...</p>
     </div>
   );
 
@@ -493,24 +483,24 @@ export function MyContent() {
 
 function ContentSection({ title, items, icon }) {
   return (
-    <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-8 shadow-xl">
+    <div className="rounded-3xl border border-[#001D36]/10 bg-white p-8 shadow-sm">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <div className="p-3 rounded-2xl bg-[#00808C]/10 text-[#00808C]">
             {icon}
           </div>
-          <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.2em]">{title}</h4>
+          <h4 className="text-[11px] font-black text-[#001D36] uppercase tracking-[0.2em]">{title}</h4>
         </div>
         {title === "Academic Resources" && (
-          <Link to="/my-resources" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">
+          <Link to="/my-resources" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F0F4F8] border border-[#001D36]/5 text-[9px] font-black text-[#66625C] uppercase tracking-widest hover:bg-[#001D36]/5 hover:text-[#001D36] transition-all">
             Manage <ExternalLink className="w-3 h-3" />
           </Link>
         )}
       </div>
       
       {(!items || items.length === 0) ? (
-        <div className="py-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/5 bg-white/[0.01]">
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">No Items Published</p>
+        <div className="py-12 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#001D36]/10 bg-[#F0F4F8]">
+          <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">No Items Published</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -518,16 +508,16 @@ function ContentSection({ title, items, icon }) {
             <motion.div 
               key={i}
               whileHover={{ y: -4 }}
-              className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all group shadow-lg"
+              className="p-6 rounded-2xl bg-white border border-[#001D36]/10 hover:border-[#00808C]/30 transition-all group shadow-sm hover:shadow-md"
             >
-              <p className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors truncate mb-3 tracking-tight">
+              <p className="text-sm font-black text-[#001D36] group-hover:text-[#00808C] transition-colors truncate mb-3 tracking-tight">
                 {it.title || it.name}
               </p>
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                <span className="text-[9px] font-bold text-[#66625C] uppercase tracking-widest">
                   {safeDate(it.created_at || it.updated_at)}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-700 group-hover:text-white transition-colors" />
+                <ChevronRight className="w-3.5 h-3.5 text-[#00808C] opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
               </div>
             </motion.div>
           ))}
@@ -560,62 +550,59 @@ export function Security({ user, onClear }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-10 shadow-2xl">
+      <div className="rounded-3xl border border-[#001D36]/10 bg-white p-10 shadow-sm">
         <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400">
+          <div className="p-3 rounded-2xl bg-[#00808C]/10 text-[#00808C]">
             <ShieldCheck className="w-6 h-6" />
           </div>
-          <h3 className="text-2xl font-black text-white tracking-tight">Security</h3>
+          <h3 className="text-2xl font-black text-[#001D36] tracking-tight">Security</h3>
         </div>
         <div className="space-y-4 mb-10">
-          <button className="w-full flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all group">
+          <button className="w-full flex items-center justify-between p-6 rounded-2xl bg-[#F0F4F8] border border-transparent hover:border-[#00808C]/20 hover:bg-[#00808C]/5 transition-all group">
             <div className="text-left">
-              <p className="text-sm font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">Change Password</p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Last updated 3 months ago</p>
+              <p className="text-sm font-black text-[#001D36] mb-1 group-hover:text-[#00808C] transition-colors">Change Password</p>
+              <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">Last updated 3 months ago</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-white transition-colors" />
+            <ChevronRight className="w-5 h-5 text-[#66625C] group-hover:text-[#00808C] transition-colors" />
           </button>
-          <button className="w-full flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all group">
+          <button className="w-full flex items-center justify-between p-6 rounded-2xl bg-[#F0F4F8] border border-transparent hover:border-[#00808C]/20 hover:bg-[#00808C]/5 transition-all group">
             <div className="text-left">
-              <p className="text-sm font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">Two-Factor Auth</p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Enhanced account protection</p>
+              <p className="text-sm font-black text-[#001D36] mb-1 group-hover:text-[#00808C] transition-colors">Two-Factor Auth</p>
+              <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">Enhanced account protection</p>
             </div>
-            <div className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Off</div>
+            <div className="px-3 py-1 rounded-full bg-slate-200 text-[9px] font-black text-[#66625C] uppercase tracking-widest">Off</div>
           </button>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-10 shadow-2xl overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-10 opacity-[0.02] pointer-events-none">
-          <LogOut size={180} className="text-white" />
-        </div>
+      <div className="rounded-3xl border border-[#001D36]/10 bg-white p-10 shadow-sm">
         <div className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-2xl bg-red-500/10 text-red-500">
+          <div className="p-3 rounded-2xl bg-red-50 text-red-500">
             <LogOut className="w-6 h-6" />
           </div>
-          <h3 className="text-2xl font-black text-white tracking-tight">Actions</h3>
+          <h3 className="text-2xl font-black text-[#001D36] tracking-tight">Actions</h3>
         </div>
         <div className="space-y-4">
           <button 
             onClick={handleLogout} 
             disabled={loading}
-            className="w-full flex items-center justify-between p-6 rounded-2xl bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all group disabled:opacity-50"
+            className="w-full flex items-center justify-between p-6 rounded-2xl bg-red-50 border border-red-100 hover:bg-red-500 hover:text-white transition-all group disabled:opacity-50 text-red-500"
           >
             <div className="text-left">
-              <p className="text-sm font-bold text-inherit mb-1">{loading ? 'Processing...' : 'Logout Session'}</p>
-              <p className="text-[10px] font-bold text-inherit opacity-60 uppercase tracking-widest">Sign out of StudyNest</p>
+              <p className="text-sm font-black text-inherit mb-1">{loading ? 'Processing...' : 'Sign Out'}</p>
+              <p className="text-[10px] font-bold text-inherit opacity-60 uppercase tracking-widest">Log out of your account</p>
             </div>
             <LogOut className="w-5 h-5" />
           </button>
           <button 
             onClick={onClear} 
-            className="w-full flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all group"
+            className="w-full flex items-center justify-between p-6 rounded-2xl bg-[#F0F4F8] border border-transparent hover:bg-[#00808C]/5 hover:border-[#00808C]/20 transition-all group"
           >
             <div className="text-left">
-              <p className="text-sm font-bold text-white mb-1 group-hover:text-slate-200 transition-colors">Clear Local Data</p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reset browser preferences</p>
+              <p className="text-sm font-black text-[#001D36] mb-1 group-hover:text-[#00808C] transition-colors">Clear Browser Data</p>
+              <p className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest">Clear local storage and cache</p>
             </div>
-            <Database className="w-5 h-5 text-slate-600 group-hover:text-white transition-colors" />
+            <Database className="w-5 h-5 text-[#66625C] group-hover:text-[#00808C] transition-colors" />
           </button>
         </div>
       </div>

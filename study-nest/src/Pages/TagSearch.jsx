@@ -144,7 +144,7 @@ export default function TagSearch() {
 
   return (
     <main
-      className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100 transition-all duration-300 ease-in-out shadow-lg rounded-xl"
+      className="min-h-screen bg-white transition-all duration-300 ease-in-out shadow-lg rounded-xl"
       style={{ paddingLeft: sidebarWidth, transition: "padding-left 300ms ease" }}
     >
       <LeftNav

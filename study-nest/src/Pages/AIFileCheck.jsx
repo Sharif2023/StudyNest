@@ -26,7 +26,7 @@ export default function AIFileCheck() {
     const el = dropRef.current; if (!el) return;
     const prevent = (e) => { e.preventDefault(); e.stopPropagation(); };
     const over = (e) => { prevent(e); el.style.borderColor = "rgba(124,58,237,0.5)"; el.style.background = "rgba(124,58,237,0.08)"; };
-    const leave = (e) => { prevent(e); el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.background = "rgba(255,255,255,0.03)"; };
+    const leave = (e) => { prevent(e); el.style.borderColor = "rgba(0,29,54,0.2)"; el.style.background = "rgba(255,255,255,0.03)"; };
     const drop = async (e) => { prevent(e); leave(e); const f = e.dataTransfer.files?.[0]; if (f) await handleFile(f); };
     el.addEventListener("dragover", over); el.addEventListener("dragleave", leave); el.addEventListener("drop", drop);
     return () => { el.removeEventListener("dragover", over); el.removeEventListener("dragleave", leave); el.removeEventListener("drop", drop); };
@@ -69,10 +69,10 @@ export default function AIFileCheck() {
   }
 
   return (
-    <main className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+    <main className="min-h-screen relative" style={{ background: "#F0F4F8", paddingLeft: sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-64 rounded-full opacity-[0.06]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(80px)" }} />
+        <div className="absolute top-0 left-1/4 w-96 h-64 rounded-full opacity-[0.06]" style={{ background: "transparent", filter: "none" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
       </div>
 
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} anonymous={anonymous} setAnonymous={setAnonymous} sidebarWidth={sidebarWidth} />
@@ -80,67 +80,66 @@ export default function AIFileCheck() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #a78bfa, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>AI File Check</h1>
-          <p className="text-sm mt-1" style={{ color: "#475569" }}>Upload a file and get AI-powered academic feedback</p>
+          <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "transparent", color: "#001D36" }}>AI File Check</h1>
+          <p className="text-sm mt-1" style={{ color: "#66625C" }}>Upload a file and get AI-powered academic feedback</p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <section className="lg:col-span-1 space-y-4">
-            <div ref={dropRef} className="rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-300" style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}>
+            <div ref={dropRef} className="rounded-3xl border-2 border-dashed p-8 text-center transition-all duration-300 shadow-sm" style={{ borderColor: "rgba(0,29,54,0.1)", background: "white" }}>
               {!file ? (
                 <>
-                  <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)" }}>
-                    <span className="text-2xl">🤖</span>
+                  <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-inner" style={{ background: "#F0F4F8" }}>
+                    <span className="text-3xl">🤖</span>
                   </div>
-                  <p className="text-sm mb-3" style={{ color: "#475569" }}>Drag & drop your file here</p>
-                  <label className="inline-flex cursor-pointer items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", color: "#a78bfa" }}>
-                    Choose file
+                  <p className="text-[11px] font-black uppercase tracking-widest mb-4 text-[#001D36]">Drag & drop your file</p>
+                  <label className="inline-flex cursor-pointer items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm hover:shadow-md transition-shadow" style={{ background: "#001D36", color: "white" }}>
+                    Browse File
                     <input type="file" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
                   </label>
-                  <p className="mt-3 text-xs" style={{ color: "#334155" }}>Supports .txt, .md, .pdf, .docx</p>
+                  <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-[#66625C]">Supports .txt, .md, .pdf, .docx</p>
                 </>
               ) : (
                 <div className="text-left">
-                  <p className="text-sm font-bold" style={{ color: "#e2e8f0" }}>{file.name}</p>
-                  <p className="mt-1 text-xs" style={{ color: "#475569" }}>{file.type || "file"} · {(file.size / 1024).toFixed(0)} KB</p>
+                  <p className="text-sm font-black" style={{ color: "#001D36" }}>{file.name}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#66625C]">{file.type || "file"} · {(file.size / 1024).toFixed(0)} KB</p>
                   {text && (
-                    <div className="mt-2 rounded-xl p-3 text-xs max-h-32 overflow-auto" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#64748b" }}>
-                      <pre className="whitespace-pre-wrap">{text.slice(0, 600)}</pre>
-                      {text.length > 600 && <p className="mt-1 opacity-60">…truncated</p>}
+                    <div className="mt-3 rounded-xl p-4 text-xs max-h-32 overflow-auto border border-[#001D36]/5 bg-[#F0F4F8] shadow-inner font-medium text-[#001D36]">
+                      <pre className="whitespace-pre-wrap font-sans">{text.slice(0, 600)}</pre>
+                      {text.length > 600 && <p className="mt-2 text-[#00808C] font-bold">…truncated</p>}
                     </div>
                   )}
-                  <button onClick={() => { setFile(null); setText(""); setResult(null); }} className="mt-3 px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.2)", color: "#fb7185" }}>Remove</button>
+                  <button onClick={() => { setFile(null); setText(""); setResult(null); }} className="mt-4 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-500 hover:bg-red-100 transition-colors">Remove</button>
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#475569" }}>Analysis Options</h3>
-              <div className="space-y-3">
+            <div className="rounded-3xl p-6 shadow-sm border border-[#001D36]/5 bg-white">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-5" style={{ color: "#66625C" }}>Analysis Options</h3>
+              <div className="space-y-4">
                 <Toggle label="Summarize" value={opts.summarize} onChange={v => setOpts({ ...opts, summarize: v })} />
                 <Toggle label="Key Points" value={opts.keypoints} onChange={v => setOpts({ ...opts, keypoints: v })} />
                 <Toggle label="Study Tips" value={opts.tips} onChange={v => setOpts({ ...opts, tips: v })} />
                 <Toggle label="Grammar & Style" value={opts.grammar} onChange={v => setOpts({ ...opts, grammar: v })} />
                 <Toggle label="Similarity (beta)" value={opts.similarity} onChange={v => setOpts({ ...opts, similarity: v })} />
-                <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: "#475569" }}>
-                  <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />
+                <label className="flex items-center gap-3 text-xs font-bold cursor-pointer text-[#001D36]">
+                  <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} className="w-4 h-4 rounded border-[#001D36]/20 text-[#00808C] focus:ring-[#00808C]" />
                   Post as Anonymous
                 </label>
               </div>
             </div>
 
-            <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#475569" }}>File Stats</h3>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-3xl p-6 shadow-sm border border-[#001D36]/5 bg-white">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4" style={{ color: "#66625C" }}>File Stats</h3>
+              <div className="grid grid-cols-3 gap-3">
                 <Metric label="Words" value={stats.words} />
                 <Metric label="Chars" value={stats.chars} />
-                <Metric label="~Tokens" value={stats.tokens} />
+                <Metric label="Tokens" value={stats.tokens} />
               </div>
             </div>
 
             <button disabled={!file || loading} onClick={runCheck}
-              className="w-full py-3 rounded-xl text-sm font-bold transition-all duration-300 disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg, #7c3aed, #22d3ee)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" }}>
+              className="w-full py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-40 shadow-md bg-[#00808C] hover:bg-[#00606B] text-white">
               {loading ? "⚡ Analyzing…" : "Run AI Check"}
             </button>
             {error && <div className="text-xs text-center" style={{ color: "#fb7185" }}>{error}</div>}
@@ -148,11 +147,11 @@ export default function AIFileCheck() {
 
           <section className="lg:col-span-2 space-y-4">
             {!result ? (
-              <div className="grid place-items-center rounded-3xl border-2 border-dashed py-20 text-center" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)" }}>
-                  <span className="text-2xl">🤖</span>
+              <div className="grid place-items-center rounded-[2.5rem] border-2 border-dashed bg-white shadow-sm py-24 text-center" style={{ borderColor: "rgba(0,29,54,0.1)" }}>
+                <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center bg-[#F0F4F8] shadow-inner">
+                  <span className="text-3xl">📝</span>
                 </div>
-                <p className="text-sm" style={{ color: "#334155" }}>Upload a file and click <span className="font-bold" style={{ color: "#a78bfa" }}>Run AI Check</span></p>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#66625C]">Upload a file and click <span className="text-[#00808C] font-black">Run AI Check</span></p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -173,45 +172,45 @@ export default function AIFileCheck() {
 
 function Toggle({ label, value, onChange }) {
   return (
-    <label className="flex items-center justify-between cursor-pointer">
-      <span className="text-xs" style={{ color: "#64748b" }}>{label}</span>
-      <button type="button" onClick={() => onChange(!value)} className="relative h-5 w-9 rounded-full transition-all duration-300" style={{ background: value ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.1)", border: `1px solid ${value ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.1)"}` }}>
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all duration-300 shadow-sm ${value ? "left-4" : "left-0.5"}`} />
+    <label className="flex items-center justify-between cursor-pointer group">
+      <span className="text-[11px] font-bold text-[#001D36] uppercase tracking-wider">{label}</span>
+      <button type="button" onClick={() => onChange(!value)} className="relative h-6 w-11 rounded-full transition-all duration-300" style={{ background: value ? "#00808C" : "#E2E8F0" }}>
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all duration-300 shadow-sm ${value ? "left-6" : "left-1"}`} />
       </button>
     </label>
   );
 }
 function Metric({ label, value }) {
   return (
-    <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <div className="text-base font-black" style={{ color: "#a78bfa" }}>{value.toLocaleString()}</div>
-      <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "#475569" }}>{label}</div>
+    <div className="rounded-2xl p-4 text-center bg-[#F0F4F8] shadow-inner border border-[#001D36]/5">
+      <div className="text-lg font-black text-[#00808C]">{value.toLocaleString()}</div>
+      <div className="text-[9px] font-black uppercase tracking-[0.2em] mt-1 text-[#66625C]">{label}</div>
     </div>
   );
 }
 function Card({ title, content }) {
   return (
-    <article className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#64748b" }}>{title}</h3>
+    <article className="rounded-[2rem] p-8 bg-white shadow-sm border border-[#001D36]/5">
+      <div className="mb-5 flex items-center justify-between">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#001D36]">{title}</h3>
         {content && <CopyBtn text={content} />}
       </div>
-      <pre className="whitespace-pre-wrap text-sm" style={{ color: "#94a3b8", fontFamily: "inherit" }}>{content}</pre>
+      <pre className="whitespace-pre-wrap text-sm font-medium leading-relaxed font-sans text-[#001D36]">{content}</pre>
     </article>
   );
 }
 function ListCard({ title, items, icon }) {
   return (
-    <article className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#64748b" }}>{title}</h3>
+    <article className="rounded-[2rem] p-8 bg-white shadow-sm border border-[#001D36]/5">
+      <div className="mb-5 flex items-center justify-between">
+        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#001D36]">{title}</h3>
         <CopyBtn text={(items || []).map((x, i) => `${i + 1}. ${x}`).join("\n")} />
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {(items || []).map((x, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <span className="mt-0.5" style={{ color: "#a78bfa" }}>{icon || "▸"}</span>
-            <span style={{ color: "#94a3b8" }}>{x}</span>
+          <li key={i} className="flex items-start gap-3 text-sm font-medium text-[#001D36]">
+            <span className="mt-0.5 text-[#00808C] font-black">{icon || "▸"}</span>
+            <span className="leading-relaxed">{x}</span>
           </li>
         ))}
       </ul>
@@ -220,24 +219,24 @@ function ListCard({ title, items, icon }) {
 }
 function CopyBtn({ text }) {
   return (
-    <button onClick={() => navigator.clipboard.writeText(text || "")} className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>Copy</button>
+    <button onClick={() => navigator.clipboard.writeText(text || "")} className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-[#F0F4F8] text-[#66625C] hover:bg-[#001D36]/10 transition-colors">Copy</button>
   );
 }
 function SimilarityCard({ data }) {
   return (
-    <article className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#64748b" }}>Similarity (beta)</h3>
-      <div className="text-sm mb-3" style={{ color: "#94a3b8" }}>Overall: <strong style={{ color: "#a78bfa" }}>{Math.round((data.score || 0) * 100)}%</strong> similar</div>
-      <ul className="space-y-3">
+    <article className="rounded-[2rem] p-8 bg-white shadow-sm border border-[#001D36]/5">
+      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] mb-4 text-[#001D36]">Similarity (beta)</h3>
+      <div className="text-sm font-bold mb-5 text-[#66625C]">Overall: <strong className="text-[#E11D48] text-lg font-black">{Math.round((data.score || 0) * 100)}%</strong> similar</div>
+      <ul className="space-y-4">
         {(data.matches || []).map((m, i) => (
-          <li key={i} className="flex items-center justify-between text-sm">
-            <div className="truncate pr-2 text-xs" style={{ color: "#64748b" }}>{m.title}</div>
+          <li key={i} className="flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-2">
+            <div className="truncate pr-2 text-xs font-bold text-[#001D36]">{m.title}</div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <div className="h-full rounded-full" style={{ width: `${Math.round(m.pct)}%`, background: "linear-gradient(90deg, #7c3aed, #22d3ee)" }} />
+              <div className="w-32 h-2 rounded-full overflow-hidden bg-[#F0F4F8] shadow-inner">
+                <div className="h-full rounded-full bg-[#E11D48]" style={{ width: `${Math.round(m.pct)}%` }} />
               </div>
-              <span className="text-xs font-bold" style={{ color: "#a78bfa" }}>{Math.round(m.pct)}%</span>
-              {m.link && <a className="text-xs font-bold" href={m.link} target="_blank" rel="noreferrer" style={{ color: "#22d3ee" }}>open</a>}
+              <span className="text-xs font-black text-[#E11D48]">{Math.round(m.pct)}%</span>
+              {m.link && <a className="text-[9px] font-black uppercase tracking-widest text-[#00808C] hover:underline" href={m.link} target="_blank" rel="noreferrer">Open</a>}
             </div>
           </li>
         ))}

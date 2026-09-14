@@ -32,6 +32,12 @@ export default function Messages() {
     const listRef = useRef(null);
     const lastIdRef = useRef(0);
 
+    const [navOpen, setNavOpen] = useState(window.innerWidth >= 1024);
+
+    const COLLAPSED_W = 80;
+    const EXPANDED_W = 280;
+    const sidebarWidth = navOpen ? EXPANDED_W : COLLAPSED_W;
+
     // Voice note state
     const [isRecording, setIsRecording] = useState(false);
     const [recMs, setRecMs] = useState(0);
@@ -222,17 +228,21 @@ export default function Messages() {
     }, [activeCid, activeGroupId, conversations, myGroups]);
 
     return (
-        <div className="min-h-screen relative overflow-hidden" style={{ background: "#08090e", color: "#e2e8f0" }}>
-            {/* Background Glows */}
+        <div className="min-h-screen relative overflow-hidden" style={{ background: "#F0F4F8", color: "#001D36" }}>
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(80px)" }} />
-                <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+                <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full opacity-50 bg-[#00808C]/5 blur-[120px]" />
+                <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full opacity-50 bg-[#8AB100]/5 blur-[100px]" />
             </div>
 
-            <LeftNav sidebarWidth={72} navOpen={false} />
-            <Header sidebarWidth={72} navOpen={false} />
+            <LeftNav sidebarWidth={sidebarWidth} navOpen={navOpen} setNavOpen={setNavOpen} />
+            <Header sidebarWidth={sidebarWidth} navOpen={navOpen} setNavOpen={setNavOpen} />
 
-            <div className="flex relative z-10" style={{ paddingLeft: 72, height: "calc(100vh - 64px)", marginTop: 64 }}>
+            <div className="flex relative z-10" style={{ 
+                paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth, 
+                transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)",
+                height: "calc(100vh - 64px)", 
+                marginTop: 64 
+            }}>
                 <ChatSidebar 
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
@@ -249,7 +259,7 @@ export default function Messages() {
                     setActiveGroupId={setActiveGroupId}
                 />
 
-                <div className="flex-1 flex flex-col h-full bg-black/[0.15]">
+                <div className="flex-1 flex flex-col h-full bg-[#F0F4F8]">
                     <MessageThread 
                         messages={messages}
                         myUser={myUser}

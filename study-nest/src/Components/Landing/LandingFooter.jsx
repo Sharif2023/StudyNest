@@ -17,7 +17,7 @@ export default function LandingFooter() {
           <div className="lg:col-span-2">
             <a href="#home" className="flex items-center gap-3">
               <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-zinc-50 border border-zinc-100 p-1.5">
-                <img src="/logo.png" alt="StudyNest" className="h-full w-full object-contain rounded-lg" />
+                <img src="/logo.ico" alt="StudyNest" className="h-full w-full object-contain rounded-lg" />
               </div>
               <span className="text-xl font-black tracking-tight text-zinc-900 uppercase">StudyNest</span>
             </a>

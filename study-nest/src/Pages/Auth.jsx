@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, User, Hash, ArrowRight, ChevronLeft, CheckCircle2 } from "lucide-react";
 import apiClient from "../apiConfig";
-import logo from "../assets/logo.png";
+
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -143,8 +143,8 @@ const Auth = () => {
             Back to Home
           </Link>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 shadow-sm border border-transparent">
-              <img src={logo} alt="StudyNest" className="w-full h-full object-contain" />
+            <div className="w-12 h-12 flex items-center justify-center">
+              <img src="/logo.ico" alt="StudyNest" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">StudyNest</h1>
           </div>
@@ -208,8 +208,8 @@ const Auth = () => {
               <ChevronLeft className="w-4 h-4" />
               Back
             </Link>
-            <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center p-2 shadow-sm border border-gray-100 mb-4">
-              <img src={logo} alt="StudyNest" className="w-full h-full object-contain" />
+            <div className="w-14 h-14 flex items-center justify-center mb-4">
+              <img src="/logo.ico" alt="StudyNest" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
               {activeTab === "login" ? "Welcome back" : "Create account"}

@@ -6,8 +6,8 @@ export function ToggleButton({ on, onClick, children, label }) {
     <button
       onClick={onClick}
       className={
-        "inline-flex items-center gap-3 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:-translate-y-0.5 " +
-        (on ? "bg-white/10 text-white" : "bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/5")
+        "inline-flex items-center gap-3 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm border transition-all hover:-translate-y-0.5 " +
+        (on ? "bg-[#00808C] border-[#00808C] text-white" : "bg-white border-[#001D36]/10 text-[#66625C] hover:text-[#001D36] hover:bg-[#001D36]/5")
       }
       aria-label={label}
     >

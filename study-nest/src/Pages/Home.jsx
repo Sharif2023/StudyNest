@@ -84,29 +84,21 @@ export default function Home() {
   const timerProgress = (1 - timerSeconds / (25 * 60)) * 100;
 
   const stats = [
-    { label: "Study Points",  val: points,    icon: Trophy,   color: "#a78bfa", glow: "rgba(139,92,246,0.4)" },
-    { label: "Live Rooms",    val: 12,         icon: Video,    color: "#22d3ee", glow: "rgba(6,182,212,0.4)" },
-    { label: "Resources",     val: 42,         icon: BookOpen, color: "#34d399", glow: "rgba(52,211,153,0.4)" },
-    { label: "Global Rank",   val: "#4",       icon: Zap,      color: "#fbbf24", glow: "rgba(251,191,36,0.4)" },
+    { label: "Study Points",  val: points,    icon: Trophy,   color: "#F18900" },
+    { label: "Live Rooms",    val: 12,         icon: Video,    color: "#00808C" },
+    { label: "Resources",     val: 42,         icon: BookOpen, color: "#8AB100" },
+    { label: "Global Rank",   val: "#4",       icon: Zap,      color: "#A7481E" },
   ];
 
   const quickNav = [
-    { title: "Study Notes",     desc: "Academic Library",    icon: Files,        path: "/notes",      color: "#a78bfa", glow: "rgba(139,92,246,0.3)" },
-    { title: "AI Tools",        desc: "AI Assistant",    icon: Sparkles,     path: "/ai-check",   color: "#22d3ee", glow: "rgba(6,182,212,0.3)" },
-    { title: "Discussion",      desc: "Student Forum",      icon: MessageSquare, path: "/forum",     color: "#34d399", glow: "rgba(52,211,153,0.3)" },
-    { title: "Leaderboard",     desc: "Top Students",       icon: Trophy,        path: "/points-leaderboard", color: "#fbbf24", glow: "rgba(251,191,36,0.3)" },
+    { title: "Study Notes",     desc: "Academic Library",    icon: Files,        path: "/notes",      color: "#F18900" },
+    { title: "AI Tools",        desc: "AI Assistant",    icon: Sparkles,     path: "/ai-check",   color: "#00808C" },
+    { title: "Discussion",      desc: "Student Forum",      icon: MessageSquare, path: "/forum",     color: "#8AB100" },
+    { title: "Leaderboard",     desc: "Top Students",       icon: Trophy,        path: "/points-leaderboard", color: "#A7481E" },
   ];
 
   return (
-    <div className="min-h-screen relative" style={{ background: "#08090e" }}>
-      {/* Aurora Background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.08]"
-          style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
-        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 rounded-full opacity-[0.06]"
-          style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(80px)" }} />
-      </div>
-
+    <div className="min-h-screen relative bg-[#F0F4F8]">
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={SIDEBAR_W} />
       <Header sidebarWidth={SIDEBAR_W} setNavOpen={setNavOpen} navOpen={navOpen} />
 
@@ -124,40 +116,28 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ background: "#34d399", boxShadow: "0 0 8px rgba(52,211,153,0.7)" }} />
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#475569" }}>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#8AB100] animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#66625C]">
                   Live · Online
                 </span>
               </div>
               <h1 className="text-5xl lg:text-7xl font-display font-black leading-none tracking-tighter">
-                <span style={{ color: "#94a3b8" }}>Hello,</span>{" "}
-                <span style={{
-                  background: "linear-gradient(135deg, #a78bfa, #22d3ee)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text"
-                }}>
+                <span className="text-[#66625C]">Hello,</span>{" "}
+                <span className="text-[#001D36]">
                   {profile.name?.split(' ')[0] || "Scholar"}.
                 </span>
               </h1>
-              <p className="text-base mt-4 max-w-md" style={{ color: "#475569" }}>
+              <p className="text-base mt-4 max-w-md font-medium text-[#66625C]">
                 Ready to level up? Your study dashboard is live and synced.
               </p>
             </motion.div>
 
             <div className="flex items-center gap-3">
-              <Link to="/to-do-list" className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(139,92,246,0.3)"; e.currentTarget.style.color = "#e2e8f0"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>
+              <Link to="/to-do-list" className="flex items-center gap-2 px-6 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all duration-300 bg-white border border-[#001D36]/10 text-[#001D36] hover:border-[#001D36]/30 hover:shadow-md">
                 <Calendar className="w-4 h-4" /> Schedule
               </Link>
               <Link to="/rooms"
-                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300"
-                style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = "0 12px 32px rgba(124,58,237,0.5)"}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = "0 8px 24px rgba(124,58,237,0.3)"}>
+                className="flex items-center gap-2 px-6 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all duration-300 bg-[#001D36] text-white hover:bg-[#001D36]/90 hover:shadow-xl hover:shadow-[#001D36]/20">
                 <Plus className="w-4 h-4" /> Join Study Room
               </Link>
             </div>
@@ -186,21 +166,17 @@ export default function Home() {
           <SectionLabel label="Quick Access" icon={LayoutGrid} />
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {quickNav.map((r, i) => (
-              <BentoCard key={i} delay={0.4 + i * 0.07} accentColor={r.glow.replace("0.3)", "1)")}>
+              <BentoCard key={i} delay={0.4 + i * 0.07}>
                 <Link to={r.path} className="block p-7 h-full group/qnav">
                   <div className="mb-5">
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 group-hover/qnav:scale-110"
-                      style={{
-                        background: `${r.color}18`,
-                        border: `1px solid ${r.color}28`,
-                        boxShadow: `0 0 20px ${r.glow}`,
-                      }}>
-                      <r.icon className="w-5 h-5" style={{ color: r.color }} />
+                    <div className="w-12 h-12 rounded-[14px] flex items-center justify-center mb-6 transition-all duration-500 group-hover/qnav:scale-110"
+                      style={{ background: `${r.color}15`, border: `1px solid ${r.color}25` }}>
+                      <r.icon className="w-6 h-6" style={{ color: r.color }} />
                     </div>
-                    <h4 className="text-base font-bold mb-1" style={{ color: "#e2e8f0" }}>{r.title}</h4>
-                    <p className="text-xs font-medium" style={{ color: "#475569" }}>{r.desc}</p>
+                    <h4 className="text-lg font-bold mb-1 text-[#001D36]">{r.title}</h4>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#66625C]">{r.desc}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold opacity-0 group-hover/qnav:opacity-100 transition-opacity duration-300"
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover/qnav:opacity-100 transition-opacity duration-300"
                     style={{ color: r.color }}>
                     Open <ArrowRight className="w-3.5 h-3.5" />
                   </div>

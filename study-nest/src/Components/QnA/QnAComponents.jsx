@@ -28,8 +28,8 @@ export function IconButton({ children, onClick, pressed, label }) {
       aria-label={label}
       onClick={onClick}
       className={
-        "grid place-items-center rounded-md p-1.5 " +
-        (pressed ? "bg-[rgba(255,255,255,0.1)] text-white" : "text-slate-200 hover:bg-[rgba(255,255,255,0.05)]")
+        "grid place-items-center rounded-md p-1.5 transition-colors " +
+        (pressed ? "bg-[#001D36] text-white" : "text-[#66625C] hover:bg-black/5 hover:text-[#001D36]")
       }
     >
       {children}
@@ -41,10 +41,10 @@ export function Avatar({ name }) {
   const initial = (name?.[0] || "?").toUpperCase();
   return (
     <span className="flex items-center gap-2">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.1)] text-[10px] font-bold text-white">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#001D36]/10 text-[10px] font-bold text-[#001D36]">
         {initial}
       </span>
-      <span className="text-xs font-medium text-slate-200">{name}</span>
+      <span className="text-xs font-medium text-[#001D36]">{name}</span>
     </span>
   );
 }
@@ -63,38 +63,34 @@ export function QuestionCard({ question, onOpen, onVote }) {
 
   return (
     <article
-      className="flex gap-4 p-5 rounded-2xl cursor-pointer transition-all duration-300 group/card"
+      className="flex gap-4 p-5 rounded-2xl cursor-pointer transition-all duration-300 group/card bg-white border border-[#001D36]/10 hover:border-[#001D36]/30 hover:shadow-md"
       onClick={onOpen}
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(139,92,246,0.25)"; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
     >
-      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 bg-[#F0F4F8]">
         <IconButton label="Upvote" onClick={up} pressed={userVote === 1}>
-          <ChevronUp className="h-4 w-4" style={{ color: userVote === 1 ? "#a78bfa" : "#475569" }} />
+          <ChevronUp className="h-4 w-4" style={{ color: userVote === 1 ? "#10b981" : "inherit" }} />
         </IconButton>
-        <div className="my-1 text-sm font-bold tabular-nums" style={{ color: "#e2e8f0" }}>{formatVotes(question.votes)}</div>
+        <div className="my-1 text-sm font-bold tabular-nums text-[#001D36]">{formatVotes(question.votes)}</div>
         <IconButton label="Downvote" onClick={down} pressed={userVote === -1}>
-          <ChevronDown className="h-4 w-4" style={{ color: userVote === -1 ? "#fb7185" : "#475569" }} />
+          <ChevronDown className="h-4 w-4" style={{ color: userVote === -1 ? "#ef4444" : "inherit" }} />
         </IconButton>
       </div>
 
       <div className="min-w-0 flex-1">
-        <button onClick={onOpen} className="text-left w-full">
-          <h3 className="line-clamp-1 text-base font-bold mb-1 transition-colors duration-200" style={{ color: "#e2e8f0" }}
-            onMouseEnter={e => e.currentTarget.style.color = "#a78bfa"}
-            onMouseLeave={e => e.currentTarget.style.color = "#e2e8f0"}
-          >{question.title}</h3>
-          <p className="line-clamp-2 text-sm" style={{ color: "#64748b" }}>{question.body}</p>
+        <button onClick={onOpen} className="text-left w-full group-hover/card:opacity-90">
+          <h3 className="line-clamp-1 text-base font-bold mb-1 transition-colors duration-200 text-[#001D36] group-hover/card:text-[#00808C]">
+            {question.title}
+          </h3>
+          <p className="line-clamp-2 text-sm text-[#66625C]">{question.body}</p>
         </button>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Avatar name={question.anonymous ? "Anonymous" : question.author} />
-          <span style={{ color: "#334155" }}>·</span>
-          <span className="text-xs" style={{ color: "#475569" }}>{timeAgo(question.createdAt)}</span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#64748b" }}>{question.answers.length} answers</span>
+          <span className="text-[#66625C] opacity-50">·</span>
+          <span className="text-xs text-[#66625C]">{timeAgo(question.createdAt)}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-[#001D36]/5 text-[#001D36] font-medium border border-[#001D36]/10">{question.answers.length} answers</span>
           <div className="ml-auto flex flex-wrap gap-1.5">
             {question.tags.map((t) => (
-              <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", color: "#a78bfa" }}>#{t}</span>
+              <span key={t} className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#8AB100]/10 border border-[#8AB100]/20 text-[#6B8A00]">#{t}</span>
             ))}
           </div>
         </div>
@@ -105,14 +101,14 @@ export function QuestionCard({ question, onOpen, onVote }) {
 
 export function EmptyState({ onNew }) {
   return (
-    <div className="grid place-items-center rounded-3xl border border-dashed border-white/10 bg-white/60 py-16">
+    <div className="grid place-items-center rounded-3xl border border-dashed border-[#001D36]/20 bg-white/80 py-16">
       <div className="text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#00808C]/10 text-[#00808C]">
           <QuestionMark className="h-7 w-7" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold">No questions yet</h3>
-        <p className="mt-1 text-sm text-slate-200">Start the discussion by asking your first question.</p>
-        <button onClick={onNew} className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Ask a question</button>
+        <h3 className="mt-4 text-lg font-semibold text-[#001D36]">No questions yet</h3>
+        <p className="mt-1 text-sm text-[#66625C]">Start the discussion by asking your first question.</p>
+        <button onClick={onNew} className="mt-4 rounded-xl bg-[#001D36] px-4 py-2 text-sm font-semibold text-white hover:bg-[#001D36]/90 shadow-md">Ask a question</button>
       </div>
     </div>
   );

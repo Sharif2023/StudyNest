@@ -253,7 +253,7 @@ export default function MyResources() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08090e] selection:bg-cyan-500/30 selection:text-white relative">
+    <div className="min-h-screen bg-[#F0F4F8] selection:bg-[#001D36]/10 selection:text-[#001D36] relative">
       <LeftNav
         navOpen={navOpen}
         setNavOpen={setNavOpen}
@@ -274,18 +274,18 @@ export default function MyResources() {
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-[#001D36]/10 shadow-sm"
                 >
-                  <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Academic Assets</span>
+                  <div className="w-2 h-2 rounded-full bg-[#8AB100] animate-pulse" />
+                  <span className="text-[10px] font-black text-[#66625C] uppercase tracking-[0.2em]">My Assets</span>
                 </motion.div>
                 <motion.h1 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none"
+                  className="text-5xl md:text-7xl font-black text-[#001D36] tracking-tighter leading-none"
                 >
                   MY<br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 uppercase font-black">Resources.</span>
+                  <span className="text-[#00808C] uppercase font-black">Resources.</span>
                 </motion.h1>
               </div>
 
@@ -294,10 +294,9 @@ export default function MyResources() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setUploadOpen(true)}
-                  className="group relative px-8 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-[10px] overflow-hidden shadow-2xl shadow-white/5"
+                  className="group relative px-8 py-4 bg-[#00808C] text-white rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-md hover:bg-[#00606B] transition-colors"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <span className="relative z-10 flex items-center gap-3 group-hover:text-white transition-colors">
+                  <span className="relative z-10 flex items-center gap-3">
                     Upload Resource
                   </span>
                 </motion.button>
@@ -305,7 +304,7 @@ export default function MyResources() {
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10 w-fit">
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white border border-[#001D36]/10 w-fit shadow-sm">
               {[
                 ["resources", "My Library"],
                 ["recordings", "Lectures"],
@@ -315,8 +314,8 @@ export default function MyResources() {
                   onClick={() => setTab(val)}
                   className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                     tab === val
-                      ? "bg-white text-black shadow-xl"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                      ? "bg-[#001D36] text-white shadow-sm"
+                      : "text-[#66625C] hover:text-[#001D36] hover:bg-[#001D36]/5"
                   }`}
                 >
                   {label}
@@ -328,13 +327,12 @@ export default function MyResources() {
           {/* Filters Bar */}
           <div className="flex flex-col lg:flex-row items-center gap-6 mb-12 relative z-10">
             <div className="relative w-full lg:max-w-xl group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+              <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-[#66625C] group-hover:text-[#00808C] transition-colors" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Secure search through your academic assets..."
-                className="w-full rounded-2xl border border-white/5 bg-white/[0.03] pl-14 pr-6 py-5 text-[11px] font-bold text-white uppercase tracking-widest placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all backdrop-blur-3xl"
+                placeholder="Search your resources..."
+                className="w-full rounded-2xl border border-[#001D36]/10 bg-white pl-14 pr-6 py-5 text-[11px] font-bold text-[#001D36] uppercase tracking-widest placeholder-[#66625C]/60 focus:outline-none focus:ring-2 focus:ring-[#00808C]/20 transition-all shadow-sm"
               />
             </div>
 
@@ -349,11 +347,11 @@ export default function MyResources() {
           {/* Content */}
           <div className="min-h-[40vh]">
             {loading ? (
-              <div className="rounded-2xl bg-[rgba(255,255,255,0.02)] p-6 text-center text-slate-300 dark:bg-slate-900 dark:text-slate-400">
-                Loading your items…
+              <div className="rounded-2xl bg-white p-6 text-center text-[#66625C] shadow-sm font-bold uppercase tracking-widest text-[11px]">
+                Loading your items...
               </div>
             ) : err ? (
-              <div className="rounded-2xl bg-[rgba(255,255,255,0.02)] p-6 text-center text-red-600 dark:bg-slate-900">
+              <div className="rounded-2xl bg-white p-6 text-center text-red-600 shadow-sm font-bold uppercase tracking-widest text-[11px]">
                 Error: {err}
               </div>
             ) : filtered.length === 0 ? (

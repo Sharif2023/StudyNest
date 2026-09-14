@@ -7,9 +7,9 @@ import { Trophy, RefreshCw, Crown, Medal, Award, Zap, Users } from 'lucide-react
 import apiClient from "../apiConfig";
 
 const RANK_CONFIG = {
-  1: { label: "Gold",   icon: Crown,  color: "#fbbf24", glow: "rgba(251,191,36,0.5)",  bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", height: 160 },
-  2: { label: "Silver", icon: Medal,  color: "#94a3b8", glow: "rgba(148,163,184,0.4)", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.2)", height: 130 },
-  3: { label: "Bronze", icon: Award,  color: "#f97316", glow: "rgba(249,115,22,0.4)",  bg: "rgba(249,115,22,0.1)",  border: "rgba(249,115,22,0.25)", height: 100 },
+  1: { label: "Gold",   icon: Crown,  color: "#F59E0B", glow: "rgba(245,158,11,0.2)",  bg: "rgba(245,158,11,0.05)", border: "rgba(245,158,11,0.2)", height: 160 },
+  2: { label: "Silver", icon: Medal,  color: "#66625C", glow: "rgba(102,98,92,0.15)", bg: "rgba(102,98,92,0.05)", border: "rgba(102,98,92,0.15)", height: 130 },
+  3: { label: "Bronze", icon: Award,  color: "#EA580C", glow: "rgba(234,88,12,0.15)",  bg: "rgba(234,88,12,0.05)",  border: "rgba(234,88,12,0.15)", height: 100 },
 };
 
 const POINT_ACTIONS = [
@@ -67,11 +67,11 @@ export default function PointsLeaderboard() {
   const userEntry = currentUser && leaderboard.find(u => u.id === currentUser.id);
 
   return (
-    <div className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: SIDEBAR_W, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+    <div className="min-h-screen relative" style={{ background: "#F0F4F8", paddingLeft: SIDEBAR_W, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Aurora */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/3 w-96 h-64 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #fbbf24, transparent)", filter: "blur(80px)" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+        <div className="absolute top-0 left-1/3 w-96 h-64 rounded-full opacity-[0.07]" style={{ background: "transparent", filter: "none" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
       </div>
 
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={SIDEBAR_W} />
@@ -82,16 +82,13 @@ export default function PointsLeaderboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div>
-            <h1 className="text-4xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #fbbf24, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+            <h1 className="text-4xl font-display font-black tracking-tighter" style={{ background: "transparent", color: "#001D36" }}>
               Scholar Rankings
             </h1>
-            <p className="text-sm mt-1" style={{ color: "#475569" }}>{leaderboard.length} students competing</p>
+            <p className="text-sm mt-1" style={{ color: "#66625C" }}>{leaderboard.length} students competing</p>
           </div>
           <button onClick={fetchLeaderboard}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-200"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(251,191,36,0.25)"; e.currentTarget.style.color = "#fbbf24"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 bg-white shadow-sm border border-[#001D36]/10 text-[#66625C] hover:text-[#001D36] hover:bg-[#001D36]/5">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
@@ -99,25 +96,24 @@ export default function PointsLeaderboard() {
         {/* Your Rank Card */}
         {currentUser && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-            className="mb-8 p-5 rounded-2xl relative overflow-hidden"
-            style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}>
-            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at right, rgba(6,182,212,0.06), transparent 60%)" }} />
+            className="mb-8 p-6 rounded-[2rem] relative overflow-hidden bg-white shadow-sm border border-[#001D36]/5">
+            <div className="absolute inset-0" style={{ background: "transparent" }} />
             <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", boxShadow: "0 0 20px rgba(124,58,237,0.4)" }}>
-                  <Users className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#00808C]/10 border border-[#00808C]/20 shadow-inner">
+                  <Users className="w-6 h-6 text-[#00808C]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748b" }}>Your Standing</p>
-                  <p className="text-base font-bold" style={{ color: "#f1f5f9" }}>{currentUser.name}</p>
-                  {userEntry && <p className="text-xs" style={{ color: "#475569" }}>Rank #{userEntry.rank}</p>}
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#66625C] mb-1">Your Standing</p>
+                  <p className="text-lg font-black text-[#001D36]">{currentUser.name}</p>
+                  {userEntry && <p className="text-xs font-bold text-[#00808C]">Rank #{userEntry.rank}</p>}
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-display font-black" style={{ color: "#a78bfa", textShadow: "0 0 20px rgba(139,92,246,0.5)" }}>
+                <p className="text-4xl font-display font-black text-[#001D36]">
                   {(userEntry?.points || currentUser.points || 0).toLocaleString()}
                 </p>
-                <p className="text-xs" style={{ color: "#475569" }}>Scholar Points</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#66625C] mt-1">Scholar Points</p>
               </div>
             </div>
           </motion.div>
@@ -148,18 +144,18 @@ export default function PointsLeaderboard() {
                         style={{ width: 130 }}
                       >
                         {/* User Name */}
-                        <p className="text-xs font-bold text-center mb-3 leading-tight" style={{ color: "#e2e8f0", maxWidth: 100 }}>
+                        <p className="text-xs font-bold text-center mb-3 leading-tight" style={{ color: "#001D36", maxWidth: 100 }}>
                           {user.name}
                         </p>
                         {/* Avatar */}
-                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-display font-black"
-                          style={{ background: `linear-gradient(135deg, ${cfg.color}30, ${cfg.color}15)`, border: `2px solid ${cfg.color}`, boxShadow: `0 0 20px ${cfg.glow}`, color: cfg.color }}>
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-lg font-display font-black bg-white shadow-sm"
+                          style={{ border: `2px solid ${cfg.color}`, color: cfg.color }}>
                           {user.name.substring(0, 1)}
                         </div>
                         {/* Podium block */}
-                        <div className="w-full flex flex-col items-center justify-end rounded-t-2xl py-4 relative overflow-hidden"
-                          style={{ height: cfg.height, background: cfg.bg, border: `1px solid ${cfg.border}`, borderBottom: "none" }}>
-                          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at top, ${cfg.color}10, transparent 70%)` }} />
+                        <div className="w-full flex flex-col items-center justify-end rounded-t-[1.5rem] py-4 relative overflow-hidden shadow-sm"
+                          style={{ height: cfg.height, background: "white", border: `2px solid ${cfg.color}`, borderBottom: "none" }}>
+                          <div className="absolute inset-0 opacity-10" style={{ background: cfg.color }} />
                           <Icon className="w-6 h-6 mb-2 relative z-10" style={{ color: cfg.color }} />
                           <p className="text-2xl font-display font-black leading-none relative z-10" style={{ color: cfg.color }}>#{user.rank}</p>
                           <p className="text-xs font-bold mt-1 relative z-10" style={{ color: cfg.color }}>{user.points.toLocaleString()} pts</p>
@@ -172,10 +168,10 @@ export default function PointsLeaderboard() {
             )}
 
             {/* Full ranked list */}
-            <div className="rounded-2xl overflow-hidden mb-8" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div className="flex items-center justify-between px-6 py-4 border-b" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#475569" }}>All Rankings</p>
-                <div className="badge-violet text-[10px]"><Trophy className="w-3 h-3" /> {leaderboard.length} Students</div>
+            <div className="rounded-[2rem] overflow-hidden mb-8 bg-white shadow-sm border border-[#001D36]/10">
+              <div className="flex items-center justify-between px-8 py-5 border-b border-[#001D36]/5 bg-[#F0F4F8]">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#66625C" }}>All Rankings</p>
+                <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#001D36]"><Trophy className="w-3.5 h-3.5 text-[#00808C]" /> {leaderboard.length} Students</div>
               </div>
               <div>
                 {leaderboard.map((user, i) => {
@@ -185,34 +181,31 @@ export default function PointsLeaderboard() {
                     <motion.div key={user.id}
                       initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04, ease: "easeOut" }}
-                      className="flex items-center px-6 py-4 border-b transition-colors duration-200"
+                      className="flex items-center px-8 py-5 border-b border-[#001D36]/5 transition-colors duration-200"
                       style={{
-                        borderColor: "rgba(255,255,255,0.04)",
-                        background: isUser
-                          ? "rgba(124,58,237,0.08)"
-                          : "transparent",
-                        borderLeft: isUser ? "3px solid rgba(124,58,237,0.6)" : "3px solid transparent",
+                        background: isUser ? "#00808C10" : "white",
+                        borderLeft: isUser ? "4px solid #00808C" : "4px solid transparent",
                       }}
-                      onMouseEnter={e => !isUser && (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
-                      onMouseLeave={e => !isUser && (e.currentTarget.style.background = "transparent")}
+                      onMouseEnter={e => !isUser && (e.currentTarget.style.background = "#F0F4F8")}
+                      onMouseLeave={e => !isUser && (e.currentTarget.style.background = "white")}
                     >
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-display font-black mr-4 flex-shrink-0"
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-display font-black mr-5 flex-shrink-0"
                         style={user.rank <= 3
-                          ? { background: `${RANK_CONFIG[user.rank].color}18`, color: RANK_CONFIG[user.rank].color, border: `1px solid ${RANK_CONFIG[user.rank].border}` }
-                          : { background: "rgba(255,255,255,0.04)", color: "#475569", border: "1px solid rgba(255,255,255,0.07)" }}>
+                          ? { background: "white", color: RANK_CONFIG[user.rank].color, border: `2px solid ${RANK_CONFIG[user.rank].color}`, shadow: "sm" }
+                          : { background: "#F0F4F8", color: "#66625C", border: "1px solid #E2E8F0" }}>
                         {medal || `#${user.rank}`}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold flex items-center gap-2" style={{ color: "#e2e8f0" }}>
-                          {user.name} {isUser && <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.25)" }}>You</span>}
+                        <p className="text-sm font-black flex items-center gap-2" style={{ color: "#001D36" }}>
+                          {user.name} {isUser && <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-widest bg-[#00808C] text-white">You</span>}
                         </p>
-                        <p className="text-xs mt-0.5" style={{ color: "#475569" }}>ID: {user.student_id}</p>
+                        <p className="text-[10px] font-bold mt-1 text-[#66625C] uppercase tracking-widest">ID: {user.student_id}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-display font-black" style={{ color: user.rank <= 3 ? RANK_CONFIG[user.rank].color : "#94a3b8" }}>
+                        <p className="text-xl font-display font-black" style={{ color: user.rank <= 3 ? RANK_CONFIG[user.rank].color : "#001D36" }}>
                           {user.points.toLocaleString()}
                         </p>
-                        <p className="text-[10px] uppercase tracking-widest" style={{ color: "#334155" }}>pts</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: "#66625C" }}>pts</p>
                       </div>
                     </motion.div>
                   );
@@ -223,18 +216,18 @@ export default function PointsLeaderboard() {
         )}
 
         {/* How to Earn Points */}
-        <div className="rounded-2xl p-6 overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}>
-              <Zap className="w-4 h-4" style={{ color: "#a78bfa" }} />
+        <div className="rounded-[2rem] p-8 overflow-hidden bg-white shadow-sm border border-[#001D36]/10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-[#8AB100]/10 border border-[#8AB100]/20 shadow-inner">
+              <Zap className="w-5 h-5 text-[#8AB100]" />
             </div>
-            <h3 className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: "#64748b" }}>How to Earn Points</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#001D36]">How to Earn Points</h3>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {POINT_ACTIONS.map((action, i) => (
-              <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <span className="text-xs font-black" style={{ color: "#34d399" }}>{action.pts}</span>
-                <span className="text-xs" style={{ color: "#64748b" }}>{action.label}</span>
+              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl border border-[#001D36]/5 bg-[#F0F4F8]">
+                <span className="text-[11px] font-black text-[#8AB100]">{action.pts}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#001D36]">{action.label}</span>
               </div>
             ))}
           </div>
