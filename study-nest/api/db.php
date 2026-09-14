@@ -107,7 +107,7 @@ try {
                 'path' => '/',
                 'secure' => $is_secure,
                 'httponly' => true,
-                'samesite' => 'Lax',
+                'samesite' => $is_secure ? 'None' : 'Lax',
             ]);
             session_start();
         }

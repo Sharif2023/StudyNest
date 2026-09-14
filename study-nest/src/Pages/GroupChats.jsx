@@ -194,13 +194,13 @@ export default function GroupChats() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-cyan-100 to-slate-100">
-      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-gradient-to-r from-slate-700 to-slate-900 backdrop-blur-lg shadow-lg">
+    <main className="min-h-screen bg-white">
+      <header className="sticky top-0 z-30 border-b border-slate-700/40 bg-white backdrop-blur-lg shadow-lg">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-white font-bold">
-                <img src="src/assets/logo.png" alt="Study-Nest-Logo" className="h-7 w-7 rounded-lg" />
+                <img src="/logo.ico" alt="Study-Nest-Logo" className="h-7 w-7 rounded-lg" />
               </span>
               <span className="font-semibold tracking-tight text-white">StudyNest</span>
             </Link>

@@ -82,7 +82,7 @@ const fileBadgeForExt = (ext) => {
     if (["doc", "docx"].includes(e)) return { label: "DOC", color: "bg-blue-600/20 text-blue-300 border-blue-500/30" };
     if (["xls", "xlsx", "csv"].includes(e)) return { label: "XLS", color: "bg-emerald-600/20 text-emerald-300 border-emerald-500/30" };
     if (["zip", "rar", "7z"].includes(e)) return { label: "ZIP", color: "bg-amber-600/20 text-amber-300 border-amber-500/30" };
-    return { label: "FILE", color: "bg-slate-600/20 text-slate-300 border-slate-500/30" };
+    return { label: "FILE", color: "bg-slate-600/20 text-[#001D36] border-slate-500/30" };
 };
 
 const FileChip = ({ name, ext, className = "" }) => {
@@ -276,11 +276,11 @@ export default function GroupChat() {
     const links = messages.flatMap(m => m.message?.match(linkRegex) || []).map((u, i) => ({ id: i, url: u }));
 
     return (
-        <div className="min-h-screen relative" style={{ background: "#08090e", color: "#e2e8f0" }}>
+        <div className="min-h-screen relative" style={{ background: "#F0F4F8", color: "#001D36" }}>
             {/* Blurry Background Spots */}
             <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(100px)" }} />
-                <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(100px)" }} />
+                <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
+                <div className="absolute bottom-1/4 left-1/4 w-80 h-80 rounded-full opacity-[0.05]" style={{ background: "transparent", filter: "none" }} />
             </div>
 
             <LeftNav sidebarWidth={72} navOpen={false} />
@@ -290,17 +290,17 @@ export default function GroupChat() {
                 {/* Chat Column */}
                 <main className="flex-1 flex flex-col h-full bg-[rgba(0,0,0,0.2)]">
                     {/* Header */}
-                    <div className="border-b p-4 flex-shrink-0 backdrop-blur-md flex justify-between items-center" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(8,9,14,0.6)" }}>
+                    <div className="border-b p-4 flex-shrink-0 backdrop-blur-md flex justify-between items-center" style={{ borderColor: "rgba(0,0,0,0.04)", background: "rgba(8,9,14,0.6)" }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-display font-black shadow-lg" style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", color: "white" }}>
+                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-display font-black shadow-lg" style={{ background: "transparent", color: "white" }}>
                                 {group?.section_name?.charAt(0).toUpperCase() || "G"}
                             </div>
                             <div>
                                 <div className="text-base font-bold text-white leading-tight">{group ? group.section_name : "Loading Group..."}</div>
-                                <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{members.length} Members Online</div>
+                                <div className="text-[10px] uppercase tracking-widest text-[#66625C] font-bold">{members.length} Members Online</div>
                             </div>
                         </div>
-                        <button onClick={() => setShowSidebar(true)} className="p-2 rounded-xl hover:bg-white/10 transition-all text-slate-400">
+                        <button onClick={() => setShowSidebar(true)} className="p-2 rounded-xl hover:bg-white/10 transition-all text-[#66625C]">
                             <MoreVertical size={20} />
                         </button>
                     </div>
@@ -312,8 +312,8 @@ export default function GroupChat() {
                             return (
                                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                                     <div className="max-w-[70%] group">
-                                        {!mine && <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">{m.username}</div>}
-                                        <div className={`p-4 rounded-2xl text-sm shadow-xl transition-all ${mine ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-br-none" : "bg-white/5 border border-white/10 text-slate-100 rounded-bl-none"}`}>
+                                        {!mine && <div className="text-[10px] font-bold text-[#66625C] uppercase tracking-widest mb-1 ml-1">{m.username}</div>}
+                                        <div className={`p-4 rounded-2xl text-sm shadow-xl transition-all ${mine ? "bg-white text-white rounded-br-none" : "bg-white/5 border border-white/10 text-slate-100 rounded-bl-none"}`}>
                                             {m.message && <div className="whitespace-pre-wrap leading-relaxed">{m.message}</div>}
                                             {m.attachment_url && (() => {
                                                 const url = absUrl(m.attachment_url);
@@ -343,15 +343,15 @@ export default function GroupChat() {
                     </div>
 
                     {/* Composer */}
-                    <div className="p-4 border-t backdrop-blur-md" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(8,9,14,0.6)" }}>
+                    <div className="p-4 border-t backdrop-blur-md" style={{ borderColor: "rgba(0,0,0,0.04)", background: "rgba(8,9,14,0.6)" }}>
                         <div className="max-w-4xl mx-auto bg-white/5 border border-white/10 rounded-2xl p-2 shadow-2xl flex flex-wrap gap-3 items-end">
                             <input type="file" ref={fileInputRef} style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0])} />
                             
-                            <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all text-slate-400">
+                            <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all text-[#66625C]">
                                 <Paperclip size={20} />
                             </button>
 
-                            <button onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center transition-all ${isRecording ? "bg-rose-500 text-white animate-pulse" : "hover:bg-white/10 text-slate-400"}`}>
+                            <button onClick={isRecording ? stopRecording : startRecording} className={`h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center transition-all ${isRecording ? "bg-rose-500 text-white animate-pulse" : "hover:bg-white/10 text-[#66625C]"}`}>
                                 <Mic size={20} />
                             </button>
 
@@ -359,7 +359,7 @@ export default function GroupChat() {
                                 {file && (
                                     <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-white/5 border border-white/10">
                                         <FileChip name={file.name} ext={getExt(file.name)} />
-                                        <button onClick={() => setFile(null)} className="ml-auto p-1 text-slate-500 hover:text-white transition-all"><X size={14} /></button>
+                                        <button onClick={() => setFile(null)} className="ml-auto p-1 text-[#66625C] hover:text-white transition-all"><X size={14} /></button>
                                     </div>
                                 )}
                                 {isRecording && (
@@ -378,7 +378,7 @@ export default function GroupChat() {
                                 />
                             </div>
 
-                            <button onClick={sendMessage} disabled={loading || (!text.trim() && !file)} className="h-10 px-6 rounded-xl text-sm font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+                            <button onClick={sendMessage} disabled={loading || (!text.trim() && !file)} className="h-10 px-6 rounded-xl text-sm font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-white text-white">
                                 Send
                             </button>
                         </div>
@@ -386,13 +386,13 @@ export default function GroupChat() {
                 </main>
 
                 {/* Right Sidebar */}
-                <aside className={`fixed top-0 right-0 h-full w-80 bg-[#08090e] border-l border-white/10 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${showSidebar ? "translate-x-0" : "translate-x-full"}`}>
+                <aside className={`fixed top-0 right-0 h-full w-80 bg-[#F0F4F8] border-l border-white/10 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${showSidebar ? "translate-x-0" : "translate-x-full"}`}>
                     <div className="p-6 border-b border-white/10 flex justify-between items-center">
                         <h2 className="text-lg font-display font-black text-white italic">Group Space</h2>
-                        <button onClick={() => setShowSidebar(false)} className="p-2 rounded-xl hover:bg-white/10 text-slate-500"><X size={20} /></button>
+                        <button onClick={() => setShowSidebar(false)} className="p-2 rounded-xl hover:bg-white/10 text-[#66625C]"><X size={20} /></button>
                     </div>
 
-                    <div className="flex border-b border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    <div className="flex border-b border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-[#66625C]">
                         {["members", "media", "files", "links"].map(t => (
                             <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-4 border-b-2 transition-all ${activeTab === t ? "border-cyan-500 text-cyan-400 bg-white/5" : "border-transparent hover:text-white"}`}>{t}</button>
                         ))}
@@ -401,10 +401,10 @@ export default function GroupChat() {
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {activeTab === "members" && members.map(m => (
                             <div key={m.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-all">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-600 flex items-center justify-center font-bold text-xs shadow-lg">{m.username?.charAt(0).toUpperCase()}</div>
+                                <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center font-bold text-xs shadow-lg">{m.username?.charAt(0).toUpperCase()}</div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-bold text-slate-100 truncate">{m.username}</div>
-                                    <div className="text-[10px] text-slate-500 truncate">{m.email}</div>
+                                    <div className="text-[10px] text-[#66625C] truncate">{m.email}</div>
                                 </div>
                                 <ChevronRight size={14} className="text-slate-600" />
                             </div>

@@ -47,14 +47,14 @@ export function VideoIcon(props) {
 export function Select({ label, value, onChange, options }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">{label}</span>
+      <span className="text-[10px] font-black text-[#66625C] uppercase tracking-[0.2em] ml-2">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-2xl border border-white/5 bg-white/[0.03] px-6 py-3 text-[11px] font-bold text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-cyan-500/50 backdrop-blur-xl cursor-pointer hover:bg-white/5 transition-all"
+        className="appearance-none rounded-2xl border border-[#001D36]/10 bg-white px-6 py-3 text-[11px] font-bold text-[#001D36] uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-[#00808C]/50 cursor-pointer hover:bg-[#001D36]/5 transition-all shadow-sm"
       >
         {options.map((o) => (
-          <option key={o} value={o} className="bg-[#08090e] text-white">
+          <option key={o} value={o} className="bg-white text-[#001D36]">
             {o}
           </option>
         ))}
@@ -90,61 +90,61 @@ export function Card({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -12 }}
-      className="group relative flex flex-col rounded-[2.5rem] bg-white/[0.02] border border-white/5 overflow-hidden transition-all duration-700 hover:bg-white/[0.04] hover:border-cyan-500/30 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]"
+      className="group relative flex flex-col rounded-[2.5rem] bg-white border border-[#001D36]/10 overflow-hidden transition-all duration-700 hover:border-[#00808C]/30 hover:shadow-2xl hover:shadow-[#00808C]/10 shadow-sm"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-white/[0.02] grid place-items-center">
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#00808C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#001D36]/5 grid place-items-center">
         {isRecording ? (
-          <div className="flex flex-col items-center text-slate-500 group-hover:text-cyan-400 transition-colors duration-500">
+          <div className="flex flex-col items-center text-[#66625C] group-hover:text-[#00808C] transition-colors duration-500">
             <VideoIcon className="h-12 w-12" />
-            <span className="mt-3 text-[10px] font-black uppercase tracking-[0.2em]">Session Archive</span>
+            <span className="mt-3 text-[10px] font-black uppercase tracking-[0.2em]">Session</span>
           </div>
         ) : image ? (
-          <img src={url} alt={item.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+          <img src={url} alt={item.title} className="h-full w-full object-cover grayscale-[30%] opacity-90 transition-transform duration-700 group-hover:scale-110 group-hover:grayscale-0 group-hover:opacity-100" />
         ) : pdf ? (
-          <div className="flex flex-col items-center text-slate-500 group-hover:text-rose-400 transition-colors duration-500">
+          <div className="flex flex-col items-center text-[#66625C] group-hover:text-rose-500 transition-colors duration-500">
             <FileIcon className="h-12 w-12" />
             <span className="mt-3 text-[10px] font-black uppercase tracking-[0.2em]">Document</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center text-slate-500 group-hover:text-indigo-400 transition-colors duration-500">
+          <div className="flex flex-col items-center text-[#66625C] group-hover:text-indigo-500 transition-colors duration-500">
             <FileIcon className="h-12 w-12" />
             <span className="mt-3 text-[10px] font-black uppercase tracking-[0.2em]">{item.src_type === "link" ? "External link" : "Data file"}</span>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center p-6">
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center p-6">
           <button 
             onClick={onPreview} 
-            className="px-10 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-transform"
+            className="px-10 py-4 rounded-2xl bg-[#001D36] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-transform hover:bg-[#00808C]"
           >
-            {isRecording ? "Replay Session" : "Inspect Asset"}
+            {isRecording ? "Replay Session" : "View Resource"}
           </button>
         </div>
       </div>
 
       <div className="flex-1 p-8 space-y-6">
         <div className="space-y-2">
-          <h3 className="text-xl font-black text-white tracking-tight line-clamp-1 group-hover:text-cyan-400 transition-colors" title={item.title}>
-            {item.title || "(Untitled Asset)"}
+          <h3 className="text-xl font-black text-[#001D36] tracking-tight line-clamp-1 group-hover:text-[#00808C] transition-colors" title={item.title}>
+            {item.title || "(Untitled)"}
           </h3>
-          {item.description && <p className="line-clamp-2 text-xs font-medium text-slate-400 leading-relaxed">{item.description}</p>}
+          {item.description && <p className="line-clamp-2 text-xs font-medium text-[#66625C] leading-relaxed">{item.description}</p>}
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {item.kind && <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.kind}</span>}
-          {item.course && <span className="px-3 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/10 text-[9px] font-black text-cyan-400 uppercase tracking-widest">{item.course}</span>}
-          {item.semester && <span className="px-3 py-1 rounded-xl bg-violet-500/10 border border-violet-500/10 text-[9px] font-black text-violet-400 uppercase tracking-widest">{item.semester}</span>}
+          {item.kind && <span className="px-3 py-1 rounded-xl bg-white border border-[#001D36]/10 text-[9px] font-black text-[#66625C] uppercase tracking-widest shadow-sm">{item.kind}</span>}
+          {item.course && <span className="px-3 py-1 rounded-xl bg-[#00808C]/10 border border-[#00808C]/20 text-[9px] font-black text-[#00808C] uppercase tracking-widest">{item.course}</span>}
+          {item.semester && <span className="px-3 py-1 rounded-xl bg-violet-100 border border-violet-200 text-[9px] font-black text-violet-600 uppercase tracking-widest">{item.semester}</span>}
         </div>
 
-        <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+        <div className="pt-6 border-t border-[#001D36]/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-white/5 flex items-center justify-center text-[10px] font-black text-white uppercase flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[#001D36]/5 border border-[#001D36]/10 flex items-center justify-center text-[10px] font-black text-[#001D36] uppercase flex-shrink-0">
             {String(item.author || "U").charAt(0)}
           </div>
           <div className="flex flex-col justify-center min-w-0">
-            <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none mb-1 truncate">{item.author || "You"}</span>
-            <span className="text-[8px] font-bold text-slate-500 uppercase leading-none">{safeDate(item.created_at || item.updated_at)}</span>
+            <span className="text-[9px] font-black text-[#001D36] uppercase tracking-wider leading-none mb-1 truncate">{item.author || "You"}</span>
+            <span className="text-[8px] font-bold text-[#66625C] uppercase leading-none">{safeDate(item.created_at || item.updated_at)}</span>
           </div>
         </div>
 
@@ -173,8 +173,8 @@ export function Card({
                     disabled={isSharedFlag === true}
                     className={`px-3 h-8 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center flex-shrink-0 ${
                       isSharedFlag 
-                        ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed" 
-                        : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:scale-105"
+                        ? "bg-[#001D36]/5 text-[#66625C] border border-[#001D36]/5 cursor-not-allowed" 
+                        : "bg-[#00808C] text-white shadow-md hover:bg-[#00606B]"
                     }`}
                   >
                     {isSharedFlag ? "Shared" : "Publish"}
@@ -183,7 +183,7 @@ export function Card({
                 {onDeleteResource && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDeleteResource(item); }} 
-                    className="w-8 h-8 rounded-xl bg-rose-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center font-black flex-shrink-0"
+                    className="w-8 h-8 rounded-xl bg-white border border-[#001D36]/10 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center font-black flex-shrink-0 shadow-sm"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
@@ -196,7 +196,7 @@ export function Card({
                 href={isPdfLike(url, item.mime) ? cloudinaryDownload(toBackendUrl(url)) : toBackendUrl(url)} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white hover:text-black transition-all flex items-center justify-center flex-shrink-0"
+                className="w-8 h-8 rounded-xl bg-white border border-[#001D36]/10 text-[#66625C] hover:bg-[#001D36]/5 hover:text-[#001D36] transition-all flex items-center justify-center flex-shrink-0 shadow-sm"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               </a>
@@ -209,25 +209,24 @@ export function Card({
 }
 
 export function EmptyState({ tab }) {
-  const label = tab === "resources" ? "Vault Empty" : "No Archives";
+  const label = tab === "resources" ? "Library Empty" : "No Recordings";
   return (
-    <div className="grid place-items-center py-32 rounded-[3.5rem] border border-dashed border-white/10 bg-white/[0.02] relative overflow-hidden group">
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+    <div className="grid place-items-center py-32 rounded-[3rem] border border-dashed border-[#001D36]/10 bg-white relative overflow-hidden group shadow-sm">
       <div className="text-center space-y-6">
-        <div className="mx-auto w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl opacity-50 grayscale group-hover:grayscale-0 transition-all duration-700">
+        <div className="mx-auto w-20 h-20 rounded-[2rem] bg-[#001D36]/5 border border-[#001D36]/5 flex items-center justify-center text-3xl opacity-80 group-hover:opacity-100 transition-all duration-500 shadow-inner">
           {tab === "resources" ? "📚" : "🎬"}
         </div>
         <div>
-          <h3 className="text-xl font-black text-white uppercase tracking-tighter">{label}</h3>
-          <p className="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
+          <h3 className="text-xl font-black text-[#001D36] uppercase tracking-tighter">{label}</h3>
+          <p className="mt-2 text-[10px] font-bold text-[#66625C] uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
             {tab === "resources" 
-              ? "You haven't added any intellectual assets to your personal vault yet." 
-              : "Session recordings will automatically synchronize here once they are processed."}
+              ? "You haven't added any resources to your library yet." 
+              : "Session recordings will automatically appear here once processed."}
           </p>
         </div>
         {tab === "resources" && (
-          <Link to="/resources" className="inline-flex rounded-2xl bg-white px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-black hover:bg-slate-200 transition-all shadow-xl shadow-white/5 active:scale-95">
-            Discover Library
+          <Link to="/resources" className="inline-flex rounded-xl bg-[#001D36] px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-[#00808C] transition-all shadow-md active:scale-95">
+            Discover Resources
           </Link>
         )}
       </div>

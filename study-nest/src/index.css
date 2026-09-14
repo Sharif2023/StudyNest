@@ -27,7 +27,7 @@
 
   /* Legacy Brand (kept for LandingPage) */
   --color-brand-navy: #001D36;
-  --color-brand-cream: #F5F5DD;
+  --color-brand-cream: #F0F4F8;
   --color-brand-orange: #F18900;
   --color-brand-olive: #8AB100;
   --color-brand-teal: #00808C;
@@ -141,26 +141,26 @@
 
   body {
     @apply antialiased overflow-x-hidden;
-    background-color: #08090e;
-    color: #e2e8f0;
+    background-color: var(--color-brand-cream);
+    color: var(--color-brand-navy);
     font-family: var(--font-sans);
     line-height: 1.7;
     letter-spacing: -0.01em;
 
     /* Scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: rgba(139,92,246,0.2) transparent;
+    scrollbar-color: rgba(0,29,54,0.2) transparent;
   }
 
   body::-webkit-scrollbar { width: 5px; }
   body::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(139,92,246,0.4), rgba(6,182,212,0.3));
+    background: var(--color-brand-gray);
     border-radius: 99px;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    color: #f1f5f9;
+    color: var(--color-brand-navy);
     font-weight: 900;
     letter-spacing: -0.03em;
     line-height: 1.1;
@@ -176,7 +176,7 @@
   /* ===== PAGE SHELL ===== */
   .page-dark {
     @apply min-h-screen relative;
-    background: #08090e;
+    background: var(--color-brand-cream);
   }
 
   .page-content {
@@ -185,25 +185,25 @@
 
   /* ===== GLASS COMPONENTS ===== */
   .glass-dark {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,29,54,0.1);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    box-shadow: var(--shadow-card);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   }
 
   .glass-card-dark {
     @apply relative overflow-hidden rounded-3xl transition-all duration-700;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
-    box-shadow: var(--shadow-card);
+    background: #ffffff;
+    border: 1px solid rgba(0,29,54,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   }
 
   .glass-card-dark:hover {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(139,92,246,0.25);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.15);
-    transform: translateY(-4px);
+    background: #ffffff;
+    border-color: rgba(0,29,54,0.3);
+    box-shadow: 0 8px 24px rgba(0,29,54,0.1);
+    transform: translateY(-2px);
   }
 
   /* ===== BUTTONS ===== */
@@ -254,15 +254,15 @@
   /* ===== INPUTS ===== */
   .input-dark {
     @apply w-full rounded-xl py-3.5 px-5 text-sm font-medium outline-none transition-all duration-300;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    color: #e2e8f0;
+    background: #ffffff;
+    border: 1px solid rgba(0,29,54,0.2);
+    color: var(--color-brand-navy);
   }
-  .input-dark::placeholder { color: #475569; }
+  .input-dark::placeholder { color: var(--color-brand-gray); }
   .input-dark:focus {
-    background: rgba(255,255,255,0.07);
-    border-color: rgba(139,92,246,0.5);
-    box-shadow: 0 0 0 4px rgba(139,92,246,0.1);
+    background: #ffffff;
+    border-color: var(--color-brand-orange);
+    box-shadow: 0 0 0 4px rgba(241,137,0,0.1);
   }
 
   /* ===== BADGES ===== */
@@ -355,11 +355,7 @@
 @layer utilities {
   /* ===== BACKGROUNDS ===== */
   .aurora-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background: #08090e;
-    pointer-events: none;
+    display: none;
   }
   .aurora-bg::before {
     content: '';

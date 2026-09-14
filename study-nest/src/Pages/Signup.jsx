@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, User, Hash, CheckCircle2, ArrowRight, ChevronRight } from "lucide-react";
 import apiClient from "../apiConfig";
-import logo from "../assets/logo.png";
+
 import ThreeBackground from "../Components/ThreeBackground";
 
 const Signup = () => {
@@ -132,9 +132,9 @@ const Signup = () => {
               ) : (
                 <>
                   <div className="relative flex items-center gap-5 mb-12">
-                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-3 shadow-2xl relative group">
+                    <div className="w-14 h-14 flex items-center justify-center relative group">
                        <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-0 group-hover:opacity-30 transition-opacity" />
-                      <img src={logo} alt="StudyNest" className="w-full h-full object-contain relative z-10 rounded-lg" />
+                      <img src="/logo.ico" alt="StudyNest" className="w-full h-full object-contain relative z-10" />
                     </div>
                     <div>
                       <h2 className="text-3xl font-black text-white tracking-tight uppercase">Register</h2>

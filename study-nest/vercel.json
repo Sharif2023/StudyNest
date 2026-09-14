@@ -1,32 +1,7 @@
 {
-  "functions": {
-    "api/*.php": {
-      "runtime": "vercel-php@0.9.0"
-    }
-  },
   "rewrites": [
     {
-      "source": "/api/meetings.php/(.*)",
-      "destination": "/api/meetings.php"
-    },
-    {
-      "source": "/api/ResourceLibrary.php/(.*)",
-      "destination": "/api/ResourceLibrary.php"
-    },
-    {
-      "source": "/api/profile.php/(.*)",
-      "destination": "/api/profile.php"
-    },
-    {
-      "source": "/api/(.*).php",
-      "destination": "/api/$1.php"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1.php"
-    },
-    {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]

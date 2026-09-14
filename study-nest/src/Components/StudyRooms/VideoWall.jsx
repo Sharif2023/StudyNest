@@ -26,12 +26,12 @@ export function MediaVideo({ stream, muted, className, videoId }) {
 
 export function TileFooter({ title, mutedBadge = false, handUp = false, onFullscreen }) {
   return (
-    <div className="absolute left-6 bottom-6 flex items-center gap-3 rounded-2xl bg-black/50 backdrop-blur-xl px-4 py-2 text-[10px] text-white border border-white/10 shadow-2xl">
+    <div className="absolute left-6 bottom-6 flex items-center gap-3 rounded-2xl bg-white px-4 py-2 text-[10px] text-[#001D36] border border-[#001D36]/10 shadow-md">
       <span className="font-bold uppercase tracking-widest">{title}</span>
-      {mutedBadge && <span className="rounded-full bg-rose-500 px-2 py-0.5 font-bold uppercase text-[8px]">muted</span>}
+      {mutedBadge && <span className="rounded-full bg-[#A7481E] text-white px-2 py-0.5 font-bold uppercase text-[8px]">muted</span>}
       {handUp && <span className="text-lg">✋</span>}
       <button
-        className="ml-2 text-white hover:text-slate-400 transition-colors"
+        className="ml-2 text-[#001D36]/50 hover:text-[#001D36] transition-colors"
         onClick={onFullscreen}
         title="Toggle fullscreen"
       >
@@ -55,17 +55,17 @@ export function ScreenWall({ screens, toggleFullTile }) {
         <div
           key={s.id}
           id={`tile-${s.id}`}
-          className="relative overflow-hidden rounded-2xl bg-black ring-1 ring-zinc-700 shadow-lg aspect-video"
+          className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-[#001D36]/10 shadow-sm aspect-video"
         >
           {s.stream ? (
             <MediaVideo
               videoId={`video-${s.id}`}
               stream={s.stream}
               muted={s.self}
-              className="h-full w-full object-contain bg-black"
+              className="h-full w-full object-contain bg-[#001D36]/5"
             />
           ) : (
-            <div className="h-full w-full grid place-items-center text-slate-400 bg-white/5 font-semibold text-xs">Connecting...</div>
+            <div className="h-full w-full grid place-items-center text-[#66625C] bg-[#001D36]/5 font-bold text-xs uppercase tracking-widest">Connecting...</div>
           )}
 
           <TileFooter
@@ -94,16 +94,16 @@ export function PeopleWall({ cams, placeholders, mic, toggleFullTile }) {
           <div
             key={t.id}
             id={`tile-${t.id}`}
-            className="relative overflow-hidden rounded-[2.5rem] bg-white/5 border border-white/10 shadow-xl aspect-video group"
+            className="relative overflow-hidden rounded-[2.5rem] bg-white border border-[#001D36]/10 shadow-sm aspect-video group"
           >
             {isPlaceholder ? (
-              <div className="h-full w-full grid place-items-center text-slate-400 bg-white/5 ">
+              <div className="h-full w-full grid place-items-center text-[#66625C] bg-[#001D36]/5 ">
                 <div className="text-center group-hover:scale-110 transition-transform duration-700">
-                   <div className="w-16 h-16 rounded-full bg-white/5 shadow-xl flex items-center justify-center mx-auto mb-4 border border-white/5">
-                     <Users className="h-8 w-8 text-white/50" />
+                   <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4 border border-[#001D36]/10">
+                     <Users className="h-8 w-8 text-[#001D36]/30" />
                    </div>
-                   <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-white">
-                     {t.name} {t.state !== 'connected' && <span className="text-amber-500 font-medium">(joining...)</span>}
+                   <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#001D36]">
+                     {t.name} {t.state !== 'connected' && <span className="text-[#F18900] font-bold">(joining...)</span>}
                    </div>
                 </div>
               </div>
@@ -187,7 +187,7 @@ export function RoomVideoWall({ streams, participants, mic, toggleFullTile }) {
       />
 
        {!hasScreens && cams.length === 0 && placeholders.length === 0 && (
-         <div className="aspect-video rounded-3xl bg-white/5 border border-white/10 grid place-items-center text-slate-400 font-bold uppercase tracking-widest text-[11px] shadow-inner">
+         <div className="aspect-video rounded-3xl bg-white border border-[#001D36]/10 grid place-items-center text-[#66625C] font-bold uppercase tracking-widest text-[11px] shadow-sm">
            Waiting for students...
          </div>
        )}

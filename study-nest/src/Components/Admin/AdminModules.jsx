@@ -37,7 +37,7 @@ export function UserManagementModule({ users, handleAction }) {
                     <span className="font-bold">{u.username}</span>
                 </div>,
                 Identity: u.email,
-                Access: <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${u.role === 'Admin' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-500/10 text-slate-500'}`}>{u.role}</span>,
+                Access: <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${u.role === 'Admin' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-500/10 text-[#66625C]'}`}>{u.role}</span>,
                 Registry: new Date(u.created_at).toLocaleDateString(),
                 Actions: <div className="flex gap-2">
                     <ActionButton icon={u.status === 'Banned' ? UserCheck : Ban} color={u.status === 'Banned' ? "emerald" : "rose"} onClick={() => handleAction("toggle_user_status", { id: u.id })} />
@@ -53,7 +53,7 @@ export function ContentFeedModule({ content, handleAction }) {
         <DataTable 
             columns={["Type", "Source", "Origin", "Status", "Actions"]}
             data={content.map(c => ({
-                Type: <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{c.type}</span>,
+                Type: <span className="text-[10px] font-black uppercase tracking-widest text-[#66625C]">{c.type}</span>,
                 Source: <div className="max-w-xs truncate font-bold">{c.title}</div>,
                 Origin: c.author,
                 Status: <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${c.status === 'Reported' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{c.status}</span>,
@@ -71,11 +71,11 @@ export function AuditLogsModule({ logs }) {
         <DataTable 
             columns={["Timestamp", "Operator", "Action", "Item", "Details"]}
             data={logs.map(l => ({
-                Timestamp: <span className="text-slate-500 font-mono text-[10px]">{new Date(l.created_at).toLocaleString()}</span>,
+                Timestamp: <span className="text-[#66625C] font-mono text-[10px]">{new Date(l.created_at).toLocaleString()}</span>,
                 Operator: <span className="font-bold text-white">{l.admin_name || "System"}</span>,
                 Action: <span className="text-cyan-400 font-semibold text-xs">{l.action}</span>,
-                Item: <span className="text-slate-400 text-xs">{l.target_type} {l.target_id ? `#${l.target_id}` : ""}</span>,
-                Details: <div className="max-w-xs truncate text-slate-500 text-xs">{l.details || "None"}</div>
+                Item: <span className="text-[#66625C] text-xs">{l.target_type} {l.target_id ? `#${l.target_id}` : ""}</span>,
+                Details: <div className="max-w-xs truncate text-[#66625C] text-xs">{l.details || "None"}</div>
             }))}
         />
     );
@@ -110,7 +110,7 @@ export function SettingsModule({ settings, updateSetting }) {
                 <div key={s.key} className="p-6 rounded-3xl border border-white/10 bg-white/[0.02] flex items-center justify-between group hover:bg-white/[0.04] transition-all">
                     <div>
                         <div className="text-[10px] font-semibold text-cyan-500 mb-1">{s.key.replace(/_/g, " ")}</div>
-                        <div className="text-sm font-medium text-slate-400">{s.description}</div>
+                        <div className="text-sm font-medium text-[#66625C]">{s.description}</div>
                     </div>
                     <div className="flex items-center gap-4">
                         {s.type === 'boolean' ? (
@@ -148,7 +148,7 @@ export function GroupsModule({ requests, groups, handleAction, fetchAll, apiClie
                         apiClient.post("admin_api.php?action=upload_csv", fd).then(res => {
                             if (res.data.ok) fetchAll();
                         });
-                    }} className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:uppercase file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20" />
+                    }} className="text-xs text-[#66625C] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:uppercase file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20" />
                 </div>
                 <div className="flex-1 p-8 rounded-[2.5rem] border border-rose-500/10 bg-rose-500/[0.02] text-center flex flex-col justify-center">
                     <AlertTriangle size={30} className="mx-auto mb-4 text-rose-500 opacity-50" />
@@ -173,7 +173,7 @@ export function GroupsModule({ requests, groups, handleAction, fetchAll, apiClie
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <div className="font-bold text-white truncate pr-4">{r.section_name}</div>
-                                        <div className="text-[10px] text-slate-500 uppercase font-bold">{r.username} • {r.student_id}</div>
+                                        <div className="text-[10px] text-[#66625C] uppercase font-bold">{r.username} • {r.student_id}</div>
                                     </div>
                                     <div className="flex gap-2">
                                         <ActionButton icon={CheckCircle2} color="emerald" onClick={() => handleAction("approve_member", { id: r.id, status: 'accepted' })} />
@@ -199,7 +199,7 @@ export function GroupsModule({ requests, groups, handleAction, fetchAll, apiClie
                     <div className="max-h-[600px] overflow-y-auto space-y-2 pr-2 scrollbar-hide">
                         {groups.map(g => (
                             <div key={g.id} className="p-4 rounded-2xl border border-white/5 bg-white/[0.01] flex justify-between items-center group hover:bg-white/[0.03] transition-all">
-                                <span className="text-xs font-bold text-slate-300 truncate pr-4">{g.section_name}</span>
+                                <span className="text-xs font-bold text-[#001D36] truncate pr-4">{g.section_name}</span>
                                 <button onClick={() => handleAction("delete_group", { id: g.id })} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
                                     <Trash2 size={16} />
                                 </button>

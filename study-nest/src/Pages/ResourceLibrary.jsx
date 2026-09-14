@@ -214,7 +214,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090e] selection:bg-[rgba(255,255,255,0.1)]/10 selection:text-white relative">
+    <div className="min-h-screen bg-[#F0F4F8] selection:bg-[rgba(0,29,54,0.2)]/10 selection:text-white relative">
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} sidebarWidth={sidebarWidth} />
       <Header sidebarWidth={sidebarWidth} setNavOpen={setNavOpen} navOpen={navOpen} />
 
@@ -235,12 +235,12 @@ export default function App() {
               transition={{ duration: 1.2, ease: "easeOut" }}
             >
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-2.5 h-2.5 rounded-full bg-[rgba(255,255,255,0.1)] animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.1)]" />
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.5em] ">Knowledge Sync: Online</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#8AB100] animate-pulse shadow-sm" />
+                <span className="text-[11px] font-black text-[#66625C] uppercase tracking-[0.3em]">Shared Resources</span>
               </div>
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-black text-white leading-none tracking-tighter ">
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-black text-[#001D36] leading-none tracking-tighter">
                 Resource <br />
-                <span className="text-gradient-brand uppercase underline decoration-zinc-900 decoration-8 underline-offset-[12px]">Library Archive.</span>
+                <span className="text-[#00808C]">Library.</span>
               </h1>
             </motion.div>
 
@@ -252,16 +252,16 @@ export default function App() {
             >
                <Link
                   to="/my-resources"
-                  className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.3em] rounded-[2rem] border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                  className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] rounded-[2rem] border border-[#001D36]/10 text-[#66625C] hover:text-[#001D36] hover:bg-[#001D36]/5 bg-white transition-all shadow-sm"
                 >
                   My Uploads
                 </Link>
                <button
                   onClick={() => setOpen(true)}
-                  className="btn-primary px-10 py-5 text-[10px] font-black uppercase tracking-[0.3em] rounded-[2rem]"
+                  className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] rounded-[2rem] border border-[#00808C] bg-[#00808C] text-white hover:bg-[#00606B] transition-all shadow-md flex items-center"
                 >
-                  <Plus className="w-5 h-5 mr-3 inline-block align-middle" /> 
-                  Add Node
+                  <Plus className="w-4 h-4 mr-2" /> 
+                  Upload Resource
                 </button>
             </motion.div>
           </header>
@@ -271,15 +271,15 @@ export default function App() {
              initial={{ opacity: 0, scale: 0.98 }}
              animate={{ opacity: 1, scale: 1 }}
              transition={{ duration: 1, delay: 0.2 }}
-             className="glass-card mb-20 p-2 rounded-[3.5rem] border border-white/10 bg-[rgba(255,255,255,0.02)] backdrop-blur-2xl shadow-xl flex flex-col lg:flex-row items-stretch lg:items-center gap-2"
+             className="mb-12 p-2 rounded-[2rem] border border-[#001D36]/10 bg-white shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center gap-2"
           >
              <div className="relative flex-1 group">
-                <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-500" />
+                <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-[#66625C] group-hover:text-[#00808C] transition-colors duration-300" />
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Scan library entries..."
-                  className="w-full bg-transparent border-none text-white pl-16 pr-6 py-6 text-sm font-black uppercase tracking-widest placeholder:text-slate-400 focus:ring-0 "
+                  placeholder="Search resources..."
+                  className="w-full bg-transparent border-none text-[#001D36] pl-16 pr-6 py-5 text-sm font-bold uppercase tracking-widest placeholder:text-[#66625C]/60 focus:ring-0 focus:outline-none"
                 />
              </div>
              
@@ -295,15 +295,15 @@ export default function App() {
           <div className="relative">
             {loading ? (
                <div className="py-40 flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 rounded-[2.5rem] bg-[rgba(255,255,255,0.05)] border border-white/10 flex items-center justify-center mb-8 relative shadow-xl">
-                     <div className="absolute inset-0 border-2 border-white/20 border-t-transparent rounded-full animate-spin p-2" />
-                     <Database className="w-8 h-8 text-white animate-pulse" />
+                  <div className="w-20 h-20 rounded-[2rem] bg-white border border-[#001D36]/10 flex items-center justify-center mb-8 relative shadow-sm">
+                     <div className="absolute inset-0 border-2 border-[#00808C]/20 border-t-[#00808C] rounded-[2rem] animate-spin" />
+                     <Database className="w-8 h-8 text-[#00808C] animate-pulse" />
                   </div>
-                  <p className="text-slate-400 font-black uppercase tracking-[0.5em] text-[10px] animate-pulse">Synchronizing Library Archive...</p>
+                  <p className="text-[#66625C] font-black uppercase tracking-[0.2em] text-[10px] animate-pulse">Loading resources...</p>
                </div>
             ) : error ? (
-              <div className="text-center text-red-500 py-32 glass-card rounded-[3rem] border border-red-500/10 p-12">
-                 <p className="font-black uppercase tracking-widest ">{error}</p>
+              <div className="text-center text-red-500 py-32 bg-white rounded-[2rem] border border-red-500/10 p-12 shadow-sm">
+                 <p className="font-bold uppercase tracking-widest">{error}</p>
               </div>
             ) : filtered.length === 0 ? (
               <EmptyState onNew={() => setOpen(true)} />

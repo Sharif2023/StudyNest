@@ -139,11 +139,11 @@ export default function NotesRepository() {
   const currentUserId = authData.id;
 
   return (
-    <main className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+    <main className="min-h-screen relative" style={{ background: "#F0F4F8", paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Aurora */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 right-1/3 w-80 h-80 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(80px)" }} />
-        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-0 right-1/3 w-80 h-80 rounded-full bg-[#00808C] opacity-[0.03] blur-[100px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 rounded-full bg-[#8AB100] opacity-[0.03] blur-[100px]" />
       </div>
 
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} anonymous={anonymous} setAnonymous={setAnonymous} sidebarWidth={sidebarWidth} />
@@ -153,24 +153,20 @@ export default function NotesRepository() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #f1f5f9, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Notes Library</h1>
-            <p className="text-sm mt-1" style={{ color: "#475569" }}>Explore and share academic lecture notes</p>
+            <h1 className="text-3xl font-display font-black tracking-tighter text-[#001D36]">Notes Library</h1>
+            <p className="text-sm mt-1 text-[#66625C]">Explore and share academic lecture notes</p>
           </div>
           <button onClick={() => setUOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "white", boxShadow: "0 8px 24px rgba(124,58,237,0.3)" }}>
+            className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 bg-[#00808C] text-white hover:bg-[#00808C]/90 shadow-md">
             <PlusIcon className="h-4 w-4" /> Upload Notes
           </button>
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="flex flex-col sm:flex-row gap-3 mb-8 p-4 rounded-2xl bg-white border border-[#001D36]/10 shadow-sm">
           <div className="relative flex-1">
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes, tags..."
-              className="w-full rounded-xl py-2.5 pl-4 pr-3 text-sm outline-none transition-all duration-300"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0" }}
-              onFocus={e => e.target.style.borderColor = "rgba(6,182,212,0.4)"}
-              onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+              className="w-full rounded-xl py-2.5 pl-4 pr-3 text-sm outline-none transition-all duration-300 bg-[#F0F4F8] border border-[#001D36]/10 text-[#001D36] focus:border-[#00808C]/40 focus:bg-white"
             />
           </div>
           <Select value={course} onChange={setCourse} label="Course" options={courses} />

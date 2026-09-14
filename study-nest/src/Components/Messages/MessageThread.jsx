@@ -13,25 +13,25 @@ export default function MessageThread({
     listRef 
 }) {
     return (
-        <main className="flex-1 flex flex-col h-full bg-black/[0.15]">
+        <main className="flex-1 flex flex-col h-full bg-transparent">
             {/* Thread Header */}
-            <div className="h-16 border-b px-8 flex items-center justify-between backdrop-blur-xl" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(8,9,14,0.4)" }}>
+            <div className="h-16 border-b px-8 flex items-center justify-between bg-white border-[#001D36]/10">
                 <div className="flex items-center gap-4">
                     {(activeCid || activeGroupId) ? (
                         <>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/5 ${activeGroupId ? 'bg-gradient-to-br from-purple-600 to-indigo-600' : 'bg-gradient-to-br from-cyan-600 to-blue-600'}`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[#00808C] shadow-sm bg-[#00808C]/10 border border-[#00808C]/20`}>
                                 {activeLabel.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div className="text-sm font-bold text-white">{activeLabel}</div>
+                                <div className="text-sm font-black text-[#001D36]">{activeLabel}</div>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600">Active</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#8AB100] animate-pulse" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#66625C]">Active</span>
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-700">Select a conversation</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[#66625C]">Select a conversation</div>
                     )}
                 </div>
             </div>
@@ -45,10 +45,10 @@ export default function MessageThread({
                     return (
                         <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                             <div className="max-w-[75%] space-y-1">
-                                {showAuthor && <div className="text-[10px] font-bold text-slate-500 ml-2 mb-1">{m.username}</div>}
-                                <div className={`group relative p-4 rounded-3xl text-[13px] font-medium leading-relaxed transition-all hover:scale-[1.01] ${mine 
-                                    ? "bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-xl shadow-cyan-900/10 border-b-r-0" 
-                                    : "bg-white/[0.04] border border-white/[0.06] text-slate-300 shadow-xl border-b-l-0"}`}>
+                                {showAuthor && <div className="text-[10px] font-bold text-[#66625C] ml-2 mb-1">{m.username}</div>}
+                                <div className={`group relative p-4 rounded-3xl text-[13px] font-bold leading-relaxed transition-all hover:scale-[1.01] ${mine 
+                                    ? "bg-[#00808C] text-white shadow-sm rounded-br-none" 
+                                    : "bg-white border border-[#001D36]/10 text-[#001D36] shadow-sm rounded-bl-none"}`}>
                                     
                                     {m.body || m.message}
 
@@ -87,9 +87,9 @@ export default function MessageThread({
                 })}
                 
                 {(!activeCid && !activeGroupId) && (
-                    <div className="h-full flex flex-col items-center justify-center opacity-20">
+                    <div className="h-full flex flex-col items-center justify-center text-[#001D36]/20">
                         <MessageSquare size={60} className="mb-6 animate-pulse" />
-                        <div className="text-xs font-bold tracking-widest text-center">Select a conversation to start messaging</div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-center">Select a conversation to start messaging</div>
                     </div>
                 )}
             </div>

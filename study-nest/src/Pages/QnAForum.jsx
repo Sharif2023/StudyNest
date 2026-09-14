@@ -321,11 +321,11 @@ export default function QnAForum() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: "#08090e", paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
+    <div className="min-h-screen relative" style={{ background: "#F0F4F8", paddingLeft: window.innerWidth < 1024 ? 0 : sidebarWidth, transition: "padding-left 0.7s cubic-bezier(0.16,1,0.3,1)" }}>
       {/* Aurora */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 right-1/4 w-96 h-64 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }} />
-        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #06b6d4, transparent)", filter: "blur(80px)" }} />
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] right-[-5%] w-[40rem] h-[40rem] rounded-full bg-[#00808C] opacity-[0.03] blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40rem] h-[40rem] rounded-full bg-[#8AB100] opacity-[0.03] blur-[100px]" />
       </div>
 
       <LeftNav navOpen={navOpen} setNavOpen={setNavOpen} anonymous={anonymous} setAnonymous={setAnonymous} sidebarWidth={sidebarWidth} />
@@ -334,36 +334,33 @@ export default function QnAForum() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Page Title */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-black tracking-tighter" style={{ background: "linear-gradient(135deg, #f1f5f9, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+          <h1 className="text-3xl font-display font-black tracking-tighter text-[#001D36]">
             Q&amp;A Forum
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#475569" }}>Ask questions, share knowledge, earn points</p>
+          <p className="text-sm mt-1 text-[#66625C]">Ask questions, share knowledge, and earn points.</p>
         </div>
 
         {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 rounded-2xl bg-white border border-[#001D36]/10 shadow-sm">
           <div className="relative flex-1">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "#475569" }} />
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#66625C]" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search questions, tags..."
-              className="w-full rounded-xl py-2.5 pl-10 pr-3 text-sm outline-none transition-all duration-300"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0" }}
-              onFocus={e => e.target.style.borderColor = "rgba(139,92,246,0.4)"}
-              onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+              className="w-full rounded-xl py-2.5 pl-10 pr-3 text-sm outline-none transition-all duration-300 bg-[#F0F4F8] border border-[#001D36]/10 text-[#001D36] focus:border-[#001D36]/30 focus:bg-white"
             />
           </div>
           <div className="flex items-center gap-2">
             {["Hot", "New", "Top"].map((s) => (
               <button key={s} onClick={() => setSort(s)}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200"
-                style={sort === s
-                  ? { background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", color: "#a78bfa" }
-                  : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#64748b" }}>
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border ${
+                  sort === s
+                    ? "bg-[#001D36] border-[#001D36] text-white shadow-md"
+                    : "bg-transparent border-[#001D36]/10 text-[#66625C] hover:bg-[#001D36]/5"
+                }`}>
                 {s}
               </button>
             ))}
             <button onClick={() => setAskOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300"
-              style={{ background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "white", boxShadow: "0 4px 16px rgba(124,58,237,0.3)" }}>
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 bg-[#00808C] text-white hover:bg-[#00808C]/90 shadow-md hover:shadow-lg">
               <PlusIcon className="h-3.5 w-3.5" /> Ask Question
             </button>
           </div>
@@ -373,10 +370,11 @@ export default function QnAForum() {
         <div className="flex flex-wrap gap-2 mb-6">
           {tags.map((t) => (
             <button key={t} onClick={() => setActiveTag(t)}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200"
-              style={activeTag === t
-                ? { background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", color: "#a78bfa" }
-                : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#64748b" }}>
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
+                activeTag === t
+                  ? "bg-[#001D36]/10 border-[#001D36]/20 text-[#001D36]"
+                  : "bg-white border-[#001D36]/10 text-[#66625C] hover:bg-[#001D36]/5"
+              }`}>
               #{t}
             </button>
           ))}
