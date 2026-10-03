@@ -1,0 +1,31 @@
+name: Nhost PostgreSQL Keep-Alive
+
+on:
+  schedule:
+    # Run once daily at 10:00 UTC
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    # Allows manual execution for testing
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_pgsql, pgsql
+
+      - name: Run Keep-Alive Script
+        run: php scripts/nhost_keep_alive.php
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
